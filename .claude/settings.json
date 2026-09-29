@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/.env.dev)",
+      "Read(**/.env.prod)",
+      "Edit(**/.env.dev)",
+      "Edit(**/.env.prod)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|NotebookEdit|Grep|Glob|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/block_secrets.py",
+            "statusMessage": "Checking for secrets access..."
+          }
+        ]
+      }
+    ]
+  }
+}
