@@ -42,9 +42,10 @@
 
 - [ ] 6.1 Implement the gold ledger (payments to the opponent, whole numbers, balance check, undo by dropping the last event) as pure functions, with pytest cases including the worked example (10400 and 9600)
 - [ ] 6.2 Implement the section state machine (roll, faction, color, in order, data-driven section list) and the report validation (bans within limit, roll allowance, factions allowed in the phase, a pair of two different factions, faction in the pair, color red or blue, amount within gold), with pytest cases for each scenario in the `game-trade` spec
+- [ ] 6.2b Implement the roll section: `draw_pair(allowed, banned, rng)` (two different allowed, non-banned factions, uniform, refuses when fewer than two remain), eligibility (rolls left and enough gold), roll and decline, the implicit decline when a faction bid is reported, and refusing undo of rolls and tosses; with pytest cases (seeded random source) for each scenario in the "The bot generates the faction pair", "A roll costs gold and draws a new pair" and "Each eligible player rolls or declines" requirements, including a statistical check that every allowed faction appears
 - [ ] 6.2a Implement the 200% color toss section (fair coin from an injectable source, winner chooses red or blue, no gold moves, no roll or faction steps), with pytest cases for each scenario in the "At 200% difficulty only the color is tossed" requirement
 - [ ] 6.3 Implement the lobby settings summary as a pure function that builds the text from a finished trade, with a pytest case for the spec's summary scenario
-- [ ] 6.4 Implement `/trade report`, `/trade undo` and `/trade status` as thin handlers, including the bot's prompt at the start of each section and the gold after each report. Verify a full game trade in the dev guild
+- [ ] 6.4 Implement `/trade roll`, `/trade decline`, `/trade report`, `/trade undo` and `/trade status` as thin handlers, including the bot's announcement at the start of each section (for the roll: the pair, the cost and who may roll) and the gold after each change. Verify a full game trade in the dev guild
 - [ ] 6.5 Make the trade of each game independent: default to the first unfinished game, allow naming a game, and verify with a pytest case and in the dev guild that game 2 can be traded after a pause while game 1 stays complete
 
 ## 7. Wrap-up

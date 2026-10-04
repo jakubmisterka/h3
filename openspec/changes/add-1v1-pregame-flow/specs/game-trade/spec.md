@@ -22,29 +22,75 @@ The trade of a game SHALL run in sections in a fixed order: faction roll, factio
 
 #### Scenario: Prompting
 - **WHEN** a trade starts
-- **THEN** the bot posts the template, each player's starting gold, and the first section's instruction
+- **THEN** the bot posts the template, each player's starting gold, and the first section's instruction (for the roll section, the generated pair, the roll cost and who may roll)
 
 #### Scenario: Out of order
 - **WHEN** a player reports a color bid before the faction bid is done
 - **THEN** the bot refuses and names the section that is expected
 
-### Requirement: Faction roll is reported
-In the roll section, the players SHALL report the faction pair shown in the lobby, then any rolls used: who rolled, which factions (0 to the allowed maximum) they banned, and the new pair. The roll cost SHALL be paid by the roller to the opponent. The section ends when both players have had their rolls or declined them.
+### Requirement: The bot generates the faction pair
+When the roll section starts, the bot SHALL draw two different factions at random, each allowed faction equally likely, and announce in the thread the pair, the roll cost, and which players may roll (the first player, the second player, or both). A player may roll only if they have a roll left and enough gold for the cost. Players set the announced factions in the lobby by hand.
+
+#### Scenario: Announcement
+- **WHEN** the roll section starts for a 160% game with default roll rules
+- **THEN** the thread says, for example, "Castle vs Factory. A roll costs 500 gold. Both players may roll."
+
+#### Scenario: Only one player may roll
+- **WHEN** the roll cost is more than one player's gold
+- **THEN** the announcement names only the other player as eligible
+
+#### Scenario: Nobody may roll
+- **WHEN** neither player has a roll left or enough gold
+- **THEN** the roll section ends at once and the faction bid starts
+
+#### Scenario: Fair draw
+- **WHEN** many pairs are drawn from the same allowed factions
+- **THEN** every allowed faction appears equally often, and a pair never repeats one faction
+
+### Requirement: A roll costs gold and draws a new pair
+An eligible player SHALL be able to roll by naming the factions to ban (0 up to the allowed maximum), from the current pair. The roller SHALL pay the roll cost to the opponent. The bot SHALL then draw a new pair of two different factions from the allowed factions that are not banned, and announce the new pair, the roll cost, and who may still roll.
 
 #### Scenario: One roll
-- **WHEN** the lobby shows Castle vs Factory, P1 rolls banning Castle, and the new pair is Necropolis vs Tower
-- **THEN** the bot records the ban and the new pair, and P1 pays 500 gold to P2
+- **WHEN** the pair is Castle vs Factory and P1 rolls banning Castle
+- **THEN** P1 pays 500 gold to P2, the bot draws a new pair without Castle (for example Necropolis vs Tower), and announces that P2 may still roll
 
-#### Scenario: No roll
-- **WHEN** both players decline to roll
-- **THEN** the section is done and nobody pays
+#### Scenario: Roll without bans
+- **WHEN** a player rolls banning nothing
+- **THEN** they pay the cost and the bot draws a new pair
 
-#### Scenario: Too many bans or rolls
-- **WHEN** a player reports more bans than allowed, or a roll beyond their allowance
-- **THEN** the bot refuses and states the limit
+#### Scenario: Too many bans
+- **WHEN** a player names more bans than allowed, or a faction that is not in the current pair
+- **THEN** the bot refuses, states the limit, and nobody pays
+
+#### Scenario: Not eligible
+- **WHEN** a player who has no roll left or cannot pay tries to roll
+- **THEN** the bot refuses and says why
+
+#### Scenario: Too few factions left
+- **WHEN** fewer than two allowed factions remain after the bans
+- **THEN** the bot refuses the roll and nobody pays
+
+### Requirement: Each eligible player rolls or declines
+The roll section SHALL end when every eligible player has rolled all their rolls or declined. A player SHALL be able to decline explicitly. Reporting the result of the faction bid SHALL count as declining every roll still open, because players often start bidding without saying they skip the roll.
+
+#### Scenario: Explicit decline
+- **WHEN** both eligible players decline
+- **THEN** the section ends, nobody pays, and the faction bid starts with the original pair
+
+#### Scenario: Skipped by bidding
+- **WHEN** both players may still roll and someone reports the faction bid result
+- **THEN** the bot notes that the open rolls were skipped and accepts the result
+
+#### Scenario: One rolls, one declines
+- **WHEN** P1 rolls and P2 declines
+- **THEN** the section ends and the faction bid starts with the new pair
+
+#### Scenario: Waiting on the other player
+- **WHEN** P1 has rolled and P2 has neither rolled nor declined
+- **THEN** the section stays open, and the bot's reminder names P2
 
 ### Requirement: Only allowed factions are accepted
-Every faction a player reports (the pair shown in the lobby, banned factions, the chosen faction) SHALL be one of the factions allowed in the game's phase. A pair SHALL consist of two different factions. When a player starts typing a faction, the bot SHALL offer only allowed factions.
+Every faction a player names (a banned faction, the chosen faction) SHALL be one of the factions allowed in the game's phase. When a player starts typing a faction, the bot SHALL offer only allowed factions.
 
 #### Scenario: Unknown faction
 - **WHEN** a player reports a faction that is not in the catalogue
@@ -53,10 +99,6 @@ Every faction a player reports (the pair shown in the lobby, banned factions, th
 #### Scenario: Faction not allowed in this phase
 - **WHEN** the phase allows only Castle, Rampart and Tower and a player reports Cove
 - **THEN** the bot refuses and lists the three allowed factions
-
-#### Scenario: Same faction twice
-- **WHEN** a player reports the pair Castle vs Castle
-- **THEN** the bot refuses and asks for two different factions
 
 ### Requirement: Faction bid is reported
 In the faction section the player named by the bot starts the bidding with others raising by at least 100, between the players, in the thread. After the bidding, either player SHALL report the winner, the amount and the chosen faction. The faction SHALL be one of the current pair. The winner pays the amount to the opponent.
@@ -92,7 +134,7 @@ The bot SHALL keep each player's gold from the starting gold of the game's diffi
 - **THEN** the thread shows both players' gold
 
 ### Requirement: Either player may report, and undo
-Either player SHALL be able to report a section's result, with no confirmation from the other. Either player SHALL be able to undo the most recent report in the same game's trade.
+Either player SHALL be able to report a section's result, with no confirmation from the other. Either player SHALL be able to undo the most recent player report (a bid result, a faction or color choice) in the same game's trade. Random results drawn by the bot (a pair, a toss) and the rolls that caused them are final and SHALL NOT be undone.
 
 #### Scenario: Opponent reports
 - **WHEN** the loser of a bid reports the result
@@ -101,6 +143,10 @@ Either player SHALL be able to report a section's result, with no confirmation f
 #### Scenario: Correcting a mistake
 - **WHEN** a player undoes the last report
 - **THEN** the gold and section return to how they were before it, and the bot asks for the result again
+
+#### Scenario: Undoing a roll
+- **WHEN** a player tries to undo a roll, or the report right after a roll
+- **THEN** the bot refuses and says random results are final, so a roll cannot be redone for a better pair
 
 #### Scenario: Nothing to undo
 - **WHEN** a player asks to undo before any report in that game
@@ -145,6 +191,6 @@ The list of sections of a trade SHALL come from data, so a template can later ad
 
 Open question: who bids first in games after the first, including the decider. Provisional default: A bids first in every game. Players mostly agree among themselves, so this will be tuned once the interaction exists.
 
-Open question: the exact roll procedure (when the first pair appears, whether bans come before or after a roll, whether the roll cost reduces the gold available for bids). The roll section follows the explore-session example.
+Open question: details of the roll. Provisional defaults: bans are chosen from the current pair; the new pair is drawn from all allowed factions that are not banned, so an unbanned faction of the old pair may come back; bans stay in force for the rest of that game's roll section; the roll cost is paid gold, so it also reduces what a player can bid.
 
 Open question: whether bids must be multiples of 100, and who chooses when nobody bids.

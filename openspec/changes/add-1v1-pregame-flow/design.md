@@ -94,13 +94,20 @@ Starting gold is not in the file. A small table in the rules layer maps difficul
 |---|---|---|
 | `/match start mode opponent [phase] [template]` | pre-game channel | creates the thread, coinflip |
 | `/ban template`, `/pick template` | match thread | selection step, autocomplete from remaining pool |
-| `/trade report ...` | match thread | reports a result of the current trade section |
+| `/trade roll [bans]`, `/trade decline` | match thread | roll the faction pair (bot draws the new pair), or skip the roll |
+| `/trade report ...` | match thread | reports a bid result of the current trade section |
 | `/trade undo` | match thread | cancels the latest trade report |
 | `/trade status` | match thread | shows section, gold, what is expected |
 
 `phase` is shown only when the chosen mode has several phases; because a slash command's options cannot appear conditionally, the option is optional and the bot answers with a follow-up prompt asking for it when it is missing and needed. The fields of `/trade report` depend on the section (roll, faction, color), so they are optional and checked by the rules function. The exact set of fields is settled when the first version is tried in the dev guild.
 
 *Alternative:* one command per section (`/roll`, `/faction`, `/color`). Cleaner fields, more commands to learn. Revisit after first use.
+
+### 4a. The bot's random draws are events
+
+The faction pair, each reroll and the 200% toss are drawn by the bot, so they cannot be recomputed after a restart. Each draw is posted as its own event (for example `PairDrawn` with the two faction ids, `ColorTossed` with the winner) and the fold reads the result from the event instead of drawing again. Draws come from one function, `draw_pair(allowed, banned, rng)`, which takes an injectable random source so tests can fix it; it uses the system's secure random generator in production. Because draws are final, undo skips them: undo removes only the latest player report, and refuses when that is a roll or a toss.
+
+*Alternative:* derive draws from a seed stored in the thread, so they could be recomputed. Rejected: the event already holds the answer, and a seed in a public thread would let anyone predict future pairs.
 
 ### 5. Gold as whole numbers
 
