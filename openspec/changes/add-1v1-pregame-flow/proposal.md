@@ -8,7 +8,7 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 
 ### What a player sees
 
-1. In the pre-game channel, a player runs `/match start` and names the **mode** (a tournament format, or a ranked game) and the **opponent**. If the mode has several phases (group stage, early knockout, late knockout), the bot also asks which one. If the mode lets players agree on the template themselves (ranked), the player gives the template.
+1. In any channel the bot can see, a player runs `/match start` and names the **mode** (a tournament format, or a ranked game) and the **opponent**. If the mode has several phases (group stage, early knockout, late knockout), the bot also asks which one. If the mode lets players agree on the template themselves (ranked), the player gives the template.
 2. The bot opens a **thread** for the match and flips the coinflip itself. It announces the winner (called **A**; the other player is **B**). A bans first and bids first.
 3. In the thread, players run `/ban` and `/pick` in the order the mode prescribes, with autocomplete of the remaining templates. The bot announces whose turn it is and rejects commands from the wrong player. When the sequence ends, the bot announces the games in play order with their templates.
 4. For each game, the bot walks the players through the **trade** one section at a time. First the bot draws a random pair of factions and announces it with the roll cost and who may roll; each eligible player rolls (banning 0-2 factions, and the bot draws a new pair) or skips, and bidding without a word counts as skipping. Then players bid between themselves in the thread for the faction choice and for color, and either player reports each result (winner, amount, choice). The bot keeps the running gold and can undo the last player report; its own random draws are final. Players set the final factions in the lobby by hand.
@@ -31,6 +31,11 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 - Template-specific trade rules that add or remove sections. The section list is data, but no template needs a different one yet.
 - Tournament results, brackets and match reporting after the game.
 - Timers and reminders for slow players.
+- A per-server setting for which channel matches may start in. The match starts, and its thread is created, in the channel where the command is run. A server that wants a dedicated channel limits the bot's access to it through Discord permissions.
+
+### Follow-up ideas (not part of this change)
+
+- **Rewind with consent:** a `/rewind` command with autocomplete of recent steps, so a player can ask to go back to an earlier step (for example after a mistaken ban or pick), and the opponent must accept. It would be one more event in the thread, so nothing is deleted. It must not go back past a random draw (a roll, a toss), to prevent rerolling for a better result. It could also resume an archived thread. A right-click "Rewind to here" message command was considered and can be added later.
 
 ## Capabilities
 

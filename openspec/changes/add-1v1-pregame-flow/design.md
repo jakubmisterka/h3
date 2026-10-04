@@ -92,7 +92,7 @@ Starting gold is not in the file. A small table in the rules layer maps difficul
 
 | Command | Used where | Purpose |
 |---|---|---|
-| `/match start mode opponent [phase] [template]` | pre-game channel | creates the thread, coinflip |
+| `/match start mode opponent [phase] [template]` | any channel | creates the thread there, coinflip |
 | `/ban template`, `/pick template` | match thread | selection step, autocomplete from remaining pool |
 | `/trade roll [bans]`, `/trade decline` | match thread | roll the faction pair (bot draws the new pair), or skip the roll |
 | `/trade report ...` | match thread | reports a bid result of the current trade section |
@@ -121,7 +121,7 @@ Two commands can arrive in one thread at nearly the same time. Per thread, handl
 
 - **[A bot message needed for the state is deleted or edited]** → The bot refuses to guess and says the match cannot be rebuilt. Bot messages are the bot's own, so only moderators can delete them; the thread is the audit trail.
 - **[Reading a long thread on every command is slow]** → A match has at most a few dozen bot events, so one history fetch is small. If it ever matters, cache the folded match in memory per thread, keeping the thread as source of truth.
-- **[Archived threads may behave unexpectedly with slash commands]** → Test on the dev bot early (first task after the skeleton). If commands fail in archived threads, the bot replies to a `/match resume` in the parent channel or players unarchive by posting.
+- **[Archived threads may behave unexpectedly with slash commands]** → Test on the dev bot early (first task after the skeleton). If commands fail in archived threads, players reopen the thread by hand; automatic resume is left to the rewind follow-up (see proposal.md).
 - **[The bot cannot verify what players report]** → Accepted by design (either player reports, no confirmation). Undo and the visible thread are the safeguards; a moderator-resolve command is a later option.
 - **[Rules are unclear in places]** → Recorded as "Open question:" in the specs. Rules code takes the provisional default in one place each, so changing one is a small edit.
 - **[Command fields are guessed before real use]** → Keep `/trade report` fields flexible and tune in the dev guild before the prod sync.

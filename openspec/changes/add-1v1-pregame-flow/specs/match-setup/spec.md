@@ -65,6 +65,17 @@ Each match SHALL have its own thread. The thread SHALL be public or private acco
 - **WHEN** two matches run at once
 - **THEN** a ban in one does not change the other
 
+### Requirement: The match starts in the current channel
+The bot SHALL create the match thread in the channel where the start command was run. The bot SHALL NOT have its own setting for which channels may be used; a server limits the channels through the bot's Discord permissions.
+
+#### Scenario: Any channel
+- **WHEN** a player starts a match in a channel where the bot can create threads
+- **THEN** the thread is created in that channel
+
+#### Scenario: Channel without access
+- **WHEN** a player runs the start command in a channel the server has hidden from the bot
+- **THEN** the command is not available there and no match is created
+
 ### Requirement: Only the two players act
 Commands that change a match SHALL be accepted only from its two players and only inside its thread.
 
@@ -91,6 +102,4 @@ The bot SHALL keep no match data outside the thread. After a bot restart, or whe
 - **WHEN** a bot message needed to rebuild the match was deleted
 - **THEN** the bot says the match cannot be rebuilt and does not guess
 
-Open question: how a server designates the dedicated pre-game channel. Until decided, the start command works in any channel where the bot can create threads.
-
-Open question: whether slash commands and reopening behave as expected in an archived thread. This is to be tested on the dev bot before relying on it.
+Open question: whether slash commands work in an archived thread. This is to be tested on the dev bot. Until then players reopen an archived thread by hand; resuming it automatically is a follow-up idea (see the proposal).

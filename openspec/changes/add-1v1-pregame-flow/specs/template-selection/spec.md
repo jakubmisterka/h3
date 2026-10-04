@@ -57,4 +57,4 @@ In an agreed-template phase the bot SHALL post the template named at the start a
 - **WHEN** a ranked match starts with a template
 - **THEN** no bans or picks are asked and game 1 uses that template
 
-Open question: how to correct a ban or pick made by mistake. For now a step cannot be undone, and players should ask an organiser.
+Open question: how to correct a ban or pick made by mistake. In this change a step cannot be undone, and players should ask an organiser. A rewind with the opponent's consent is a follow-up idea (see the proposal).
