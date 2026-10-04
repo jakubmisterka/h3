@@ -1,6 +1,6 @@
 # h3
 
-Discord bot for the Heroes of Might and Magic III (Horn of the Abyss) competitive community (Python, discord.py). Currently a single `/hello` slash command; the real features are being specified with OpenSpec.
+Discord bot for the Heroes of Might and Magic III (Horn of the Abyss) competitive community (Python, discord.py). It runs the 1v1 pre-game flow in a thread per match: `/match start`, `/ban`, `/pick` and `/trade ...`. Features are specified with OpenSpec.
 
 ## Mission
 
@@ -32,8 +32,13 @@ Project context and artifact rules are in [openspec/config.yaml](openspec/config
 
 ## Layout
 
-- `src/bot.py`: bot client, command registration, entry point.
+- `src/bot.py`: bot client, loads the data files at start-up, registers the commands, entry point.
 - `src/config.py`: loads `APP_ENV` (`dev`|`prod`, default `dev`), then `.env.<env>`; real environment variables win over the file.
+- `src/commands/`: thin Discord handlers. `match.py` (`/match start`), `selection.py` (`/ban`, `/pick`), `trade.py` (`/trade start|roll|decline|report|undo|status`), `common.py` (the guard every match command goes through: right thread, right players, one command at a time per thread via `src/locks.py`).
+- `src/rules/`: plain, tested rule logic with no Discord imports. `formats.py` (format files, validation, trade settings), `catalogue.py` (factions and templates), `start.py` (start checks, coinflip), `selection.py` (bans and picks), `trade.py` and `ledger.py` (the trade and the gold), `registry.py` (loads everything).
+- `src/state.py`: the events a match is made of, and rebuilding a match from them. `src/threads.py` reads and posts those events in a thread. There is **no database**: the match lives in the bot's own thread messages (see the design in `openspec/changes/`).
+- `formats/`: tournament formats as JSON, plus `schema.json` and a [README](formats/README.md) for contributors. `data/`: the faction and template catalogues.
+- `tests/`: pytest. Every JSON file in `formats/` and `data/` is checked there, so a bad contribution fails the tests.
 - `pyproject.toml` / `poetry.lock`: dependencies (Poetry, `package-mode = false`, venv in `.venv`).
 
 ## Commands
@@ -41,6 +46,7 @@ Project context and artifact rules are in [openspec/config.yaml](openspec/config
 ```powershell
 poetry install                                  # set up .venv from poetry.lock
 $env:APP_ENV = "dev"; poetry run python src/bot.py
+poetry run pytest                               # all tests, including the format and data files
 poetry add <pkg>                                # add dependency (updates lock)
 poetry add --group dev <pkg>                    # dev-only dependency
 ```
@@ -49,10 +55,12 @@ Poetry lives in pipx: if `poetry` isn't on PATH, use `C:\Users\User\.local\bin\p
 
 ## Conventions
 
-- Two Discord applications: dev (`HelloBot-Dev`, synced instantly to `TEST_GUILD_ID`) and prod (global sync). Same code, different token.
+- Two Discord applications: dev (`h3-trade-DEV`, synced instantly to `TEST_GUILD_ID`) and prod (global sync). Same code, different token.
+- The bot needs these permissions in the channels where matches start: create public threads (and private threads for private formats), send messages in threads, read message history, embed links.
+- Do not `cd` away from the repo root in a Bash/PowerShell call (use absolute paths). The secrets hook runs `python .claude/hooks/block_secrets.py` relative to the working directory, and from anywhere else it fails and blocks every tool call.
 - discord.py is async: never block the event loop (use async DB/HTTP libraries or `asyncio.to_thread`).
 - Slash commands only; avoid the privileged Message Content intent.
 - Keep Discord-facing code thin and put logic in plain functions so it can be unit-tested with pytest.
-- Discord IDs are 64-bit snowflakes: store as `BIGINT`, key per-server data by `guild_id`.
+- Discord IDs are 64-bit snowflakes. There is no database today; if one is added, store them as `BIGINT` and key per-server data by `guild_id`.
 - Commit `poetry.lock`. Upgrade dependencies on a branch and test on the dev bot before merging.
 - Windows/PowerShell environment. Files are written UTF-8 without BOM (a BOM breaks `pyproject.toml`).
