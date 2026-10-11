@@ -28,7 +28,7 @@ class HelloBot(discord.Client):
         log.info("Logged in as %s (id=%s)", self.user, self.user.id)
 
 
-def main() -> None:
+def main() ->  :
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = load_config()
     bot = HelloBot(cfg.test_guild_id if cfg.env == "dev" else None)

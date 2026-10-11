@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/block_secrets.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_secrets.py\"",
             "statusMessage": "Checking for secrets access..."
           }
         ]

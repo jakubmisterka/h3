@@ -1,6 +1,27 @@
 # h3
 
-Discord bot for the h3 community (Python, discord.py). Currently a single `/hello` slash command.
+Discord bot for the Heroes of Might and Magic III (Horn of the Abyss) competitive community (Python, discord.py). Currently a single `/hello` slash command; the real features are being specified with OpenSpec.
+
+## Mission
+
+HotA tournament games last 6h+, yet players still burn lobby time on the same pre-game ritual: finding the tournament rules, the template list and the timers, a coinflip for who bans first, bans, rolling two towns each, and trading for towns. None of this needs the game. **This bot runs that whole phase in Discord**, so when players enter the lobby they only read off the settings and start.
+
+- Scope: tournaments organised by h3.gg only. All servers choose from the same catalogue of formats.
+- First milestone: the 1v1 pre-game flow end to end (start match, coinflip, bans, town roll, trading, final lobby-settings summary).
+- Tournament formats are **JSON rule-set files in the repo**. Contributors add formats by pull request. Finished tournaments are archived, not deleted.
+- Domain reference: https://heroes.thelazy.net (wiki) and h3.gg rules. If a rule is unclear, ask the user or record an open question; never invent tournament rules.
+- This repo is meant to be shared: keep code and specs readable for newcomers.
+
+## Workflow (OpenSpec, spec-driven)
+
+Requirements come before code. Specs live in `openspec/specs/`, active work in `openspec/changes/<name>/` (proposal, specs, design, tasks), finished work in `openspec/changes/archive/`.
+
+1. `/opsx:explore`: think through a problem (used for the trading-system discussion).
+2. `/opsx:propose <name>`: create the change artifacts.
+3. `/opsx:apply`: implement the tasks.
+4. `/opsx:archive`: merge the change into the specs.
+
+Project context and artifact rules are in [openspec/config.yaml](openspec/config.yaml). Do not implement features that have no spec.
 
 ## Secrets: never touch these
 
