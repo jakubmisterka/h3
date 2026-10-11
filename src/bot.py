@@ -3,6 +3,7 @@ import logging
 import discord
 from discord import app_commands
 
+from discord_commands import match
 from config import load_config
 
 log = logging.getLogger("hellobot")
@@ -14,6 +15,7 @@ class HelloBot(discord.Client):
         super().__init__(intents=discord.Intents.default())
         self.tree = app_commands.CommandTree(self)
         self.test_guild_id = test_guild_id
+        self.tree.add_command(match.group)
 
     async def setup_hook(self) -> None:
         if self.test_guild_id:

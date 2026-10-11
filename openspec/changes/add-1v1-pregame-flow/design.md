@@ -23,7 +23,7 @@ Constraints from the project: slash commands only, no privileged intents, async 
 
 ```
  src/bot.py            discord.Client, registers commands
- src/commands/*.py     thin handlers: check channel, call state + rules, post reply
+ src/discord_commands/*.py thin Discord handlers: check channel, call state + rules, post reply
  src/state.py          rebuild a Match from thread messages  (Discord objects in, plain data out)
  src/rules/*.py        selection, ledger, validation          (pure functions, no discord import)
  data/factions.json    the faction (town) catalogue
