@@ -3,10 +3,11 @@
 import discord
 from discord import app_commands
 
-from discord_commands.permissions import PRIVATE_THREAD, PUBLIC_THREAD, READ_THREAD, missing, missing_message
+from discord_commands.guard import guarded_records
+from discord_commands.permissions import PRIVATE_THREAD, PUBLIC_THREAD, missing, missing_message
 from discord_commands.thread_log import ThreadLog
 from rules.start import StartError, check_opponent
-from state import RecordError, describe_records
+from state import describe_records
 
 # Players are often slow, so keep the thread open for a week before Discord archives it.
 THREAD_ARCHIVE_MINUTES = 10080
@@ -89,21 +90,7 @@ async def start(interaction: discord.Interaction, opponent: discord.Member, priv
 
 @group.command(name="status", description="Show what the bot has recorded in this match thread")
 async def status(interaction: discord.Interaction) -> None:
-    thread = interaction.channel
-    if not isinstance(thread, discord.Thread):
-        await interaction.response.send_message("Use this command inside a match thread.", ephemeral=True)
-        return
-    lacking = missing(interaction.app_permissions, READ_THREAD)
-    if lacking:
-        await interaction.response.send_message(missing_message(lacking), ephemeral=True)
-        return
-
-    # Reading a long thread can take a moment, so acknowledge first. The reply is only for the asker.
-    await interaction.response.defer(ephemeral=True)
-    try:
-        records = await ThreadLog(thread, interaction.client.user.id).read()
-    except RecordError as e:
-        await interaction.followup.send(f"I can't read this thread: {e}")
+    records = await guarded_records(interaction)  # replies to the user itself when it says no
+    if records is None:
         return
     await interaction.followup.send(describe_records(records))
-

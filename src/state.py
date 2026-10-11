@@ -24,6 +24,10 @@ class RecordError(ValueError):
     """A record is damaged or does not match its type."""
 
 
+class MatchError(ValueError):
+    """What a player asked is not possible in this match. The message is shown to the player."""
+
+
 @dataclass(frozen=True)
 class Record:
     n: int
@@ -100,3 +104,17 @@ def describe_records(records: list[Record]) -> str:
     lines = [f"I read {len(records)} record(s) in this thread:"]
     lines += [f"{r.n}. {describe(r)}" for r in records]
     return "\n".join(lines)
+
+
+def players_of(records: list[Record]) -> tuple[int, int]:
+    """The two players of the match: (who started it, the opponent)."""
+    for record in records:
+        if record.type == "match_started":
+            return record.data["p1"], record.data["p2"]
+    raise MatchError("This thread is not a match thread I know of.")
+
+
+def check_player(records: list[Record], user_id: int) -> None:
+    """Only the two players of a match may use its commands."""
+    if user_id not in players_of(records):
+        raise MatchError("Only the two players of this match can use this command.")
