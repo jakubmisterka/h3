@@ -8,7 +8,8 @@ Why separate: code that talks to Discord cannot be tested without Discord. Keepi
 
 | File | Commands |
 |---|---|
-| `match.py` | `/match start` |
+| `match.py` | `/match start`, `/match status` |
+| `thread_log.py` | Posts each step as one message that starts with a tag like `[#3 ms]`, and reads those messages back into records (the bot keeps no database; the thread is the memory) |
 | `permissions.py` | Which Discord permissions the bot needs for each action, and a check that names the missing ones (so players get a clear message, not a crash) |
 
 A command file exposes a `group` (or single commands) that [`../bot.py`](../bot.py) registers.
