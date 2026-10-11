@@ -37,8 +37,8 @@ Decided: each step is one message that starts with a tag `[#n code]`; the data i
 
 *Match commands are accepted only inside the match thread and only from its two players.*
 
-- [ ] 4.1 Add the guard that every match command goes through (right thread, one of the two players), with pytest cases for each scenario of the "Only the two players act" requirement
-- [ ] 4.2 Milestone check in the dev guild: a third account's command in the thread is refused and changes nothing; a command outside a thread says to use the match thread
+- [x] 4.1 Add the guard that every match command goes through (right thread, one of the two players), with pytest cases for each scenario of the "Only the two players act" requirement
+- [x] 4.2 Milestone check in the dev guild: a third account's command in the thread is refused and changes nothing; a command outside a thread says to use the match thread
 
 Decide: whether reading (`/match status`) is open to everyone or only to the players.
 

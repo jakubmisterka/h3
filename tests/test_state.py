@@ -1,6 +1,17 @@
 import pytest
 
-from state import Record, RecordError, describe, describe_records, make_record, parse, tag
+from state import (
+    MatchError,
+    Record,
+    RecordError,
+    check_player,
+    describe,
+    describe_records,
+    make_record,
+    parse,
+    players_of,
+    tag,
+)
 
 # Discord user ids are 64-bit numbers
 ANNA, BORIS = 111111111111111111, 222222222222222222
@@ -106,3 +117,28 @@ def test_records_are_listed_in_order_with_their_numbers():
 
 def test_no_records_is_explained():
     assert describe_records([]) == "I found no match records in this thread."
+
+
+def match_records():
+    return [make_record(1, "match_started", p1=111, p2=222)]
+
+
+def test_players_are_the_two_in_the_start_record():
+    assert players_of(match_records()) == (111, 222)
+
+
+def test_both_players_pass_the_check():
+    check_player(match_records(), 111)
+    check_player(match_records(), 222)
+
+
+def test_somebody_else_is_refused():
+    with pytest.raises(MatchError, match="Only the two players"):
+        check_player(match_records(), 333)
+
+
+def test_thread_without_a_start_record_is_not_a_match():
+    with pytest.raises(MatchError, match="not a match thread"):
+        players_of([])
+    with pytest.raises(MatchError, match="not a match thread"):
+        check_player([], 111)
