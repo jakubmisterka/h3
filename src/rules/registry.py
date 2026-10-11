@@ -19,6 +19,10 @@ class RegistryError(ValueError):
         super().__init__("; ".join(problems))
 
 
+class ModeError(ValueError):
+    """A mode cannot be used for a new match. The message is shown to the player."""
+
+
 def _count(number: int, word: str) -> str:
     return f"{number} {word}" if number == 1 else f"{number} {word}s"
 
@@ -28,6 +32,26 @@ class Registry:
     towns: Catalogue
     templates: Catalogue
     formats: dict[str, Format]  # by format id
+
+    def modes_for_new_matches(self) -> list[Format]:
+        """The modes a match can be started in: active formats only. Archived ones stay on record, hidden."""
+        return [fmt for fmt in self.formats.values() if fmt.active]
+
+    def find_format(self, text: str) -> Format | None:
+        """A format by id or name, ignoring letter case, whatever its status (archived ones can be looked up)."""
+        wanted = text.strip().lower()
+        return next((f for f in self.formats.values() if wanted in (f.id.lower(), f.name.lower())), None)
+
+    def choose_mode(self, text: str) -> Format:
+        """The mode a player named for a new match. Raises ModeError, in words, if it cannot be used."""
+        fmt = self.find_format(text)
+        if fmt is None:
+            names = ", ".join(f.name for f in self.modes_for_new_matches())
+            available = f"Available modes: {names}." if names else "There are no modes available."
+            raise ModeError(f"There is no mode called {text!r}. {available}")
+        if not fmt.active:
+            raise ModeError(f"{fmt.name} is archived and cannot start new matches.")
+        return fmt
 
     def summary(self) -> str:
         """One line saying what was loaded, for the log: counts, and the formats by id."""

@@ -63,13 +63,13 @@ Decided: there is no separate game order. The sequence ends with a `decider` ste
 
 *Look up a mode, or a template in a mode. Also how we check format files in Discord.*
 
-- [ ] 6.1 Implement the effective roll rules of a template (built-in defaults 500 gold, 1 roll, 2 bans, updated by the tournament's `roll_rules`, then by the template's entry in the tournament list, then by its entry in the phase's pool), with pytest cases for each level, field by field merging, and the defaults
-- [ ] 6.2 Implement the difficulty-to-starting-gold table (80%, 100%, 130%, 160%, 200%) and the default section list per difficulty, and refuse a template whose difficulty is not in the table; verify with a pytest case per difficulty and for the refusal
-- [ ] 6.3 Implement the list of selectable modes (archived formats hidden for new matches, starting in an archived one refused), with pytest cases for both
-- [ ] 6.4 Implement the text for mode info and template info as pure functions, with pytest cases for each scenario of the `mode-info` spec (single and multi-phase, bans and picks in words, agreed template, defaults, override, template in two phases, 200%, unknown mode, template not in the mode, archived mode)
-- [ ] 6.5 Add `/info mode [template]` as a thin handler with autocomplete and an ephemeral reply
-- [ ] 6.6 Document how to add a format in `formats/README.md` (fields, an example, how to check it with `poetry run pytest` and `/info`) and verify a newcomer can follow it by copying an existing format file
-- [ ] 6.7 Milestone check in the dev guild: `/info` for the development format, then with `JC`, then an unknown mode and a template that is not in the mode; change JC's difficulty in `data/templates.json` to 130, restart, and `/info` shows 15000 gold
+- [x] 6.1 Implement the effective roll rules of a template (built-in defaults 500 gold, 1 roll, 2 bans, updated by the tournament's `roll_rules`, then by the template's entry in the tournament list, then by its entry in the phase's pool), with pytest cases for each level, field by field merging, and the defaults
+- [x] 6.2 Implement the difficulty-to-starting-gold table (80%, 100%, 130%, 160%, 200%) and the default section list per difficulty, and refuse a template whose difficulty is not in the table; verify with a pytest case per difficulty and for the refusal
+- [x] 6.3 Implement the list of selectable modes (archived formats hidden for new matches, starting in an archived one refused), with pytest cases for both
+- [x] 6.4 Implement the text for mode info and template info as pure functions, with pytest cases for each scenario of the `mode-info` spec (single and multi-phase with nothing repeated, one phase only, the template selection line such as "AB: A bans, B bans, then decider", agreed template, defaults, the same in every phase, differing rules listed per phase, 200%, unknown mode, template not in the mode, archived mode)
+- [x] 6.5 Add `/info mode [template] [phase]` as a thin handler with autocomplete and an ephemeral reply
+- [x] 6.6 Document how to add a format in `formats/README.md` (fields, an example, how to check it with `poetry run pytest` and `/info`) and verify a newcomer can follow it by copying an existing format file
+- [ ] 6.7 Milestone check in the dev guild: `/info` for the development format, then with `JC`, then an unknown mode and a template that is not in the mode; change JC's difficulty in `data/templates.json` to 130, restart, and `/info` shows 130% difficulty for JC
 
 ## 7. Milestone: a real match start with the coinflip
 

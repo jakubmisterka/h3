@@ -6,6 +6,7 @@ from discord import app_commands
 
 from config import load_config
 from discord_commands import match
+from discord_commands.info import info as info_command
 from rules.registry import Registry, RegistryError, load_registry
 
 log = logging.getLogger("h3bot")
@@ -21,6 +22,7 @@ class H3Bot(discord.Client):
         self.test_guild_id = test_guild_id
         self.registry = registry  # the towns, templates and formats, checked once at start-up
         self.tree.add_command(match.group)
+        self.tree.add_command(info_command)
 
     async def setup_hook(self) -> None:
         if self.test_guild_id:

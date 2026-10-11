@@ -58,7 +58,7 @@ Reading the bot's own messages does not need the Message Content intent. The bot
    "templates": [ "<template id>" | { "template": "<id>", "roll_rules": {...} }, ... ],
    "phases": [ { "name", "best_of",
                  "pool": [ "<template id>" | { "template": "<id>", "roll_rules": {...} }, ... ],  (optional: all)
-                 "selection": { "type": "sequence",
+                 "template_selection": { "type": "sequence",
                                 "steps": [{"who":"A","do":"ban"}, ..., {"do":"decider"}] }
                           or { "type": "agreed" },
                  "allowed_towns": [ "<town id>", ... ] } ] }                   (optional, replaces the tournament's)
@@ -72,7 +72,7 @@ Example, the small development format `formats/el-classico.json` (real tournamen
 { "id": "el-classico", "name": "El Classico", "status": "active",
   "templates": ["JC", "6lm10a", "h3dm1"],
   "phases": [ { "name": "Main", "best_of": 1,
-                "selection": { "type": "sequence",
+                "template_selection": { "type": "sequence",
                                "steps": [ {"who": "A", "do": "ban"}, {"who": "B", "do": "ban"},
                                           {"do": "decider"} ] } } ] }
 ```

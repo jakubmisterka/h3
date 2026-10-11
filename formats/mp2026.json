@@ -1,0 +1,55 @@
+{
+  "id": "mp2026",
+  "name": "Mistrzostwa Polski 2026",
+  "templates": ["JC", "6lm10a", "h3dm1", "Sapphire", "mt_Nebula", "Nostalgia", "mt_Jebus", "Diamond", "Conquest"],
+  "phases": [
+    {
+      "name": "Group phase",
+      "best_of": 1,
+      "pool": ["JC", "6lm10a", "h3dm1"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    },
+    {
+      "name": "Elimination phase",
+      "best_of": 3,
+      "pool": ["JC", "6lm10a", "h3dm1", "Sapphire", "mt_Nebula", "Nostalgia", "mt_Jebus"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "pick" },
+          { "who": "B", "do": "pick" },
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    },
+    {
+      "name": "Final",
+      "best_of": 3,
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "pick" },
+          { "who": "B", "do": "pick" },
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    }
+  ]
+}

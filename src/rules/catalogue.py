@@ -9,6 +9,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from rules.difficulty import DIFFICULTY_GOLD, supported_difficulties
+
 
 class CatalogueError(ValueError):
     """A catalogue file is not valid. The message names the file and the entry."""
@@ -93,13 +95,29 @@ def parse_catalogue(data: object, label: str, extra_fields: dict[str, type] | No
     return Catalogue(entries)
 
 
-def load_catalogue(path: Path, extra_fields: dict[str, type] | None = None) -> Catalogue:
+def parse_templates(data: object, label: str) -> Catalogue:
+    """Build the template catalogue: like any catalogue, and each template's difficulty must be a supported one."""
+    catalogue = parse_catalogue(data, label, TEMPLATE_FIELDS)
+    for number, entry in enumerate(catalogue.entries, start=1):
+        difficulty = entry.details["difficulty"]
+        if difficulty not in DIFFICULTY_GOLD:
+            raise CatalogueError(
+                f"{label}: entry {number} ({entry.id}): difficulty {difficulty} is not supported "
+                f"(use one of {supported_difficulties()})"
+            )
+    return catalogue
+
+
+def _read_json(path: Path) -> object:
     with open(path, encoding="utf-8") as f:
         try:
-            data = json.load(f)
+            return json.load(f)
         except json.JSONDecodeError as e:
             raise CatalogueError(f"{path.name}: not valid JSON ({e})") from e
-    return parse_catalogue(data, path.name, extra_fields)
+
+
+def load_catalogue(path: Path, extra_fields: dict[str, type] | None = None) -> Catalogue:
+    return parse_catalogue(_read_json(path), path.name, extra_fields)
 
 
 def load_towns(path: Path) -> Catalogue:
@@ -107,4 +125,4 @@ def load_towns(path: Path) -> Catalogue:
 
 
 def load_templates(path: Path) -> Catalogue:
-    return load_catalogue(path, TEMPLATE_FIELDS)
+    return parse_templates(_read_json(path), path.name)

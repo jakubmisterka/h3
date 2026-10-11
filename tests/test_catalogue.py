@@ -2,7 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from rules.catalogue import CatalogueError, load_catalogue, load_templates, load_towns, parse_catalogue
+from rules.catalogue import (
+    CatalogueError,
+    load_catalogue,
+    load_templates,
+    load_towns,
+    parse_catalogue,
+    parse_templates,
+)
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 
@@ -22,17 +29,9 @@ def test_towns_file_has_the_twelve_towns_of_the_wiki():
     }
 
 
-def test_templates_file_has_the_three_first_templates_with_their_difficulty():
+def test_the_templates_file_loads_and_every_template_has_a_difficulty():
     templates = load_templates(DATA / "templates.json")
-    assert set(templates.ids) == {"JC", "6lm10a", "h3dm1"}
-    assert [entry.details["difficulty"] for entry in templates.entries] == [160, 160, 160]
-
-
-def test_jc_is_found_by_its_short_id_and_by_its_full_in_game_name():
-    templates = load_templates(DATA / "templates.json")
-    assert templates.find("jc").id == "JC"
-    assert templates.find("Jebus Cross").id == "JC"
-    assert templates.find("jebus cross").name == "Jebus Cross"
+    assert templates.entries and all("difficulty" in entry.details for entry in templates.entries)
 
 
 # --- looking things up -----------------------------------------------------
@@ -87,6 +86,32 @@ def test_an_extra_field_nobody_asked_for_is_refused():
 def test_an_extra_field_of_the_wrong_kind_is_refused(bad):
     with pytest.raises(CatalogueError, match=r"entry 1 \(JC\): 'difficulty' must be a whole number"):
         parse_catalogue(with_difficulty(("JC", "Jebus Cross", bad)), "templates.json", {"difficulty": int})
+
+
+# --- a template's difficulty must be a supported one ------------------------------------------------
+
+
+@pytest.mark.parametrize("difficulty", [80, 100, 130, 160, 200])
+def test_every_supported_difficulty_is_accepted(difficulty):
+    catalogue = parse_templates(with_difficulty(("JC", "Jebus Cross", difficulty)), "templates.json")
+    assert catalogue.find("JC").details["difficulty"] == difficulty
+
+
+@pytest.mark.parametrize("difficulty", [0, 50, 150, 170, 250, -160])
+def test_an_unsupported_difficulty_is_refused_and_the_template_named(difficulty):
+    rows = with_difficulty(("JC", "Jebus Cross", 160), ("6lm10a", "6lm10a", difficulty))
+    with pytest.raises(CatalogueError) as error:
+        parse_templates(rows, "templates.json")
+    message = str(error.value)
+    assert message.startswith(f"templates.json: entry 2 (6lm10a): difficulty {difficulty} is not supported")
+    assert "use one of 80%, 100%, 130%, 160%, 200%" in message
+
+
+def test_the_templates_file_is_checked_when_it_is_loaded(tmp_path):
+    path = tmp_path / "templates.json"
+    path.write_text('[{"id": "JC", "name": "Jebus Cross", "difficulty": 150}]', encoding="utf-8")
+    with pytest.raises(CatalogueError, match="templates.json: entry 1 \\(JC\\): difficulty 150 is not supported"):
+        load_templates(path)
 
 
 # --- bad files -------------------------------------------------------------

@@ -139,7 +139,7 @@ def _phase_problems(phase: dict, listed: list[str], towns: Catalogue) -> list[st
             )
     problems += _town_problems(label, phase.get("allowed_towns", []), towns)
 
-    if phase["selection"]["type"] == "sequence":
+    if phase["template_selection"]["type"] == "sequence":
         problems += _sequence_problems(phase, label, len(pool))
     return problems
 
@@ -156,7 +156,7 @@ def _town_problems(label: str, allowed: list[str], towns: Catalogue) -> list[str
 
 def _sequence_problems(phase: dict, label: str, pool_size: int) -> list[str]:
     problems = []
-    steps = phase["selection"]["steps"]
+    steps = phase["template_selection"]["steps"]
     best_of = phase["best_of"]
 
     # Every template in the pool is used by exactly one step: banned, picked, or taken by the decider.
@@ -235,7 +235,7 @@ def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
     tournament_towns = tuple(data.get("allowed_towns", towns.ids))
     phases = []
     for raw in data["phases"]:
-        agreed = raw["selection"]["type"] == "agreed"
+        agreed = raw["template_selection"]["type"] == "agreed"
         if "pool" in raw:
             pool = tuple(_entry(e) for e in raw["pool"])
         else:  # no pool written: the phase uses every template of the tournament
@@ -246,7 +246,7 @@ def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
                 best_of=raw["best_of"],
                 pool=pool,
                 agreed=agreed,
-                steps=() if agreed else tuple(Step(s.get("who"), s["do"]) for s in raw["selection"]["steps"]),
+                steps=() if agreed else tuple(Step(s.get("who"), s["do"]) for s in raw["template_selection"]["steps"]),
                 allowed_towns=tuple(raw["allowed_towns"]) if "allowed_towns" in raw else tournament_towns,
             )
         )

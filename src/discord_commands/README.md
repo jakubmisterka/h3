@@ -8,6 +8,7 @@ Why separate: code that talks to Discord cannot be tested without Discord. Keepi
 
 | File | Commands |
 |---|---|
+| `info.py` | `/info`: how a mode works, or how a template is played in it, optionally for one phase (a private reply, with autocomplete) |
 | `match.py` | `/match start`, `/match status` |
 | `guard.py` | The check every match command goes through: inside a match thread, and the user is one of the two players. It replies to the user itself when the answer is no |
 | `thread_log.py` | Posts each step as one message that starts with a tag like `[#3 ms]`, and reads those messages back into records (the bot keeps no database; the thread is the memory) |

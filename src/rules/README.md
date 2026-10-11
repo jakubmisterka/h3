@@ -8,7 +8,10 @@ Why separate: plain functions are easy to test (see [`../../tests/`](../../tests
 |---|---|
 | `catalogue.py` | Loads the lists of towns and templates from [`../../data/`](../../data/) and finds an entry by id or name |
 | `formats.py` | Loads a tournament format file from [`../../formats/`](../../formats/), checks its shape against the schema and then the rules that compare values, and reports every problem in plain words |
-| `registry.py` | Loads the towns, templates and formats together when the bot starts, and reports every problem in every file at once |
+| `info.py` | The text of the `/info` replies (a mode, or a template in a mode), the lines they are built from, and the autocomplete choices. Plain text in, plain text out |
+| `registry.py` | Loads the towns, templates and formats together when the bot starts, and reports every problem in every file at once. Also answers which modes a match can be started in, and finds a mode by id or name |
+| `difficulty.py` | What a template's difficulty means: the gold each player starts with (80% to 200%) and which steps the trade has |
+| `roll_rules.py` | The roll rules (cost of a roll, rolls per player, bans per roll) that apply to one template in one phase, stacking the tournament, template and phase settings on top of the defaults |
 | `start.py` | Whether a match can be started, for now: the opponent must be another human |
 
 If a function seems to need a Discord object (a member, a channel), pass in just the plain values it needs, for example `member.id` and `member.bot`.
