@@ -10,13 +10,13 @@ The riskiest unknowns are about Discord (threads, reading messages back, archive
 
 - [x] 1.1 Remove the `/hello` command from `src/bot.py` and fix the syntax error (`def main() ->  :` should be `-> None:`); verify the file parses, the bot logs in on the dev app, and `/hello` no longer appears in the dev guild
 - [x] 1.2 Add `pytest` as a dev dependency with `poetry add --group dev` and verify `poetry run pytest` runs and reports no tests collected instead of an import error
-- [ ] 1.3 Milestone check: the bot logs in as the dev app, `/hello` is gone, and `poetry run pytest` runs. Review before milestone 2
+- [x] 1.3 Milestone check: the bot logs in as the dev app, `/hello` is gone, and `poetry run pytest` runs. Review before milestone 2
 
 ## 2. Milestone: create a thread in the channel
 
 *The first thing players see. Proves that the bot can open a match thread where the command was run.*
 
-- [ ] 2.1 Add `/match start opponent` as a thin handler: in the channel where it is run, create a public thread named after the two players, mention both, and post a first message. The check that the opponent is neither yourself nor a bot is a plain function with pytest cases for both refusals (the `match-setup` spec's "Invalid opponent")
+- [x] 2.1 Add `/match start opponent` as a thin handler: in the channel where it is run, create a public thread named after the two players, mention both, and post a first message. The check that the opponent is neither yourself nor a bot is a plain function with pytest cases for both refusals (the `match-setup` spec's "Invalid opponent")
 - [ ] 2.2 Add a temporary `private` option to try a private thread (only the two players, the bot and moderators), adding both players to it; it is replaced by the format's setting in milestone 7
 - [ ] 2.3 Show a clear message when Discord refuses (missing permission, or the command run inside a thread), and note in `CLAUDE.md` which permissions the bot turned out to need
 - [ ] 2.4 Milestone check in the dev guild: the public thread appears with both players mentioned; the private thread cannot be opened by a third account; yourself or a bot as opponent is refused; running it inside a thread is refused politely; removing the thread permission from the bot gives the clear message
