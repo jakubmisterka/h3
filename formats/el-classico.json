@@ -1,0 +1,19 @@
+{
+  "id": "el-classico",
+  "name": "El Classico",
+  "templates": ["JC", "6lm10a", "h3dm1"],
+  "phases": [
+    {
+      "name": "Main",
+      "best_of": 1,
+      "selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    }
+  ]
+}

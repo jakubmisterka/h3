@@ -1,6 +1,6 @@
 # h3
 
-Discord bot for the Heroes of Might and Magic III (Horn of the Abyss) competitive community (Python, discord.py). Currently a single `/hello` slash command; the real features are being specified with OpenSpec.
+Discord bot for the Heroes of Might and Magic III (Horn of the Abyss) competitive community (Python, discord.py). Work in progress: today `/match start` opens a thread for a match; the features are specified with OpenSpec in `openspec/`.
 
 ## Mission
 
@@ -49,7 +49,7 @@ Poetry lives in pipx: if `poetry` isn't on PATH, use `C:\Users\User\.local\bin\p
 
 ## Conventions
 
-- Two Discord applications: dev (`HelloBot-Dev`, synced instantly to `TEST_GUILD_ID`) and prod (global sync). Same code, different token.
+- Two Discord applications: dev (`h3-trade-DEV`, synced instantly to `TEST_GUILD_ID`) and prod (global sync). Same code, different token.
 - discord.py is async: never block the event loop (use async DB/HTTP libraries or `asyncio.to_thread`).
 - Slash commands only; avoid the privileged Message Content intent.
 - Permissions the bot needs in the channels where matches start (checked in `src/discord_commands/permissions.py`, so a missing one is reported by name): View Channel, Send Messages, Create Public Threads (public threads), Create Private Threads (private threads), Send Messages in Threads, Read Message History (to read the match records back). More will be added as features need them. Discord treats public and private threads as separate permissions.

@@ -10,11 +10,11 @@ Describes how two players turn a template pool into the games they will play, by
 The bot SHALL run the ban and pick steps exactly in the order of the format, with A (coinflip winner) and B as named in each step. The bot SHALL announce the current step and the acting player before each step.
 
 #### Scenario: Biggest tournament knockout
-- **WHEN** the sequence is A ban, B ban, A pick, B pick, A ban, B ban, B ban, A ban
-- **THEN** the thread announces each step in that order, naming the acting player
+- **WHEN** the sequence is A ban, B ban, A pick, B pick, A ban, B ban, B ban, A ban, decider
+- **THEN** the thread announces each player's step in that order, naming the acting player, and then the decider
 
 #### Scenario: Seven-template BO3
-- **WHEN** the sequence is A ban, B ban, B ban, A ban, A pick, B pick
+- **WHEN** the sequence is A ban, B ban, B ban, A ban, A pick, B pick, decider
 - **THEN** B acts twice in a row at steps 2 and 3, and the bot announces both
 
 ### Requirement: Only the acting player acts, on a valid template
@@ -40,15 +40,19 @@ After each step, the bot SHALL post the remaining pool and the templates banned 
 - **THEN** the thread shows 8 remaining templates and that A banned mt_nebula
 
 ### Requirement: Selection ends with the ordered games
-When the last step is done, the one remaining template SHALL become the decider. The bot SHALL announce the games in the order the format states, each with its template.
+A decider step SHALL take the one remaining template without any player acting. When the sequence is done, the bot SHALL announce the games in play order, each with its template: the picks in the order they were made, then the decider if the sequence has one.
 
 #### Scenario: BO3 result
-- **WHEN** A picked JC, B picked Diamond and h3dm1 is left, and the order is A's pick, B's pick, decider
+- **WHEN** A picked JC, B picked Diamond and the decider takes h3dm1
 - **THEN** the bot announces game 1 JC, game 2 Diamond and game 3 h3dm1
 
 #### Scenario: BO1 result
-- **WHEN** a BO1 phase ends with one template left
-- **THEN** the bot announces that template as the only game
+- **WHEN** a BO1 phase with the sequence ban, ban, decider is done
+- **THEN** the bot announces the template the decider took as the only game
+
+#### Scenario: No decider
+- **WHEN** a best-of-2 phase ends after A's pick and B's pick, with no decider step
+- **THEN** the bot announces the two picks as game 1 and game 2
 
 ### Requirement: Agreed templates skip selection
 In an agreed-template phase the bot SHALL post the template named at the start and go straight to the trade.

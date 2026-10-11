@@ -26,7 +26,7 @@ Constraints from the project: slash commands only, no privileged intents, async 
  src/discord_commands/*.py thin Discord handlers: check channel, call state + rules, post reply
  src/state.py          rebuild a Match from thread messages  (Discord objects in, plain data out)
  src/rules/*.py        selection, ledger, validation          (pure functions, no discord import)
- data/factions.json    the faction (town) catalogue
+ data/towns.json      the town catalogue
  data/templates.json   the template catalogue
  formats/*.json        rule-sets
  formats/schema.json   JSON Schema for them
@@ -38,7 +38,7 @@ A handler loads the match from the thread, calls a rules function with the match
 
 ### 2. Match state is an append-only event log in the bot's own messages
 
-Every accepted action (match started, coinflip, ban, pick, roll, faction bid, color bid, undo) is posted by the bot as one message that starts with a tag, `[#<number> <code>]`, followed by the text players read, for example `[#3 ban] <@111> banned JC`. The number counts the records, so a deleted message shows as a gap; the code says which kind of record it is; and the data (players, templates, amounts) is read out of the text in a fixed order, from the start, by rules that depend on the code, so wording around the data is free. To serve a command, the bot fetches the thread history, keeps its own messages, parses the records, and folds them into the current match. Undo is itself an event that cancels the previous trade event, so the history stays honest.
+Every accepted action (match started, coinflip, ban, pick, roll, town bid, color bid, undo) is posted by the bot as one message that starts with a tag, `[#<number> <code>]`, followed by the text players read, for example `[#3 ban] <@111> banned JC`. The number counts the records, so a deleted message shows as a gap; the code says which kind of record it is; and the data (players, templates, amounts) is read out of the text in a fixed order, from the start, by rules that depend on the code, so wording around the data is free. To serve a command, the bot fetches the thread history, keeps its own messages, parses the records, and folds them into the current match. Undo is itself an event that cancels the previous trade event, so the history stays honest.
 
 ```
  events:  MatchStarted -> CoinFlip -> Ban -> Ban -> Pick -> ... -> TradeReport -> Undo -> TradeReport
@@ -53,38 +53,39 @@ Reading the bot's own messages does not need the Message Content intent. The bot
 
 ```
  { "id": "...", "name": "...", "status": "active|archived", "thread_visibility": "public|private",
-   "phases": [ { "name", "best_of", "pool": [template ids],
-                 "selection": { "type": "sequence", "steps": [{"who":"A","do":"ban"}, ...],
-                                "game_order": ["A_pick","B_pick","decider"] }
+   "roll_rules": { "roll_cost", "rolls_per_player", "max_roll_bans" },        (optional, every template)
+   "allowed_towns": [ "<town id>", ... ],                                      (optional, every phase; default: all)
+   "templates": [ "<template id>" | { "template": "<id>", "roll_rules": {...} }, ... ],
+   "phases": [ { "name", "best_of",
+                 "pool": [ "<template id>" | { "template": "<id>", "roll_rules": {...} }, ... ],  (optional: all)
+                 "selection": { "type": "sequence",
+                                "steps": [{"who":"A","do":"ban"}, ..., {"do":"decider"}] }
                           or { "type": "agreed" },
-                 "trade": { "difficulty", "roll_cost", "rolls_per_player", "max_roll_bans",
-                            "sections": [...] },
-                 "template_overrides": { "<template id>": { "difficulty": ... } } } ] }
+                 "allowed_towns": [ "<town id>", ... ] } ] }                   (optional, replaces the tournament's)
 ```
 
-The template catalogue is `data/templates.json`, the same shape as the faction one: a list of `{ "id", "name" }` entries, starting with `JC`, `6lm10a` and `h3dm1`. Difficulty is not a property of the template; it is a phase default (and an optional per-template override in the phase), because all three first templates share 160%.
+The template catalogue is `data/templates.json`: a list of `{ "id", "name", "difficulty" }` entries, starting with `JC`, `6lm10a` and `h3dm1`. Difficulty is a property of the template, because that is how the template is played; a format does not state it, and starting gold follows from it. The town catalogue has only `id` and `name`. The loader takes the extra fields a catalogue requires, so a template can grow more fields later (a timer, a download link).
 
-Example, the first format `formats/el-classico.json`:
+Example, the small development format `formats/el-classico.json` (real tournaments will replace it):
 
 ```
 { "id": "el-classico", "name": "El Classico", "status": "active",
+  "templates": ["JC", "6lm10a", "h3dm1"],
   "phases": [ { "name": "Main", "best_of": 1,
-                "pool": ["JC", "6lm10a", "h3dm1"],
                 "selection": { "type": "sequence",
-                               "steps": [ {"who": "A", "do": "ban"}, {"who": "B", "do": "ban"} ],
-                               "game_order": ["decider"] },
-                "trade": { "difficulty": 160 } } ] }
+                               "steps": [ {"who": "A", "do": "ban"}, {"who": "B", "do": "ban"},
+                                          {"do": "decider"} ] } } ] }
 ```
 
-Roll values are left out, so the defaults (500 gold, 1 roll each, 0 to 2 bans) apply; `allowed_factions` is left out, so all 12 towns are allowed.
+No `roll_rules` and no `pool` are written, so the defaults (500 gold, 1 roll each, 0 to 2 bans) apply and the phase uses all three templates; `allowed_towns` is left out, so all 12 towns are allowed.
 
-A phase may add `"allowed_factions": ["castle", ...]`; when absent, every faction in the catalogue is allowed.
+Allowed towns follow the same idea as the templates: a tournament may write `"allowed_towns": ["castle", ...]` for all its phases, a phase may write its own list, which replaces the tournament's for that phase, and when neither is written every town in the catalogue is allowed. The list is resolved once, when the format is loaded.
 
-The faction catalogue is `data/factions.json`: a list of `{ "id", "name" }` entries, starting with the 12 towns on the community wiki (original game: Castle, Rampart, Tower, Inferno, Necropolis, Dungeon, Stronghold, Fortress; Armageddon's Blade: Conflux; Horn of the Abyss: Cove, Factory, Bulwark). Formats and the trade commands refer to factions by `id`; the catalogue is loaded once at start-up and validated like a format (unique ids, non-empty names), and the command autocomplete is built from it.
+The town catalogue is `data/towns.json`: a list of `{ "id", "name" }` entries, starting with the 12 towns on the community wiki (original game: Castle, Rampart, Tower, Inferno, Necropolis, Dungeon, Stronghold, Fortress; Armageddon's Blade: Conflux; Horn of the Abyss: Cove, Factory, Bulwark). Formats and the trade commands refer to towns by `id`; the catalogue is loaded once at start-up and validated like a format (unique ids, non-empty names), and the command autocomplete is built from it.
 
-Starting gold is not in the file. A small table in the rules layer maps difficulty to the game's human-player gold (80% to 30000, 100% to 20000, 130% to 15000, 160% to 10000, 200% to 0; values from the community wiki). A difficulty outside the table fails validation. The default section list is also chosen by difficulty: 200% replaces all three sections with a single `color_toss` section (the lobby is all-random there, so there is nothing else to trade), whose coin is flipped with the same injectable random source as the coinflip.
+Starting gold is not in any file. A small table in the rules layer maps a template's difficulty to the game's human-player gold (80% to 30000, 100% to 20000, 130% to 15000, 160% to 10000, 200% to 0; values from the community wiki). A template with a difficulty outside the table is refused when the catalogue is loaded. The default section list is also chosen by the template's difficulty: 200% replaces all three sections with a single `color_toss` section (the lobby is all-random there, so there is nothing else to trade), whose coin is flipped with the same injectable random source as the coinflip.
 
-`formats/schema.json` checks the shape. A Python validator checks what a schema cannot: pool size = steps + 1, picks = best_of - 1, game order covers every game once. A pytest test loads every file in `formats/`, so a bad contributor file fails CI. The effective trade settings of a template are the phase defaults updated by the template's overrides, in one function.
+`formats/schema.json` checks the shape. A Python validator checks what a schema cannot: pool size = number of steps (each template is banned, picked or taken by the decider), the decider is last, and picks plus decider make as many games as the best-of. The games are played in the order of the picks, then the decider, so no separate game order is stored. A pytest test loads every file in `formats/`, so a bad contributor file fails CI. The effective roll rules of a template in a phase are the built-in defaults, updated by the tournament's `roll_rules`, then by the template's entry in the tournament list, then by its entry in the phase's pool, in one function. The tournament lists its templates once and each phase selects from them, so the bot can answer "which templates are in this tournament?" and a template's settings are written in one place; a timer, when added, is one more setting group that works the same way.
 
 *Alternative:* YAML or Python files. Rejected: the project already says JSON, and JSON can be validated without running contributor code.
 
@@ -95,18 +96,18 @@ Starting gold is not in the file. A small table in the rules layer maps difficul
 | `/info mode [template]` | any channel | shows a mode, or one template in a mode; reply only the asker sees |
 | `/match start mode opponent [phase] [template]` | any channel | creates the thread there, coinflip |
 | `/ban template`, `/pick template` | match thread | selection step, autocomplete from remaining pool |
-| `/trade roll [bans]`, `/trade decline` | match thread | roll the faction pair (bot draws the new pair), or skip the roll |
+| `/trade roll [bans]`, `/trade decline` | match thread | roll the town pair (bot draws the new pair), or skip the roll |
 | `/trade report ...` | match thread | reports a bid result of the current trade section |
 | `/trade undo` | match thread | cancels the latest trade report |
 | `/trade status` | match thread | shows section, gold, what is expected |
 
-`phase` is shown only when the chosen mode has several phases; because a slash command's options cannot appear conditionally, the option is optional and the bot answers with a follow-up prompt asking for it when it is missing and needed. The fields of `/trade report` depend on the section (roll, faction, color), so they are optional and checked by the rules function. The exact set of fields is settled when the first version is tried in the dev guild.
+`phase` is shown only when the chosen mode has several phases; because a slash command's options cannot appear conditionally, the option is optional and the bot answers with a follow-up prompt asking for it when it is missing and needed. The fields of `/trade report` depend on the section (roll, town, color), so they are optional and checked by the rules function. The exact set of fields is settled when the first version is tried in the dev guild.
 
-*Alternative:* one command per section (`/roll`, `/faction`, `/color`). Cleaner fields, more commands to learn. Revisit after first use.
+*Alternative:* one command per section (`/roll`, `/town`, `/color`). Cleaner fields, more commands to learn. Revisit after first use.
 
 ### 4a. The bot's random draws are events
 
-The faction pair, each reroll and the 200% toss are drawn by the bot, so they cannot be recomputed after a restart. Each draw is posted as its own event (for example `PairDrawn` with the two faction ids, `ColorTossed` with the winner) and the fold reads the result from the event instead of drawing again. Draws come from one function, `draw_pair(allowed, banned, rng)`, which takes an injectable random source so tests can fix it; it uses the system's secure random generator in production. Because draws are final, undo skips them: undo removes only the latest player report, and refuses when that is a roll or a toss.
+The town pair, each reroll and the 200% toss are drawn by the bot, so they cannot be recomputed after a restart. Each draw is posted as its own event (for example `PairDrawn` with the two town ids, `ColorTossed` with the winner) and the fold reads the result from the event instead of drawing again. Draws come from one function, `draw_pair(allowed, banned, rng)`, which takes an injectable random source so tests can fix it; it uses the system's secure random generator in production. Because draws are final, undo skips them: undo removes only the latest player report, and refuses when that is a roll or a toss.
 
 *Alternative:* derive draws from a seed stored in the thread, so they could be recomputed. Rejected: the event already holds the answer, and a seed in a public thread would let anyone predict future pairs.
 
@@ -118,7 +119,7 @@ The template catalogue stays `{ "id", "name" }` for now. Timers and download lin
 
 ### 5. Gold as whole numbers
 
-Gold is stored as integers; a payment moves an amount from one player to the other, so the total stays constant. The ledger function takes the effective trade settings and the list of trade events and returns both players' gold, so undo is "drop the last event and recompute".
+Gold is stored as integers; a payment moves an amount from one player to the other, so the total stays constant. The ledger function takes the template's difficulty (for the starting gold), the roll rules and the list of trade events and returns both players' gold, so undo is "drop the last event and recompute".
 
 ### 6. Concurrency
 
