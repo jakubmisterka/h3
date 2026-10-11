@@ -1,12 +1,12 @@
 # h3
 
-Features for h3 community. Currently a Discord bot with a single `/hello` slash command.
+Features for h3 community: a Discord bot that moves the pre-game of a Heroes of Might and Magic III (Horn of the Abyss) tournament match out of the game lobby and into Discord. Work in progress: today `/match start` opens a thread for a match. The plan is in `CLAUDE.md` and `openspec/`.
 
-## One-time Discord setup (do twice: `HelloBot-Dev` and `HelloBot`)
+## One-time Discord setup (do twice: `h3-trade-DEV` and `h3-trade`)
 
 1. https://discord.com/developers/applications -> New Application.
 2. Bot tab -> Reset Token -> copy it. No privileged intents are needed.
-3. OAuth2 -> URL Generator -> scopes `bot` + `applications.commands`, permission *Send Messages* -> open the URL and add the bot to a server you manage.
+3. OAuth2 -> URL Generator -> scopes `bot` + `applications.commands`, permissions *View Channel*, *Send Messages*, *Send Messages in Threads*, *Create Public Threads*, *Create Private Threads* and *Read Message History* -> open the URL and add the bot to a server you manage.
    Add the dev bot to a private test server and the prod bot to real servers.
 4. Dev only: enable Developer Mode in Discord (Settings -> Advanced), right-click your test server -> Copy Server ID.
 
@@ -37,7 +37,17 @@ $env:APP_ENV = "dev"            # or "prod"; defaults to dev
 poetry run python src/bot.py
 ```
 
-In Discord, type `/hello`. In dev the command appears immediately in the test server; in prod, global commands can take a while to propagate after the first start.
+In Discord, type `/match start`. In dev the commands appear immediately in the test server; in prod, global commands can take a while to propagate after the first start.
+
+The bot first checks the data files (`data/` and `formats/`) and refuses to start if one is not valid, saying which file and what is wrong. This needs no token, so you can use it to check a file you are editing.
+
+## Tests
+
+```powershell
+poetry run pytest
+```
+
+They need no token and never connect to Discord. They also check every file in `formats/` and `data/`, so a mistake in a contribution fails here. See `tests/README.md`.
 
 ## Secrets
 

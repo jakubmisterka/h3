@@ -1,20 +1,25 @@
 import logging
+from pathlib import Path
 
 import discord
 from discord import app_commands
 
-from discord_commands import match
 from config import load_config
+from discord_commands import match
+from rules.registry import Registry, RegistryError, load_registry
 
-log = logging.getLogger("hellobot")
+log = logging.getLogger("h3bot")
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-class HelloBot(discord.Client):
-    def __init__(self, test_guild_id: int | None):
+class H3Bot(discord.Client):
+    def __init__(self, test_guild_id: int | None, registry: Registry):
         # Slash commands need no privileged intents.
         super().__init__(intents=discord.Intents.default())
         self.tree = app_commands.CommandTree(self)
         self.test_guild_id = test_guild_id
+        self.registry = registry  # the towns, templates and formats, checked once at start-up
         self.tree.add_command(match.group)
 
     async def setup_hook(self) -> None:
@@ -30,10 +35,22 @@ class HelloBot(discord.Client):
         log.info("Logged in as %s (id=%s)", self.user, self.user.id)
 
 
+def load_data_or_exit(root: Path = REPO_ROOT) -> Registry:
+    """Load the data files, or stop with a message that names every problem and the file it is in."""
+    try:
+        registry = load_registry(root)
+        log.info("Data loaded: %s", registry.summary())
+        return registry
+    except RegistryError as e:
+        problems = "\n".join(f"  - {problem}" for problem in e.problems)
+        raise SystemExit(f"Cannot start: a data file is not valid.\n{problems}") from e
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    registry = load_data_or_exit()  # first: a contributor checking a file needs no token for this
     cfg = load_config()
-    bot = HelloBot(cfg.test_guild_id if cfg.env == "dev" else None)
+    bot = H3Bot(cfg.test_guild_id if cfg.env == "dev" else None, registry)
     bot.run(cfg.token, log_handler=None)
 
 

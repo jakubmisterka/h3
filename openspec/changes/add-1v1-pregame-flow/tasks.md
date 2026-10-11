@@ -46,28 +46,30 @@ Decide: whether reading (`/match status`) is open to everyone or only to the pla
 
 *Tournament formats as JSON files, and a check that tells a contributor what is wrong with a file.*
 
-- [ ] 5.1 Add `data/factions.json` with the 12 wiki towns and a loader that rejects duplicate ids and empty names, with pytest cases for loading the 12, a duplicate id, an empty name, and finding an entry by id or name ignoring case
-- [ ] 5.2 Add `data/templates.json` with JC, 6lm10a and h3dm1 using the same loader, with pytest cases for the shipped file
-- [ ] 5.3 Add a JSON-schema validator with `poetry add` and write `formats/schema.json` for the format shape in the design; verify it accepts a hand-written example and rejects a file missing `phases`
-- [ ] 5.4 Implement the format loader and rule validator (pool = steps + 1, picks = best_of - 1, game order covers each game once, unknown fields rejected, every template and faction known), with pytest cases for each scenario of the "Formats are validated" and "Templates come from one catalogue" requirements, including the 9-template and 7-template sequences from the explore session
-- [ ] 5.5 Add `formats/el-classico.json` (one phase, BO1, pool of JC / 6lm10a / h3dm1, sequence A ban, B ban, 160% difficulty, default rolls, all factions); verify a pytest test that loads every file in `formats/` passes and that El Classico's sequence leaves exactly one template
-- [ ] 5.6 Implement the per-phase allowed factions (default all, restricted subset, unknown faction rejected, a faction added to the catalogue is allowed without other changes), with pytest cases for each scenario of the "Factions come from one catalogue" requirement
-- [ ] 5.7 Load the data files and formats when the bot starts; an invalid file stops the bot with a message naming the file and the problem
-- [ ] 5.8 Milestone check: the bot starts with El Classico; make its pool one template too large and the bot refuses to start and says why; fix it and it starts again
+- [x] 5.1 Add `data/towns.json` with the 12 wiki towns and a loader that rejects duplicate ids and empty names, with pytest cases for loading the 12, a duplicate id, an empty name, and finding an entry by id or name ignoring case
+- [x] 5.2 Add `data/templates.json` with JC, 6lm10a and h3dm1 using the same loader (each template also states its difficulty, 160% for all three, see 5.4a), with pytest cases for the shipped file
+- [x] 5.3 Add a JSON-schema validator with `poetry add` and write `formats/schema.json` for the format shape in the design; verify it accepts a hand-written example and rejects a file missing `phases`
+- [x] 5.4 Implement the format loader and rule validator (pool size = number of steps, the decider is last and has no player, picks plus decider = best_of, unknown fields rejected, every template and town known), with pytest cases for each scenario of the "Formats are validated" and "Templates come from one catalogue" requirements, including the 9-template and 7-template sequences from the explore session
+- [x] 5.4a Move the difficulty to the templates: `data/templates.json` states each template's difficulty (the loader takes the extra fields a catalogue requires), the format schema loses `trade` and difficulty and gains the optional `roll_rules`, and the code, specs and tests follow; verify the whole test suite passes and no format file mentions difficulty
+- [x] 5.4b Restructure the templates: the format lists the tournament's templates once, each phase selects its pool from them (all of them when it states none), and roll rules can be written for the tournament, a template, or a template in one phase; the schema, loader, specs and tests follow; verify the whole test suite passes
+- [x] 5.5 Add `formats/el-classico.json` (templates JC / 6lm10a / h3dm1, one BO1 phase that uses all of them, sequence A ban, B ban, decider, default roll rules, all towns); verify a pytest test that loads every file in `formats/` passes (a development format that real tournaments will replace)
+- [x] 5.6 Implement the allowed towns (default all, a tournament list, a phase list that replaces it, restricted subset, unknown town rejected, a town added to the catalogue is allowed without other changes), with pytest cases for each scenario of the "Towns come from one catalogue" requirement
+- [x] 5.7 Load the data files and formats when the bot starts; an invalid file stops the bot with a message naming the file and the problem
+- [x] 5.8 Milestone check: the bot starts with the development format (El Classico); change its `best_of` from 1 to 3 and the bot refuses to start and says why (a best-of-3 needs 3 games, the sequence gives 1); fix it and it starts again
 
-Decide: how `game_order` names the games (the design sketches `A_pick`, `B_pick`, `decider`, which is unclear if one player picks twice).
+Decided: there is no separate game order. The sequence ends with a `decider` step (the template that is left), and the games are played in the order of the picks, then the decider. A best-of-2 league phase is simply two picks and no decider.
 
 ## 6. Milestone: `/info`
 
 *Look up a mode, or a template in a mode. Also how we check format files in Discord.*
 
-- [ ] 6.1 Implement effective trade settings (phase defaults updated by template overrides, with the default roll values 500 gold, 1 roll, 2 bans), with pytest cases for override, no override and default rolls
-- [ ] 6.2 Implement the difficulty-to-starting-gold table (80%, 100%, 130%, 160%, 200%) and the default section list per difficulty, and reject an unknown difficulty or a starting gold written in a file; verify with a pytest case per difficulty and per rejection
+- [ ] 6.1 Implement the effective roll rules of a template (built-in defaults 500 gold, 1 roll, 2 bans, updated by the tournament's `roll_rules`, then by the template's entry in the tournament list, then by its entry in the phase's pool), with pytest cases for each level, field by field merging, and the defaults
+- [ ] 6.2 Implement the difficulty-to-starting-gold table (80%, 100%, 130%, 160%, 200%) and the default section list per difficulty, and refuse a template whose difficulty is not in the table; verify with a pytest case per difficulty and for the refusal
 - [ ] 6.3 Implement the list of selectable modes (archived formats hidden for new matches, starting in an archived one refused), with pytest cases for both
 - [ ] 6.4 Implement the text for mode info and template info as pure functions, with pytest cases for each scenario of the `mode-info` spec (single and multi-phase, bans and picks in words, agreed template, defaults, override, template in two phases, 200%, unknown mode, template not in the mode, archived mode)
 - [ ] 6.5 Add `/info mode [template]` as a thin handler with autocomplete and an ephemeral reply
-- [ ] 6.6 Document how to add a format in `formats/README.md` (fields, an example, how to check it with `poetry run pytest` and `/info`) and verify a newcomer can follow it by copying the El Classico example
-- [ ] 6.7 Milestone check in the dev guild: `/info` for El Classico, then with `JC`, then an unknown mode and a template that is not in the mode; change El Classico's difficulty to 130, restart, and `/info` shows 15000 gold
+- [ ] 6.6 Document how to add a format in `formats/README.md` (fields, an example, how to check it with `poetry run pytest` and `/info`) and verify a newcomer can follow it by copying an existing format file
+- [ ] 6.7 Milestone check in the dev guild: `/info` for the development format, then with `JC`, then an unknown mode and a template that is not in the mode; change JC's difficulty in `data/templates.json` to 130, restart, and `/info` shows 15000 gold
 
 ## 7. Milestone: a real match start with the coinflip
 
@@ -77,7 +79,7 @@ Decide: how `game_order` names the games (the design sketches `A_pick`, `B_pick`
 - [ ] 7.2 Implement the coinflip with an injectable random source, with pytest cases for a fixed source, each outcome being possible, and fairness over many flips
 - [ ] 7.3 Extend `/match start` to `mode opponent [phase] [template]`: thread visibility comes from the format (the temporary `private` option is removed), the coinflip is recorded and announced with who acts first
 - [ ] 7.4 Rebuild a match from its records as a pure function (players, coinflip winner) that refuses to guess: a missing start record, a gap in the record numbers (a deleted message) and a second start are reported in words; `/match status` uses it. Verify with pytest cases for a clean run and each failure
-- [ ] 7.5 Milestone check in the dev guild: start an El Classico match, see the coinflip winner announced, restart the bot and `/match status` still shows it; delete the coinflip message of a test match and `/match status` says a message is missing. Multi-phase and ranked modes have no format file yet, so they are covered by pytest only
+- [ ] 7.5 Milestone check in the dev guild: start a match in the development format, see the coinflip winner announced, restart the bot and `/match status` still shows it; delete the coinflip message of a test match and `/match status` says a message is missing. Multi-phase and ranked modes have no format file yet, so they are covered by pytest only
 
 ## 8. Milestone: bans and picks to the list of games
 
@@ -87,24 +89,24 @@ Decide: how `game_order` names the games (the design sketches `A_pick`, `B_pick`
 - [ ] 8.2 Add the per-thread lock, so two commands on one match thread at the same moment run one after the other (`poetry add --group dev pytest-asyncio` for the test); verify with a pytest asyncio test. It is built here because `/ban` is the first command that changes a match
 - [ ] 8.3 Add `/ban` and `/pick` as thin handlers with autocomplete of the remaining pool, a turn announcement, the remaining-pool message and the final games announcement
 - [ ] 8.4 Implement the agreed-template path (skip selection, go straight to the games), covered by pytest
-- [ ] 8.5 Milestone check in the dev guild: a full El Classico selection; the wrong player is refused; a template that is already banned is refused; restart the bot between the two bans and it continues
+- [ ] 8.5 Milestone check in the dev guild: a full selection in the development format; the wrong player is refused; a template that is already banned is refused; restart the bot between the two bans and it continues
 
 ## 9. Milestone: the trade, bids only
 
-*The money side of a game's trade: starting gold, the faction bid, the color bid.*
+*The money side of a game's trade: starting gold, the town bid, the color bid.*
 
 - [ ] 9.1 Implement the gold ledger (payments go to the opponent, whole numbers, balance check) as pure functions, with pytest cases including the worked example (10400 and 9600)
-- [ ] 9.2 Implement the trade sections and their order (faction bid, color bid), the first faction pair the bot draws (two different allowed factions, equal chances, injectable random source), and the report checks (winner is a player, amount within gold, faction in the pair, color red or blue, allowed factions only), with pytest cases for the "The trade runs in sections", "The bot generates the faction pair", "Only allowed factions are accepted", "Faction bid is reported", "Color bid is reported" and "The bot keeps the gold" requirements
+- [ ] 9.2 Implement the trade sections and their order (town bid, color bid), the first town pair the bot draws (two different allowed towns, equal chances, injectable random source), and the report checks (winner is a player, amount within gold, town in the pair, color red or blue, allowed towns only), with pytest cases for the "The trade runs in sections", "The bot generates the town pair", "Only allowed towns are accepted", "Town bid is reported", "Color bid is reported" and "The bot keeps the gold" requirements
 - [ ] 9.3 Add `/trade report` and `/trade status` as thin handlers; the trade of the first game starts when selection ends
-- [ ] 9.4 Milestone check in the dev guild: play the bids of one game; a bid above the winner's gold, a faction outside the pair and a color before the faction are each refused; the gold shown after each report is right
+- [ ] 9.4 Milestone check in the dev guild: play the bids of one game; a bid above the winner's gold, a town outside the pair and a color before the town are each refused; the gold shown after each report is right
 
 Decide: how the trade of a game starts and how the next game's trade starts.
 
 ## 10. Milestone: rolling
 
-*Paying to reroll the faction pair, or skipping the roll.*
+*Paying to reroll the town pair, or skipping the roll.*
 
-- [ ] 10.1 Implement rolls (who is eligible, ban limits, cost, a new pair that excludes banned factions), declining, and the implicit decline when a faction bid is reported, with pytest cases (seeded random source) for each scenario of the "A roll costs gold and draws a new pair" and "Each eligible player rolls or declines" requirements
+- [ ] 10.1 Implement rolls (who is eligible, ban limits, cost, a new pair that excludes banned towns), declining, and the implicit decline when a town bid is reported, with pytest cases (seeded random source) for each scenario of the "A roll costs gold and draws a new pair" and "Each eligible player rolls or declines" requirements
 - [ ] 10.2 Add `/trade roll` and `/trade decline` as thin handlers, including the announcement of the pair, the cost and who may roll
 - [ ] 10.3 Milestone check in the dev guild: roll with bans, decline, skip the roll by bidding, and try rolling twice; the gold and the new pair are right each time
 
@@ -124,9 +126,9 @@ Decide: whether a roll and the new pair it draws are one record; whether a decli
 
 *The special case: an all-random lobby, no gold, only a toss for color.*
 
-- [ ] 12.1 Implement the 200% color toss section (fair coin from an injectable source, winner chooses red or blue, no gold moves, no roll or faction steps), with pytest cases for each scenario of the "At 200% difficulty only the color is tossed" requirement
+- [ ] 12.1 Implement the 200% color toss section (fair coin from an injectable source, winner chooses red or blue, no gold moves, no roll or town steps), with pytest cases for each scenario of the "At 200% difficulty only the color is tossed" requirement
 - [ ] 12.2 Connect the toss to the trade commands
-- [ ] 12.3 Milestone check in the dev guild with a temporary 200% format file: the toss is announced, only the winner chooses the color, and the summary leaves out factions and gold
+- [ ] 12.3 Milestone check in the dev guild with a temporary 200% format file: the toss is announced, only the winner chooses the color, and the summary leaves out towns and gold
 
 ## 13. Wrap-up
 
