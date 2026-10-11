@@ -69,16 +69,16 @@ Decided: there is no separate game order. The sequence ends with a `decider` ste
 - [x] 6.4 Implement the text for mode info and template info as pure functions, with pytest cases for each scenario of the `mode-info` spec (single and multi-phase with nothing repeated, one phase only, the template selection line such as "AB: A bans, B bans, then decider", agreed template, defaults, the same in every phase, differing rules listed per phase, 200%, unknown mode, template not in the mode, archived mode)
 - [x] 6.5 Add `/info mode [template] [phase]` as a thin handler with autocomplete and an ephemeral reply
 - [x] 6.6 Document how to add a format in `formats/README.md` (fields, an example, how to check it with `poetry run pytest` and `/info`) and verify a newcomer can follow it by copying an existing format file
-- [ ] 6.7 Milestone check in the dev guild: `/info` for the development format, then with `JC`, then an unknown mode and a template that is not in the mode; change JC's difficulty in `data/templates.json` to 130, restart, and `/info` shows 130% difficulty for JC
+- [x] 6.7 Milestone check in the dev guild: `/info` for the development format, then with `JC`, then an unknown mode and a template that is not in the mode; change JC's difficulty in `data/templates.json` to 130, restart, and `/info` shows 130% difficulty for JC
 
 ## 7. Milestone: a real match start with the coinflip
 
 *`/match start` now uses a mode from the formats and the bot does the coinflip.*
 
-- [ ] 7.1 Implement start validation (phase needed or not, template required and allowed for agreed phases) as pure functions, with pytest cases for each scenario of the `match-setup` spec
-- [ ] 7.2 Implement the coinflip with an injectable random source, with pytest cases for a fixed source, each outcome being possible, and fairness over many flips
-- [ ] 7.3 Extend `/match start` to `mode opponent [phase] [template]`: thread visibility comes from the format (the temporary `private` option is removed), the coinflip is recorded and announced with who acts first
-- [ ] 7.4 Rebuild a match from its records as a pure function (players, coinflip winner) that refuses to guess: a missing start record, a gap in the record numbers (a deleted message) and a second start are reported in words; `/match status` uses it. Verify with pytest cases for a clean run and each failure
+- [x] 7.1 Implement start validation (phase needed or not, template required and allowed for agreed phases) as pure functions, with pytest cases for each scenario of the `match-setup` spec
+- [x] 7.2 Implement the coinflip with an injectable random source, with pytest cases for a fixed source, each outcome being possible, and fairness over many flips
+- [x] 7.3 Extend `/match start` to `mode opponent [phase] [template]`: thread visibility comes from the format (the temporary `private` option is removed), the coinflip is recorded and announced with who acts first
+- [x] 7.4 Rebuild a match from its records as a pure function (players, coinflip winner) that refuses to guess: a missing start record, a gap in the record numbers (a deleted message) and a second start are reported in words; `/match status` uses it. Verify with pytest cases for a clean run and each failure
 - [ ] 7.5 Milestone check in the dev guild: start a match in the development format, see the coinflip winner announced, restart the bot and `/match status` still shows it; delete the coinflip message of a test match and `/match status` says a message is missing. Multi-phase and ranked modes have no format file yet, so they are covered by pytest only
 
 ## 8. Milestone: bans and picks to the list of games

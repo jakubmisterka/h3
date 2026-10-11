@@ -43,12 +43,20 @@ If the chosen phase lets players agree on the template, the starting player SHAL
 - **WHEN** the template is missing or not allowed in that phase
 - **THEN** the bot refuses and lists the allowed templates
 
+#### Scenario: Template named where bans and picks choose
+- **WHEN** a player names a template in a phase whose templates are chosen by bans and picks
+- **THEN** the bot refuses and says to leave the template out
+
 ### Requirement: The bot does the coinflip
 After a match starts, the bot SHALL decide at random which player wins the coinflip and announce the winner in the thread. The winner is A and the other player is B. A acts first in every step that has a first actor.
 
 #### Scenario: Announcement
 - **WHEN** the match starts in a sequence mode
 - **THEN** the thread says who won the coinflip and that they ban first
+
+#### Scenario: The rules of the phase are stated
+- **WHEN** the match starts
+- **THEN** the thread, after the coinflip, says the best-of, how the templates are chosen in the way players write it (for example "AB: A bans, B bans, then decider") and the templates of the phase, or the template the players agreed on
 
 #### Scenario: Fair chance
 - **WHEN** many matches are started
