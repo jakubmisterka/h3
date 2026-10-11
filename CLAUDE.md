@@ -52,6 +52,7 @@ Poetry lives in pipx: if `poetry` isn't on PATH, use `C:\Users\User\.local\bin\p
 - Two Discord applications: dev (`HelloBot-Dev`, synced instantly to `TEST_GUILD_ID`) and prod (global sync). Same code, different token.
 - discord.py is async: never block the event loop (use async DB/HTTP libraries or `asyncio.to_thread`).
 - Slash commands only; avoid the privileged Message Content intent.
+- Permissions the bot needs in the channels where matches start (checked in `src/discord_commands/permissions.py`, so a missing one is reported by name): View Channel, Send Messages, Create Public Threads (public threads), Create Private Threads (private threads), Send Messages in Threads. More will be added as features need them. Discord treats public and private threads as separate permissions.
 - Keep Discord-facing code thin and put logic in plain functions so it can be unit-tested with pytest.
 - Discord IDs are 64-bit snowflakes: store as `BIGINT`, key per-server data by `guild_id`.
 - Commit `poetry.lock`. Upgrade dependencies on a branch and test on the dev bot before merging.
