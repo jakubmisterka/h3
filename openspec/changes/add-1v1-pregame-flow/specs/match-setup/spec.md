@@ -102,4 +102,4 @@ The bot SHALL keep no match data outside the thread. After a bot restart, or whe
 - **WHEN** a bot message needed to rebuild the match was deleted
 - **THEN** the bot says the match cannot be rebuilt and does not guess
 
-Open question: whether slash commands work in an archived thread. This is to be tested on the dev bot. Until then players reopen an archived thread by hand; resuming it automatically is a follow-up idea (see the proposal).
+Open question: whether slash commands work in an archived thread. This has not been tested. A match thread stays open for 7 days of silence, which is assumed to be enough; if players do run into archived threads, they reopen them by hand, and resuming one automatically is a follow-up idea (see the proposal).

@@ -38,7 +38,7 @@ A handler loads the match from the thread, calls a rules function with the match
 
 ### 2. Match state is an append-only event log in the bot's own messages
 
-Every accepted action (match started, coinflip, ban, pick, roll, faction bid, color bid, undo) is posted by the bot as one message: a readable line for players plus a compact machine part (an embed footer holding a small JSON event). To serve a command, the bot fetches the thread history, keeps its own messages, parses the events, and folds them into the current match. Undo is itself an event that cancels the previous trade event, so the history stays honest.
+Every accepted action (match started, coinflip, ban, pick, roll, faction bid, color bid, undo) is posted by the bot as one message that starts with a tag, `[#<number> <code>]`, followed by the text players read, for example `[#3 ban] <@111> banned JC`. The number counts the records, so a deleted message shows as a gap; the code says which kind of record it is; and the data (players, templates, amounts) is read out of the text in a fixed order, from the start, by rules that depend on the code, so wording around the data is free. To serve a command, the bot fetches the thread history, keeps its own messages, parses the records, and folds them into the current match. Undo is itself an event that cancels the previous trade event, so the history stays honest.
 
 ```
  events:  MatchStarted -> CoinFlip -> Ban -> Ban -> Pick -> ... -> TradeReport -> Undo -> TradeReport
@@ -128,7 +128,7 @@ Two commands can arrive in one thread at nearly the same time. Per thread, handl
 
 - **[A bot message needed for the state is deleted or edited]** → The bot refuses to guess and says the match cannot be rebuilt. Bot messages are the bot's own, so only moderators can delete them; the thread is the audit trail.
 - **[Reading a long thread on every command is slow]** → A match has at most a few dozen bot events, so one history fetch is small. If it ever matters, cache the folded match in memory per thread, keeping the thread as source of truth.
-- **[Archived threads may behave unexpectedly with slash commands]** → Test on the dev bot early (first task after the skeleton). If commands fail in archived threads, players reopen the thread by hand; automatic resume is left to the rewind follow-up (see proposal.md).
+- **[Archived threads may behave unexpectedly with slash commands]** → Not tested. Threads are created with the longest auto-archive time (7 days of silence), which is assumed to be enough. If players do hit archived threads and commands fail there, they reopen the thread by hand; automatic resume is left to the rewind follow-up (see proposal.md).
 - **[The bot cannot verify what players report]** → Accepted by design (either player reports, no confirmation). Undo and the visible thread are the safeguards; a moderator-resolve command is a later option.
 - **[Rules are unclear in places]** → Recorded as "Open question:" in the specs. Rules code takes the provisional default in one place each, so changing one is a small edit.
 - **[Command fields are guessed before real use]** → Keep `/trade report` fields flexible and tune in the dev guild before the prod sync.

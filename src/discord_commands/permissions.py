@@ -11,11 +11,24 @@ LABELS = {
     "create_public_threads": "Create Public Threads",
     "create_private_threads": "Create Private Threads",
     "send_messages_in_threads": "Send Messages in Threads",
+    "read_message_history": "Read Message History",  # to read the records back
 }
 
 # Attribute names of discord.Permissions that each action needs.
-PUBLIC_THREAD = ("view_channel", "send_messages", "create_public_threads", "send_messages_in_threads")
-PRIVATE_THREAD = ("view_channel", "create_private_threads", "send_messages_in_threads")
+PUBLIC_THREAD = (
+    "view_channel",
+    "send_messages",
+    "create_public_threads",
+    "send_messages_in_threads",
+    "read_message_history",
+)
+READ_THREAD = ("view_channel", "read_message_history")  # to read the records of a match thread
+PRIVATE_THREAD = (
+    "view_channel",
+    "create_private_threads",
+    "send_messages_in_threads",
+    "read_message_history",
+)
 
 
 def missing(permissions, needed: tuple[str, ...]) -> list[str]:

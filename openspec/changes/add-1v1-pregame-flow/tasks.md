@@ -25,15 +25,13 @@ The riskiest unknowns are about Discord (threads, reading messages back, archive
 
 *The design keeps no database: the match lives in the thread. If reading it back does not work, the design changes, so this is proven early.*
 
-- [ ] 3.1 Define the records the bot writes (events) and their compact text format in a plain module, with pytest round-trip tests for encoding and decoding
-- [ ] 3.2 Post a record with its readable text, and read the thread back (keep only the bot's own messages, decode the records); `/match start` now posts a "match started" record
-- [ ] 3.3 Add `/match status` for a match thread that shows what the bot read back, as a simple list for now
-- [ ] 3.4 Milestone check A: start a match, stop the bot, start it again, and `/match status` still lists the record
-- [ ] 3.5 Milestone check B: let the thread archive (or close it by hand) and run `/match status` in it; write the result under Open questions in `design.md` and update the `match-setup` spec's open question to match
-- [ ] 3.6 Rebuild a match from its records as a pure function that detects a missing start record and a deleted message in the middle (records are numbered), with pytest cases for a clean run and both failures. Milestone check C: delete one of the bot's messages in a dev thread and see the "cannot be rebuilt" message
-- [ ] 3.7 Add the per-thread lock (`poetry add --group dev pytest-asyncio` for the test) and verify with a pytest asyncio test that two simultaneous commands on one thread run one after the other
+- [x] 3.1 Define the records the bot writes and how each is written into a message (a tag `[#<number> <code>]` at the start, the data read from the text in a fixed order) and read back, in a plain module, with pytest tests for the tag and for reading each record type
+- [x] 3.2 Post a record as one message and read the thread back (keep only the bot's own messages, parse the tagged ones), checking before sending that the message reads back as the same record; `/match start` now posts a "match started" record
+- [x] 3.3 Add `/match status` for a match thread that shows what the bot read back, as a simple list for now
+- [x] 3.4 Milestone check A: start a match, stop the bot, start it again, and `/match status` still lists the record
+- [x] 3.5 Milestone check B, skipped by decision: archived threads are not tested. Threads stay open for 7 days of silence, which we assume is enough. The open question stays recorded in `design.md` and the `match-setup` spec, to be revisited if players run into archived threads
 
-Decide: what a record looks like to players in the thread (the machine part sits in an embed footer in the current design), and how the numbering works.
+Decided: each step is one message that starts with a tag `[#n code]`; the data is read from the text in a fixed order, so the wording after the data is free. See `src/state.py`.
 
 ## 4. Milestone: only the two players act
 
@@ -78,16 +76,18 @@ Decide: how `game_order` names the games (the design sketches `A_pick`, `B_pick`
 - [ ] 7.1 Implement start validation (phase needed or not, template required and allowed for agreed phases) as pure functions, with pytest cases for each scenario of the `match-setup` spec
 - [ ] 7.2 Implement the coinflip with an injectable random source, with pytest cases for a fixed source, each outcome being possible, and fairness over many flips
 - [ ] 7.3 Extend `/match start` to `mode opponent [phase] [template]`: thread visibility comes from the format (the temporary `private` option is removed), the coinflip is recorded and announced with who acts first
-- [ ] 7.4 Milestone check in the dev guild: start an El Classico match, see the coinflip winner announced, restart the bot and `/match status` still shows it. Multi-phase and ranked modes have no format file yet, so they are covered by pytest only
+- [ ] 7.4 Rebuild a match from its records as a pure function (players, coinflip winner) that refuses to guess: a missing start record, a gap in the record numbers (a deleted message) and a second start are reported in words; `/match status` uses it. Verify with pytest cases for a clean run and each failure
+- [ ] 7.5 Milestone check in the dev guild: start an El Classico match, see the coinflip winner announced, restart the bot and `/match status` still shows it; delete the coinflip message of a test match and `/match status` says a message is missing. Multi-phase and ranked modes have no format file yet, so they are covered by pytest only
 
 ## 8. Milestone: bans and picks to the list of games
 
 *Template selection from the first ban to the games to play.*
 
 - [ ] 8.1 Implement the selection logic (whose turn, which action, template still available, remaining pool, ending with the ordered games) as pure functions, with pytest cases for every scenario of the `template-selection` spec including the 9-template and the 7-template sequences
-- [ ] 8.2 Add `/ban` and `/pick` as thin handlers with autocomplete of the remaining pool, a turn announcement, the remaining-pool message and the final games announcement
-- [ ] 8.3 Implement the agreed-template path (skip selection, go straight to the games), covered by pytest
-- [ ] 8.4 Milestone check in the dev guild: a full El Classico selection; the wrong player is refused; a template that is already banned is refused; restart the bot between the two bans and it continues
+- [ ] 8.2 Add the per-thread lock, so two commands on one match thread at the same moment run one after the other (`poetry add --group dev pytest-asyncio` for the test); verify with a pytest asyncio test. It is built here because `/ban` is the first command that changes a match
+- [ ] 8.3 Add `/ban` and `/pick` as thin handlers with autocomplete of the remaining pool, a turn announcement, the remaining-pool message and the final games announcement
+- [ ] 8.4 Implement the agreed-template path (skip selection, go straight to the games), covered by pytest
+- [ ] 8.5 Milestone check in the dev guild: a full El Classico selection; the wrong player is refused; a template that is already banned is refused; restart the bot between the two bans and it continues
 
 ## 9. Milestone: the trade, bids only
 

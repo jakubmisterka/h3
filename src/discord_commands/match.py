@@ -3,8 +3,10 @@
 import discord
 from discord import app_commands
 
-from discord_commands.permissions import PRIVATE_THREAD, PUBLIC_THREAD, missing, missing_message
+from discord_commands.permissions import PRIVATE_THREAD, PUBLIC_THREAD, READ_THREAD, missing, missing_message
+from discord_commands.thread_log import ThreadLog
 from rules.start import StartError, check_opponent
+from state import RecordError, describe_records
 
 # Players are often slow, so keep the thread open for a week before Discord archives it.
 THREAD_ARCHIVE_MINUTES = 10080
@@ -15,6 +17,16 @@ group = app_commands.Group(name="match", description="Pre-game for a match")
 def refused_message(error: discord.Forbidden) -> str:
     """Text for a refusal we did not predict. The permission check below catches the usual causes first."""
     return f"Discord refused to create the thread ({error.text}). Please ask a server admin to check my permissions."
+
+
+async def post_match_started(thread: discord.Thread, bot_id: int, starter, opponent) -> None:
+    """The first message of a match thread (mentioning both players notifies them), then the first record."""
+    await ThreadLog(thread, bot_id).post(
+        "match_started",
+        f"Match started: {starter.mention} vs {opponent.mention}. This is your match thread.",
+        p1=starter.id,
+        p2=opponent.id,
+    )
 
 
 @group.command(name="start", description="Start a match against an opponent")
@@ -60,7 +72,7 @@ async def start(interaction: discord.Interaction, opponent: discord.Member, priv
             await thread.add_user(starter)
             await thread.add_user(opponent)
             await interaction.followup.send(f"Your private match thread with {opponent.mention}: {thread.mention}")
-            await thread.send(f"{starter.mention} {opponent.mention} this is your match thread.")
+            await post_match_started(thread, interaction.client.user.id, starter, opponent)
         except discord.Forbidden as e:
             await interaction.followup.send(refused_message(e))
     else:
@@ -69,7 +81,29 @@ async def start(interaction: discord.Interaction, opponent: discord.Member, priv
         try:
             announcement = await interaction.original_response()
             thread = await announcement.create_thread(name=title, auto_archive_duration=THREAD_ARCHIVE_MINUTES)
-            await thread.send(f"{starter.mention} {opponent.mention} this is your match thread.")
+            await post_match_started(thread, interaction.client.user.id, starter, opponent)
         except discord.Forbidden as e:
             # Do not leave an announcement without a thread behind: replace its text with the explanation.
             await interaction.edit_original_response(content=refused_message(e))
+
+
+@group.command(name="status", description="Show what the bot has recorded in this match thread")
+async def status(interaction: discord.Interaction) -> None:
+    thread = interaction.channel
+    if not isinstance(thread, discord.Thread):
+        await interaction.response.send_message("Use this command inside a match thread.", ephemeral=True)
+        return
+    lacking = missing(interaction.app_permissions, READ_THREAD)
+    if lacking:
+        await interaction.response.send_message(missing_message(lacking), ephemeral=True)
+        return
+
+    # Reading a long thread can take a moment, so acknowledge first. The reply is only for the asker.
+    await interaction.response.defer(ephemeral=True)
+    try:
+        records = await ThreadLog(thread, interaction.client.user.id).read()
+    except RecordError as e:
+        await interaction.followup.send(f"I can't read this thread: {e}")
+        return
+    await interaction.followup.send(describe_records(records))
+
