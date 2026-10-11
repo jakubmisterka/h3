@@ -92,6 +92,7 @@ Starting gold is not in the file. A small table in the rules layer maps difficul
 
 | Command | Used where | Purpose |
 |---|---|---|
+| `/info mode [template]` | any channel | shows a mode, or one template in a mode; reply only the asker sees |
 | `/match start mode opponent [phase] [template]` | any channel | creates the thread there, coinflip |
 | `/ban template`, `/pick template` | match thread | selection step, autocomplete from remaining pool |
 | `/trade roll [bans]`, `/trade decline` | match thread | roll the faction pair (bot draws the new pair), or skip the roll |
@@ -108,6 +109,12 @@ Starting gold is not in the file. A small table in the rules layer maps difficul
 The faction pair, each reroll and the 200% toss are drawn by the bot, so they cannot be recomputed after a restart. Each draw is posted as its own event (for example `PairDrawn` with the two faction ids, `ColorTossed` with the winner) and the fold reads the result from the event instead of drawing again. Draws come from one function, `draw_pair(allowed, banned, rng)`, which takes an injectable random source so tests can fix it; it uses the system's secure random generator in production. Because draws are final, undo skips them: undo removes only the latest player report, and refuses when that is a roll or a toss.
 
 *Alternative:* derive draws from a seed stored in the thread, so they could be recomputed. Rejected: the event already holds the answer, and a seed in a public thread would let anyone predict future pairs.
+
+### 4b. The info command reads only the loaded formats
+
+`/info` needs no match, no thread and no events: it looks the mode up in the formats loaded at start-up and builds a text. The text is built by plain functions (`info_for_mode(format)`, `info_for_template(format, template)`) that return a string, so every scenario in the `mode-info` spec is a pytest case, and the handler only finds the format, calls the function and sends the result as an ephemeral reply. Template info uses the same effective-settings function as the trade (phase defaults updated by the template's overrides), so what `/info` says is what a match will do. Because it shows the result of the validated format file, it doubles as a quick way for contributors to check a new file.
+
+The template catalogue stays `{ "id", "name" }` for now. Timers and download links are a follow-up; they would be optional fields there.
 
 ### 5. Gold as whole numbers
 

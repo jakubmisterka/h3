@@ -14,6 +14,7 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 4. For each game, the bot walks the players through the **trade** one section at a time. First the bot draws a random pair of factions and announces it with the roll cost and who may roll; each eligible player rolls (banning 0-2 factions, and the bot draws a new pair) or skips, and bidding without a word counts as skipping. Then players bid between themselves in the thread for the faction choice and for color, and either player reports each result (winner, amount, choice). The bot keeps the running gold and can undo the last player report; its own random draws are final. Players set the final factions in the lobby by hand.
 5. When the trade of a game is complete, the bot posts the **lobby settings**: template, factions, colors and starting gold for each player.
 6. Players may stop at any point, for example after the first game's trade, and continue later by reopening the thread. The bot rebuilds the match from the thread's own messages.
+7. At any time, in any channel, a player can look up a mode with `/info` and see its phases, template pools and how templates are chosen. Naming a template as well shows how that template is played in the mode: difficulty, starting gold and roll rules. Only the person who asked sees the reply. Contributors can use it to check a new format file.
 
 ### Behind that flow
 
@@ -31,10 +32,12 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 - Template-specific trade rules that add or remove sections. The section list is data, but no template needs a different one yet.
 - Tournament results, brackets and match reporting after the game.
 - Timers and reminders for slow players.
+- More in the info command: trade rules and allowed factions in the mode view, and per-template facts such as a timer or a download link. See the follow-up ideas.
 - A per-server setting for which channel matches may start in. The match starts, and its thread is created, in the channel where the command is run. A server that wants a dedicated channel limits the bot's access to it through Discord permissions.
 
 ### Follow-up ideas (not part of this change)
 
+- **More template facts in `/info`:** a timer, and a link to download the template when it is not available through the game. The template catalogue would get optional fields for them. Also trade rules and allowed factions in the mode view if players want them.
 - **Rewind with consent:** a `/rewind` command with autocomplete of recent steps, so a player can ask to go back to an earlier step (for example after a mistaken ban or pick), and the opponent must accept. It would be one more event in the thread, so nothing is deleted. It must not go back past a random draw (a roll, a toss), to prevent rerolling for a better result. It could also resume an archived thread. A right-click "Rewind to here" message command was considered and can be added later.
 
 ## Capabilities
@@ -45,6 +48,7 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 - `match-setup`: starting a match, choosing mode and phase, the coinflip, the match thread, and resuming a match from the thread after a restart or reopened thread.
 - `template-selection`: the ban/pick sequence that turns the template pool into the ordered list of games, with turn enforcement.
 - `game-trade`: the per-game trade (roll, faction bid, color bid), the gold ledger, undo, and the final lobby settings.
+- `mode-info`: the `/info` command that shows a mode's phases, pools and how templates are chosen, and how one template is played in that mode (difficulty, starting gold, roll rules).
 
 ### Modified Capabilities
 
@@ -52,7 +56,7 @@ None. There are no existing specs.
 
 ## Impact
 
-- **Code:** new modules under `src/` for rule-set loading and validation, the selection sequence, the trade ledger, and thread-state encoding; thin Discord handlers in `src/bot.py` (or modules it registers). Rule logic stays in plain functions.
+- **Code:** new modules under `src/` for rule-set loading and validation, the selection sequence, the trade ledger, thread-state encoding, and the text of the info command; thin Discord handlers in `src/bot.py` (or modules it registers). Rule logic stays in plain functions.
 - **Data:** a new `data/factions.json` catalogue of the 12 towns, a `data/templates.json` catalogue starting with JC, 6lm10a and h3dm1, and a new `formats/` directory with the JSON rule-sets and their schema, starting with the El Classico format (BO1, ban, ban). Other formats, such as ranked and the multi-phase h3.gg knockouts, come later, once their templates and settings are known.
 - **Dependencies:** a JSON-schema validator and `pytest` as a dev dependency (via `poetry add`).
 - **Existing code:** `/hello` is deleted from `src/bot.py` (**BREAKING** for anyone using it, but it was only a smoke test). The syntax error at `src/bot.py:31` (`def main() ->  :`) must be fixed, since the bot cannot start with it. `CLAUDE.md` is updated, because it describes the bot as a single `/hello` command.
