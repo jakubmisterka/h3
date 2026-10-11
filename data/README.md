@@ -26,10 +26,18 @@ Neither may be empty. Keep ids to the names players actually use: for templates 
 { "id": "JC", "name": "Jebus Cross", "difficulty": 160 }
 ```
 
-`difficulty` is the in-game difficulty in percent that the template is played on. It belongs to the template, not to a tournament: it decides how much gold each player starts with (130% gives 15000, 160% gives 10000, and so on), and at 200% the game is all-random and only the color is tossed. Towns have no `difficulty`.
+`difficulty` is the in-game difficulty in percent that the template is played on, and it must be one of 80, 100, 130, 160 or 200. It belongs to the template, not to a tournament: it decides how much gold each player starts with, and at 200% the game is all-random and only the color is tossed. Towns have no `difficulty`.
+
+| Difficulty | Starting gold for each player |
+|---|---|
+| 80% | 30000 |
+| 100% | 20000 |
+| 130% | 15000 |
+| 160% | 10000 |
+| 200% | 0 |
 
 More facts about a template (a timer, where to download it) are expected to be added here later, as extra fields.
 
 ## What is checked
 
-The bot, and the tests (`poetry run pytest`), reject a file that breaks these rules, and say which entry is wrong: a missing or extra field, an empty `id` or `name`, an id used twice, or a `difficulty` that is not a whole number.
+The bot, and the tests (`poetry run pytest`), reject a file that breaks these rules, and say which entry is wrong: a missing or extra field, an empty `id` or `name`, an id used twice, or a `difficulty` that is not one of the supported values.

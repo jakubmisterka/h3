@@ -72,7 +72,7 @@
     },
     "phase": {
       "type": "object",
-      "required": ["name", "best_of", "selection"],
+      "required": ["name", "best_of", "template_selection"],
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string", "minLength": 1 },
@@ -86,7 +86,7 @@
           "items": { "$ref": "#/$defs/templateEntry" },
           "description": "The templates of the tournament that this phase uses. An object entry gives a template settings for this phase only. Leave the pool out to use all the templates of the tournament."
         },
-        "selection": {
+        "template_selection": {
           "type": "object",
           "required": ["type"],
           "properties": {

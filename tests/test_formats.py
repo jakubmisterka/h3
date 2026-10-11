@@ -35,7 +35,7 @@ def make_phase(data, best_of, template_ids, steps):
     data["templates"] = list(template_ids)
     phase_of(data).pop("pool", None)
     phase_of(data).update(best_of=best_of)
-    phase_of(data)["selection"]["steps"] = steps
+    phase_of(data)["template_selection"]["steps"] = steps
 
 
 # --- valid formats -----------------------------------------------------------
@@ -68,7 +68,7 @@ def test_a_best_of_2_league_phase_is_two_picks_and_no_decider(good_format, templ
 
 
 def test_an_agreed_template_phase_is_valid(good_format, templates, towns):
-    phase_of(good_format)["selection"] = {"type": "agreed"}
+    phase_of(good_format)["template_selection"] = {"type": "agreed"}
     assert problems(good_format, templates, towns) == []
 
 
@@ -83,7 +83,7 @@ def test_a_phase_without_a_pool_uses_all_the_templates_of_the_tournament(good_fo
 def test_a_phase_can_select_only_some_of_the_templates(good_format, templates, towns):
     good_format["templates"] = NINE
     good_format["phases"].append(
-        {"name": "Knockout", "best_of": 3, "pool": NINE, "selection": {"type": "sequence", "steps": NINE_STEPS}}
+        {"name": "Knockout", "best_of": 3, "pool": NINE, "template_selection": {"type": "sequence", "steps": NINE_STEPS}}
     )
     phase_of(good_format)["pool"] = ["JC", "6lm10a", "h3dm1"]  # the group stage uses three of the nine
     fmt = parse_format(good_format, templates, towns)
@@ -172,13 +172,13 @@ def test_a_problem_inside_a_phase_names_the_phase_and_the_field(good_format, tem
 
 
 def test_a_wrong_selection_type_gets_a_clear_message(good_format, templates, towns):
-    phase_of(good_format)["selection"] = {"type": "random"}
+    phase_of(good_format)["template_selection"] = {"type": "random"}
     [message] = problems(good_format, templates, towns)
-    assert 'phase "Main", selection.type' in message and "'random' is not one of ['sequence', 'agreed']" in message
+    assert 'phase "Main", template_selection.type' in message and "'random' is not one of ['sequence', 'agreed']" in message
 
 
 def test_a_ban_without_a_player_says_who_is_missing(good_format, templates, towns):
-    phase_of(good_format)["selection"]["steps"][0] = {"do": "ban"}
+    phase_of(good_format)["template_selection"]["steps"][0] = {"do": "ban"}
     [message] = problems(good_format, templates, towns)
     assert "'who' is a required property" in message
 
@@ -240,7 +240,7 @@ def test_there_can_be_only_one_decider(good_format, templates, towns):
 
 
 def test_the_decider_names_no_player(good_format, templates, towns):
-    phase_of(good_format)["selection"]["steps"][-1] = {"who": "A", "do": "decider"}
+    phase_of(good_format)["template_selection"]["steps"][-1] = {"who": "A", "do": "decider"}
     assert any("the decider names no player" in m for m in problems(good_format, templates, towns))
 
 
@@ -352,7 +352,7 @@ def test_status_and_visibility_are_read_when_given(good_format, templates, towns
 
 
 def test_an_agreed_phase_has_no_steps(good_format, templates, towns):
-    phase_of(good_format)["selection"] = {"type": "agreed"}
+    phase_of(good_format)["template_selection"] = {"type": "agreed"}
     phase = parse_format(good_format, templates, towns).phases[0]
     assert phase.agreed and phase.steps == ()
 

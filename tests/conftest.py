@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from rules.catalogue import TEMPLATE_FIELDS, load_templates, load_towns, parse_catalogue
+from rules.catalogue import TEMPLATE_FIELDS, load_towns, parse_catalogue
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 
-# Templates used by tournaments in the explore session, so 7- and 9-template pools can be tested.
-EXTRA_TEMPLATES = ["nostalgia", "mt_nebula", "mt_Jebus", "Sapphire", "Diamond", "Conquest"]
+# A made-up list of templates for the tests, independent of data/templates.json, big enough for 7- and 9-template pools.
+TEST_TEMPLATES = ["JC", "6lm10a", "h3dm1", "nostalgia", "mt_nebula", "mt_Jebus", "Sapphire", "Diamond", "Conquest"]
 
 
 @pytest.fixture(scope="session")
@@ -20,10 +20,10 @@ def towns():
 
 @pytest.fixture(scope="session")
 def templates():
-    """The shipped templates plus six more."""
-    shipped = load_templates(DATA / "templates.json")
-    entries = [{"id": e.id, "name": e.name, **e.details} for e in shipped.entries]
-    entries += [{"id": t, "name": t, "difficulty": 160} for t in EXTRA_TEMPLATES]
+    """Nine templates, all 160% difficulty. JC is called Jebus Cross, the others by their ids."""
+    entries = [
+        {"id": t, "name": "Jebus Cross" if t == "JC" else t, "difficulty": 160} for t in TEST_TEMPLATES
+    ]
     return parse_catalogue(entries, "test templates", TEMPLATE_FIELDS)
 
 
@@ -39,7 +39,7 @@ def good_format():
                 {
                     "name": "Main",
                     "best_of": 1,
-                    "selection": {
+                    "template_selection": {
                         "type": "sequence",
                         "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"do": "decider"}],
                     },

@@ -18,7 +18,7 @@ GOOD = {
         {
             "name": "Main",
             "best_of": 1,
-            "selection": {
+            "template_selection": {
                 "type": "sequence",
                 "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"do": "decider"}],
             },
@@ -71,7 +71,7 @@ def test_a_format_with_every_optional_field_is_accepted(validator):
 
 
 def test_an_agreed_template_phase_is_accepted(validator):
-    assert problems(validator, changed(lambda d: phase(d).update(selection={"type": "agreed"}))) == []
+    assert problems(validator, changed(lambda d: phase(d).update(template_selection={"type": "agreed"}))) == []
 
 
 @pytest.mark.parametrize("best_of", [1, 2, 3, 5, 7, 9])
@@ -186,51 +186,51 @@ def test_a_difficulty_does_not_belong_in_a_format(validator):
     assert problems(validator, changed(lambda d: d.update(templates=[{"template": "JC", "difficulty": 160}])))
 
 
-# --- selection -------------------------------------------------------------------------------
+# --- template selection -------------------------------------------------------------------------------
 
 
 def test_a_step_needs_a_known_player_and_action(validator):
     def bad_player(d):
-        phase(d)["selection"]["steps"][0]["who"] = "C"
+        phase(d)["template_selection"]["steps"][0]["who"] = "C"
 
     def bad_action(d):
-        phase(d)["selection"]["steps"][0]["do"] = "skip"
+        phase(d)["template_selection"]["steps"][0]["do"] = "skip"
 
     assert problems(validator, changed(bad_player))
     assert problems(validator, changed(bad_action))
 
 
 def test_the_selection_type_must_be_known(validator):
-    assert problems(validator, changed(lambda d: phase(d).update(selection={"type": "random"})))
+    assert problems(validator, changed(lambda d: phase(d).update(template_selection={"type": "random"})))
 
 
 def test_a_sequence_needs_its_steps(validator):
     def without_steps(d):
-        del phase(d)["selection"]["steps"]
+        del phase(d)["template_selection"]["steps"]
 
     assert any("'steps' is a required property" in p for p in problems(validator, changed(without_steps)))
 
 
 def test_a_sequence_cannot_be_empty(validator):
-    assert problems(validator, changed(lambda d: phase(d)["selection"].update(steps=[])))
+    assert problems(validator, changed(lambda d: phase(d)["template_selection"].update(steps=[])))
 
 
 def test_the_old_game_order_field_is_no_longer_accepted(validator):
     # The games are played in the order of the picks, then the decider: nothing to state separately.
-    assert problems(validator, changed(lambda d: phase(d)["selection"].update(game_order=["decider"])))
+    assert problems(validator, changed(lambda d: phase(d)["template_selection"].update(game_order=["decider"])))
 
 
 def test_the_decider_step_needs_no_player(validator):
-    assert problems(validator, changed(lambda d: phase(d)["selection"].update(steps=[{"do": "decider"}]))) == []
+    assert problems(validator, changed(lambda d: phase(d)["template_selection"].update(steps=[{"do": "decider"}]))) == []
 
 
 def test_a_ban_or_pick_without_a_player_is_rejected(validator):
     for action in ("ban", "pick"):
         steps = [{"do": action}, {"do": "decider"}]
-        found = problems(validator, changed(lambda d: phase(d)["selection"].update(steps=steps)))
+        found = problems(validator, changed(lambda d: phase(d)["template_selection"].update(steps=steps)))
         assert any("'who' is a required property" in p for p in found)
 
 
 def test_a_step_with_an_unknown_action_is_rejected(validator):
     steps = [{"who": "A", "do": "skip"}]
-    assert problems(validator, changed(lambda d: phase(d)["selection"].update(steps=steps)))
+    assert problems(validator, changed(lambda d: phase(d)["template_selection"].update(steps=steps)))
