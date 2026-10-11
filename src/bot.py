@@ -28,15 +28,10 @@ class HelloBot(discord.Client):
         log.info("Logged in as %s (id=%s)", self.user, self.user.id)
 
 
-def main() ->  :
+def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = load_config()
     bot = HelloBot(cfg.test_guild_id if cfg.env == "dev" else None)
-
-    @bot.tree.command(name="hello", description="Say hello")
-    async def hello(interaction: discord.Interaction) -> None:
-        await interaction.response.send_message("Hello World")
-
     bot.run(cfg.token, log_handler=None)
 
 
