@@ -55,7 +55,7 @@ Reading the bot's own messages does not need the Message Content intent. The bot
  { "id": "...", "name": "...", "status": "active|archived", "thread_visibility": "public|private",
    "phases": [ { "name", "best_of", "pool": [template ids],
                  "selection": { "type": "sequence", "steps": [{"who":"A","do":"ban"}, ...],
-                                "game_order": ["pick_1","pick_2","decider"] }
+                                "game_order": ["A_pick","B_pick","decider"] }
                           or { "type": "agreed" },
                  "trade": { "difficulty", "roll_cost", "rolls_per_player", "max_roll_bans",
                             "sections": [...] },
@@ -76,8 +76,6 @@ Example, the first format `formats/el-classico.json`:
                 "trade": { "difficulty": 160 } } ] }
 ```
 
-In `game_order`, `pick_1` is the first pick step of the sequence, `pick_2` the second, and `decider` the leftover template, so the order stays unambiguous even when one player picks twice.
-
 Roll values are left out, so the defaults (500 gold, 1 roll each, 0 to 2 bans) apply; `allowed_factions` is left out, so all 12 towns are allowed.
 
 A phase may add `"allowed_factions": ["castle", ...]`; when absent, every faction in the catalogue is allowed.
@@ -96,8 +94,7 @@ Starting gold is not in the file. A small table in the rules layer maps difficul
 |---|---|---|
 | `/match start mode opponent [phase] [template]` | any channel | creates the thread there, coinflip |
 | `/ban template`, `/pick template` | match thread | selection step, autocomplete from remaining pool |
-| `/trade start [game]` | match thread | starts the trade of a game (the bot draws the pair, or at 200% the toss). The trade of game 1 starts by itself when selection ends, and each next game's trade starts by itself when the previous one is finished; `start` is for going out of order |
-| `/trade roll [bans] [game]`, `/trade decline` | match thread | roll the faction pair (bans are one comma-separated text; the bot draws the new pair), or skip the roll |
+| `/trade roll [bans]`, `/trade decline` | match thread | roll the faction pair (bot draws the new pair), or skip the roll |
 | `/trade report ...` | match thread | reports a bid result of the current trade section |
 | `/trade undo` | match thread | cancels the latest trade report |
 | `/trade status` | match thread | shows section, gold, what is expected |
