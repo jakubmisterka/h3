@@ -56,7 +56,8 @@ After a match starts, the bot SHALL decide at random which player wins the coinf
 
 #### Scenario: The rules of the phase are stated
 - **WHEN** the match starts
-- **THEN** the thread, after the coinflip, says the best-of, how the templates are chosen in the way players write it (for example "AB: A bans, B bans, then decider") and the templates of the phase, or the template the players agreed on
+- **THEN** the thread states the rules of the phase before the coinflip, one message for each: the best-of, the Template Selection in the short way players write it (for example "AB"), what that means in words ("A bans, B bans, then decider"), that the winner of the coinflip will be player A, and the templates of the phase (or the template the players agreed on, in place of the selection)
+- **AND** the coinflip is posted last
 
 #### Scenario: Fair chance
 - **WHEN** many matches are started

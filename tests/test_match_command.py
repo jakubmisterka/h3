@@ -95,6 +95,11 @@ def start(it, mode, opponent=BORIS, phase=None, template=None):
     asyncio.run(match.start.callback(it, mode, opponent, phase, template))
 
 
+def records_in(thread):
+    """The records among the messages of a thread; the rest is plain text for the players."""
+    return [record for record in map(parse, thread.sent) if record is not None]
+
+
 def refusal(it):
     return it.response.send_message.await_args.args[0]
 
@@ -113,19 +118,19 @@ def test_a_public_match_gets_a_thread_with_the_start_and_the_coinflip(sample, te
     start(it, "sample-cup")
 
     it.announcement.create_thread.assert_awaited_once()
-    records = [parse(text) for text in thread.sent[:2]]
+    records = records_in(thread)
     assert [r.type for r in records] == ["match_started", "coinflip"]
     assert records[0].data == {"p1": 1, "p2": 2, "mode": "sample-cup", "phase": "Main", "template": None}
     assert records[1].data == {"winner": 1}
-    assert "<@1> wins and is A, so <@1> bans first" in thread.sent[1]
+    assert "<@1> wins and is A, so <@1> bans first" in thread.sent[-1]
 
 
 def test_the_coinflip_can_be_won_by_the_opponent(sample, templates, towns, monkeypatch):
     monkeypatch.setattr(match, "coinflip", lambda a, b: b)
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, sample), thread), "sample-cup")
-    assert parse(thread.sent[1]).data == {"winner": 2}
-    assert "<@2> wins and is A" in thread.sent[1]
+    assert parse(thread.sent[-1]).data == {"winner": 2}
+    assert "<@2> wins and is A" in thread.sent[-1]
 
 
 def test_the_mode_can_be_named_by_its_name(sample, templates, towns, anna_wins):
@@ -143,7 +148,7 @@ def test_a_private_format_gets_a_private_thread_and_a_private_reply(secret, temp
     assert thread.add_user.await_count == 2
     assert it.response.defer.await_args.kwargs == {"ephemeral": True}
     it.announcement.create_thread.assert_not_awaited()
-    assert [parse(text).type for text in thread.sent[:2]] == ["match_started", "coinflip"]
+    assert [r.type for r in records_in(thread)] == ["match_started", "coinflip"]
 
 
 def test_a_public_format_does_not_use_a_private_thread(sample, templates, towns, anna_wins):
@@ -156,24 +161,30 @@ def test_an_agreed_template_is_recorded(ranked, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="Jebus Cross")
     assert parse(thread.sent[0]).data["template"] == "JC"
-    assert thread.sent[1].startswith("[#2 cf] Coinflip: <@1> wins and is A, <@2> is B.")
+    assert thread.sent[-1].startswith("[#2 cf] Coinflip: <@1> wins and is A, <@2> is B.")
 
 
-def test_the_rules_of_the_phase_are_posted_after_the_coinflip(sample, templates, towns, anna_wins):
+def test_the_rules_come_one_per_message_between_the_start_and_the_coinflip(sample, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, sample), thread), "sample-cup")
-    assert len(thread.sent) == 3
-    assert parse(thread.sent[2]) is None  # plain text for the players, not a record
-    assert thread.sent[2] == (
-        "Best of 1. Template Selection: AB: A bans, B bans, then decider\n"
-        "A is the coinflip winner, B the other player. Templates: Jebus Cross, 6lm10a, h3dm1."
-    )
+    assert [parse(text) is not None for text in thread.sent] == [True, False, False, False, False, False, True]
+    assert thread.sent[1:6] == [
+        "Best of 1",
+        "Template Selection: AB",
+        "A bans, B bans, then decider",
+        "The winner of the coinflip will be player A, the other player is B",
+        "Templates: Jebus Cross, 6lm10a, h3dm1",
+    ]
 
 
 def test_an_agreed_template_is_stated_instead_of_a_selection(ranked, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="JC")
-    assert thread.sent[2] == "Best of 1. The players agreed on the template: Jebus Cross."
+    assert thread.sent[1:4] == [
+        "Best of 1",
+        "The players agreed on the template: Jebus Cross",
+        "The winner of the coinflip will be player A, the other player is B",
+    ]
 
 
 # --- refusals: no thread, a private explanation ------------------------------------------------------

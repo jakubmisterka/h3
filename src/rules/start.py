@@ -91,11 +91,18 @@ def template_choices(registry: Registry, mode_text: str, phase_text: str | None,
     return [(e.name, e.id) for e in entries if wanted in e.name.lower() or wanted in e.id.lower()][:AUTOCOMPLETE_LIMIT]
 
 
-def rules_announcement(phase: Phase, template_name: str | None, pool_names: list[str]) -> str:
-    """The rules of the phase, posted when the match starts so both players know what comes next."""
+def rules_announcement(phase: Phase, template_name: str | None, pool_names: list[str]) -> list[str]:
+    """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes."""
+    messages = [f"Best of {phase.best_of}"]
     if phase.agreed:
-        return f"Best of {phase.best_of}. The players agreed on the template: {template_name}."
-    return (
-        f"Best of {phase.best_of}. Template Selection: {template_selection_line(phase.steps)}\n"
-        f"A is the coinflip winner, B the other player. Templates: {', '.join(pool_names)}."
-    )
+        messages.append(f"The players agreed on the template: {template_name}")
+    else:
+        # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own
+        notation, _, meaning = template_selection_line(phase.steps).partition(": ")
+        messages.append(f"Template Selection: {notation}" if meaning else notation)
+        if meaning:
+            messages.append(meaning)
+    messages.append("The winner of the coinflip will be player A, the other player is B")
+    if not phase.agreed:
+        messages.append(f"Templates: {', '.join(pool_names)}")
+    return messages

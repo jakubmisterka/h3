@@ -79,7 +79,7 @@ Decided: there is no separate game order. The sequence ends with a `decider` ste
 - [x] 7.2 Implement the coinflip with an injectable random source, with pytest cases for a fixed source, each outcome being possible, and fairness over many flips
 - [x] 7.3 Extend `/match start` to `mode opponent [phase] [template]`: thread visibility comes from the format (the temporary `private` option is removed), the coinflip is recorded and announced with who acts first
 - [x] 7.4 Rebuild a match from its records as a pure function (players, coinflip winner) that refuses to guess: a missing start record, a gap in the record numbers (a deleted message) and a second start are reported in words; `/match status` uses it. Verify with pytest cases for a clean run and each failure
-- [ ] 7.5 Milestone check in the dev guild: start a match in the development format, see the coinflip winner announced, restart the bot and `/match status` still shows it; delete the coinflip message of a test match and `/match status` says a message is missing. Multi-phase and ranked modes have no format file yet, so they are covered by pytest only
+- [x] 7.5 Milestone check in the dev guild: start a match in the development format, see the coinflip winner announced, restart the bot and `/match status` still shows it; delete the coinflip message of a test match and `/match status` says a message is missing. Multi-phase and ranked modes have no format file yet, so they are covered by pytest only
 
 ## 8. Milestone: bans and picks to the list of games
 

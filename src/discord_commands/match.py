@@ -37,8 +37,9 @@ async def begin_match(
     thread: discord.Thread, bot_id: int, registry: Registry, fmt: Format, phase: Phase, template_id: str | None,
     starter, opponent
 ) -> None:
-    """The first messages of a match thread: it started (mentioning both players notifies them), the coinflip,
-    and the rules of the phase. Only the first two are records; the rules are plain text for the players."""
+    """The first messages of a match thread: it started (mentioning both players notifies them), the rules of the
+    phase, one message each, and then the coinflip. Only the start and the coinflip are records; the rules are
+    plain text for the players."""
     log = ThreadLog(thread, bot_id)
     wording = f"Mode: {fmt.name} (`{fmt.id}`), phase `{phase.name}`"
     if template_id:
@@ -52,15 +53,16 @@ async def begin_match(
         phase=phase.name,
         template=template_id,
     )
+    names = [registry.templates.find(template).name for template in phase.pool_ids]
+    template_name = registry.templates.find(template_id).name if template_id else None
+    for rule in rules_announcement(phase, template_name, names):
+        await thread.send(rule)
     winner, loser = (starter, opponent) if coinflip(starter.id, opponent.id) == starter.id else (opponent, starter)
     await log.post(
         "coinflip",
         coinflip_announcement(winner.mention, loser.mention, phase),
         winner=winner.id,
     )
-    names = [registry.templates.find(template).name for template in phase.pool_ids]
-    template_name = registry.templates.find(template_id).name if template_id else None
-    await thread.send(rules_announcement(phase, template_name, names))
 
 
 @group.command(name="start", description="Start a match against an opponent")
