@@ -9,7 +9,8 @@ bot recognises its own steps by a tag at the start of the message:
 a gap. `ms` is the code of the record type (here "match started"). The rest of the message is
 ordinary text for the players. The data of the record is read out of that text, in a fixed
 order from the start, by rules that depend on the code: for `ms`, the first two mentions are
-the two players. Whatever comes after the data is free wording, and anything after the slots
+the two players and the first `code quoted` words are the mode, the phase and, if the players
+agreed on one, the template. Whatever comes after the data is free wording, and anything after the slots
 that a code needs is never read.
 
 To know where a match stands, the bot reads the thread back and parses its own messages.
@@ -37,29 +38,46 @@ class Record:
 
 # Record type -> the data fields it carries. Each milestone adds the types it needs.
 RECORD_FIELDS: dict[str, tuple[str, ...]] = {
-    "match_started": ("p1", "p2"),  # p1 started the match, p2 is the opponent (Discord user ids)
+    # p1 started the match, p2 is the opponent (Discord user ids); the mode (format id), the phase (name)
+    # and the template id the players agreed on (None when bans and picks choose the templates)
+    "match_started": ("p1", "p2", "mode", "phase", "template"),
+    "coinflip": ("winner",),  # the Discord user id of the coinflip winner, A
 }
 
 # Record type -> the short code written in the tag.
 CODES: dict[str, str] = {
     "match_started": "ms",
+    "coinflip": "cf",
 }
 _TYPE_OF_CODE = {code: type_ for type_, code in CODES.items()}
 
 TAG = re.compile(r"^\[#(\d+) ([a-z]+)\]")
 MENTION = re.compile(r"<@!?(\d+)>")  # how Discord writes a mention of a user in message text
+QUOTED = re.compile(r"`([^`]+)`")  # a word the message writes as `code`, so it can be told apart from the wording
 
 
 def _read_match_started(body: str) -> dict:
     ids = [int(found) for found in MENTION.findall(body)]
     if len(ids) < 2:
         raise RecordError("a match started message must mention both players")
-    return {"p1": ids[0], "p2": ids[1]}
+    quoted = QUOTED.findall(body)
+    if len(quoted) < 2:
+        raise RecordError("a match started message must name the mode and the phase in `quotes`")
+    template = quoted[2] if len(quoted) > 2 else None
+    return {"p1": ids[0], "p2": ids[1], "mode": quoted[0], "phase": quoted[1], "template": template}
+
+
+def _read_coinflip(body: str) -> dict:
+    found = MENTION.search(body)
+    if found is None:
+        raise RecordError("a coinflip message must mention the winner")
+    return {"winner": int(found.group(1))}
 
 
 # Record type -> how to read its data out of the text after the tag.
 READERS = {
     "match_started": _read_match_started,
+    "coinflip": _read_coinflip,
 }
 
 
@@ -93,7 +111,11 @@ def parse(text: str) -> Record | None:
 def describe(record: Record) -> str:
     """One record in words. `<@id>` is how Discord writes a mention; it is only text here."""
     if record.type == "match_started":
-        return f"match started: <@{record.data['p1']}> vs <@{record.data['p2']}>"
+        data = record.data
+        template = f", template {data['template']}" if data["template"] else ""
+        return f"match started: <@{data['p1']}> vs <@{data['p2']}>, mode {data['mode']}, phase {data['phase']}{template}"
+    if record.type == "coinflip":
+        return f"coinflip won by <@{record.data['winner']}>"
     return f"{record.type} {record.data}"
 
 
@@ -104,6 +126,64 @@ def describe_records(records: list[Record]) -> str:
     lines = [f"I read {len(records)} record(s) in this thread:"]
     lines += [f"{r.n}. {describe(r)}" for r in records]
     return "\n".join(lines)
+
+
+@dataclass(frozen=True)
+class Match:
+    """Where a match stands, rebuilt from its records. It grows as the milestones add record types."""
+
+    p1: int  # who started the match
+    p2: int  # the opponent
+    mode: str  # format id
+    phase: str  # phase name
+    template: str | None  # the template the players agreed on, if the phase has them agree
+    a: int  # the coinflip winner
+    b: int  # the other player
+
+
+def _only(records: list[Record], type: str, what: str) -> Record | None:
+    found = [r for r in records if r.type == type]
+    if len(found) > 1:
+        raise RecordError(f"this thread has {len(found)} {what} messages, but a match has one, so I cannot tell which is right")
+    return found[0] if found else None
+
+
+def rebuild(records: list[Record]) -> Match:
+    """The state of the match, from its records alone. Refuses to guess: whatever is wrong is said in words."""
+    if not records:
+        raise MatchError("This thread is not a match thread I know of.")
+
+    for position, record in enumerate(records, start=1):
+        if record.n > position:
+            raise RecordError(
+                f"message #{position} of this match is missing (someone deleted it), so I cannot tell how the match went"
+            )
+        if record.n < position:
+            raise RecordError(f"message #{record.n} appears twice in this thread, so I cannot tell which one is right")
+
+    start = _only(records, "match_started", "match start")
+    if start is None:
+        raise MatchError("This thread is not a match thread I know of.")
+    flip = _only(records, "coinflip", "coinflip")
+    if flip is None:
+        raise RecordError("the coinflip of this match was not recorded (its message is missing), so I do not know who is A")
+    winner = flip.data["winner"]
+    p1, p2 = start.data["p1"], start.data["p2"]
+    if winner not in (p1, p2):
+        raise RecordError("the coinflip was won by somebody who is not a player of this match")
+    return Match(p1, p2, start.data["mode"], start.data["phase"], start.data["template"], winner, p2 if winner == p1 else p1)
+
+
+def describe_match(match: Match) -> str:
+    """The state of the match in words. `<@id>` is how Discord writes a mention."""
+    template = f", template {match.template}" if match.template else ""
+    return "\n".join(
+        [
+            f"Match: <@{match.p1}> vs <@{match.p2}>",
+            f"Mode {match.mode}, phase {match.phase}{template}",
+            f"Coinflip: <@{match.a}> is A (acts first), <@{match.b}> is B",
+        ]
+    )
 
 
 def players_of(records: list[Record]) -> tuple[int, int]:

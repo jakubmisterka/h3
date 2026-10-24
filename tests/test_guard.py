@@ -29,7 +29,10 @@ def interaction(user_id=ANNA, in_thread=True, permissions=ALLOWED):
 @pytest.fixture
 def thread_records(monkeypatch):
     """Make the guard read these records (or fail) instead of a real thread."""
-    state = {"records": [make_record(1, "match_started", p1=ANNA, p2=BORIS)], "error": None, "reads": 0}
+    state = {"records": [
+            make_record(1, "match_started", p1=ANNA, p2=BORIS, mode="sample-cup", phase="Main", template=None),
+            make_record(2, "coinflip", winner=ANNA),
+        ], "error": None, "reads": 0}
 
     class FakeLog:
         def __init__(self, thread, bot_id):
@@ -102,3 +105,11 @@ def test_a_damaged_record_is_reported_not_guessed(thread_records):
     it = interaction()
     assert run(it) is None
     assert "I can't read this thread" in told_user(it)
+
+
+def test_a_thread_with_a_deleted_message_is_refused_for_every_command(thread_records):
+    del thread_records["records"][1]  # the coinflip
+    it = interaction()
+    assert run(it) is None
+    assert "coinflip of this match was not recorded" in told_user(it)
+    assert "can't read this thread" in told_user(it)
