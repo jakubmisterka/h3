@@ -100,6 +100,11 @@ def records_in(thread):
     return [record for record in map(parse, thread.sent) if record is not None]
 
 
+def coinflip_message(thread):
+    """The text of the coinflip record."""
+    return next(text for text in thread.sent if text.startswith("[#2 cf]"))
+
+
 def refusal(it):
     return it.response.send_message.await_args.args[0]
 
@@ -122,15 +127,15 @@ def test_a_public_match_gets_a_thread_with_the_start_and_the_coinflip(sample, te
     assert [r.type for r in records] == ["match_started", "coinflip"]
     assert records[0].data == {"p1": 1, "p2": 2, "mode": "sample-cup", "phase": "Main", "template": None}
     assert records[1].data == {"winner": 1}
-    assert "<@1> wins and is A, so <@1> bans first" in thread.sent[-1]
+    assert "<@1> wins and is A, so <@1> bans first" in coinflip_message(thread)
 
 
 def test_the_coinflip_can_be_won_by_the_opponent(sample, templates, towns, monkeypatch):
     monkeypatch.setattr(match, "coinflip", lambda a, b: b)
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, sample), thread), "sample-cup")
-    assert parse(thread.sent[-1]).data == {"winner": 2}
-    assert "<@2> wins and is A" in thread.sent[-1]
+    assert parse(coinflip_message(thread)).data == {"winner": 2}
+    assert "<@2> wins and is A" in coinflip_message(thread)
 
 
 def test_the_mode_can_be_named_by_its_name(sample, templates, towns, anna_wins):
@@ -161,13 +166,13 @@ def test_an_agreed_template_is_recorded(ranked, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="Jebus Cross")
     assert parse(thread.sent[0]).data["template"] == "JC"
-    assert thread.sent[-1].startswith("[#2 cf] Coinflip: <@1> wins and is A, <@2> is B.")
+    assert coinflip_message(thread).startswith("[#2 cf] Coinflip: <@1> wins and is A, <@2> is B.")
 
 
 def test_the_rules_come_one_per_message_between_the_start_and_the_coinflip(sample, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, sample), thread), "sample-cup")
-    assert [parse(text) is not None for text in thread.sent] == [True, False, False, False, False, False, True]
+    assert [parse(text) is not None for text in thread.sent[:7]] == [True, False, False, False, False, False, True]
     assert thread.sent[1:6] == [
         "Best of 1",
         "Template Selection: AB",
@@ -175,6 +180,22 @@ def test_the_rules_come_one_per_message_between_the_start_and_the_coinflip(sampl
         "The winner of the coinflip will be player A, the other player is B",
         "Templates: Jebus Cross, 6lm10a, h3dm1",
     ]
+
+
+def test_the_first_step_is_announced_after_the_coinflip(sample, templates, towns, anna_wins):
+    thread = FakeThread()
+    start(interaction(registry_of(templates, towns, sample), thread), "sample-cup")
+    assert thread.sent[7:] == [
+        "Remaining (3): Jebus Cross, 6lm10a, h3dm1",
+        "Step 1 of 2: <@1> bans a template with /ban",
+    ]
+
+
+def test_an_agreed_phase_goes_straight_to_the_game(ranked, templates, towns, anna_wins):
+    thread = FakeThread()
+    start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="JC")
+    assert len(thread.sent) == 6 and thread.sent[-2].startswith("[#2 cf]")
+    assert thread.sent[-1] == "Game 1: Jebus Cross"  # straight to the game, no bans or picks
 
 
 def test_an_agreed_template_is_stated_instead_of_a_selection(ranked, templates, towns, anna_wins):

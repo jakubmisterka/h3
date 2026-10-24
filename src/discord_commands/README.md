@@ -10,6 +10,7 @@ Why separate: code that talks to Discord cannot be tested without Discord. Keepi
 |---|---|
 | `info.py` | `/info`: how a mode works, or how a template is played in it, optionally for one phase (a private reply, with autocomplete) |
 | `match.py` | `/match start`, `/match status` |
+| `selection.py` | `/ban` and `/pick`: one step of Template Selection each, under the thread's lock, with autocomplete of the templates still available |
 | `guard.py` | The check every match command goes through: inside a match thread, and the user is one of the two players. It replies to the user itself when the answer is no |
 | `thread_log.py` | Posts each step as one message that starts with a tag like `[#3 ms]`, and reads those messages back into records (the bot keeps no database; the thread is the memory) |
 | `permissions.py` | Which Discord permissions the bot needs for each action, and a check that names the missing ones (so players get a clear message, not a crash) |

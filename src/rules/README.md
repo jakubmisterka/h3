@@ -12,6 +12,7 @@ Why separate: plain functions are easy to test (see [`../../tests/`](../../tests
 | `registry.py` | Loads the towns, templates and formats together when the bot starts, and reports every problem in every file at once. Also answers which modes a match can be started in, and finds a mode by id or name |
 | `difficulty.py` | What a template's difficulty means: the gold each player starts with (80% to 200%) and which steps the trade has |
 | `roll_rules.py` | The roll rules (cost of a roll, rolls per player, bans per roll) that apply to one template in one phase, stacking the tournament, template and phase settings on top of the defaults |
-| `start.py` | Whether a match can be started, for now: the opponent must be another human |
+| `start.py` | Whether a match can be started: the opponent is another human, the phase and template are valid. The coinflip, the rules messages posted at the start, and the choices offered while typing |
+| `selection.py` | Template Selection: whose step is next, whether a ban or pick is allowed, what is left in the pool, and the games in play order once the bans and picks are done |
 
 If a function seems to need a Discord object (a member, a channel), pass in just the plain values it needs, for example `member.id` and `member.bot`.

@@ -4,6 +4,8 @@ import discord
 from discord import app_commands
 
 from discord_commands.guard import guarded_records
+from discord_commands.selection import post_next
+from rules.selection import games_message
 from discord_commands.permissions import PRIVATE_THREAD, PUBLIC_THREAD, missing, missing_message
 from discord_commands.thread_log import ThreadLog
 from rules.formats import Format, Phase
@@ -63,6 +65,11 @@ async def begin_match(
         coinflip_announcement(winner.mention, loser.mention, phase),
         winner=winner.id,
     )
+    if phase.agreed:
+        # no bans or picks: the template the players named is the game
+        await thread.send(games_message((template_id,), registry.templates))
+    else:
+        await post_next(thread, registry, phase, winner.mention, loser.mention, [])
 
 
 @group.command(name="start", description="Start a match against an opponent")
