@@ -85,11 +85,11 @@ Decided: there is no separate game order. The sequence ends with a `decider` ste
 
 *Template selection from the first ban to the games to play.*
 
-- [ ] 8.1 Implement the selection logic (whose turn, which action, template still available, remaining pool, ending with the ordered games) as pure functions, with pytest cases for every scenario of the `template-selection` spec including the 9-template and the 7-template sequences
-- [ ] 8.2 Add the per-thread lock, so two commands on one match thread at the same moment run one after the other (`poetry add --group dev pytest-asyncio` for the test); verify with a pytest asyncio test. It is built here because `/ban` is the first command that changes a match
-- [ ] 8.3 Add `/ban` and `/pick` as thin handlers with autocomplete of the remaining pool, a turn announcement, the remaining-pool message and the final games announcement
-- [ ] 8.4 Implement the agreed-template path (skip selection, go straight to the games), covered by pytest
-- [ ] 8.5 Milestone check in the dev guild: a full selection in the development format; the wrong player is refused; a template that is already banned is refused; restart the bot between the two bans and it continues
+- [x] 8.1 Implement the selection logic (whose turn, which action, template still available, remaining pool, ending with the ordered games) as pure functions, with pytest cases for every scenario of the `template-selection` spec including the 9-template and the 7-template sequences
+- [x] 8.2 Add the per-thread lock, so two commands on one match thread at the same moment run one after the other (`poetry add --group dev pytest-asyncio` for the test); verify with a pytest asyncio test. It is built here because `/ban` is the first command that changes a match
+- [x] 8.3 Add `/ban` and `/pick` as thin handlers with autocomplete of the remaining pool, a turn announcement, the remaining-pool message and the final games announcement
+- [x] 8.4 Implement the agreed-template path (skip selection, go straight to the games), covered by pytest
+- [x] 8.5 Milestone check in the dev guild: a full selection in the development format; the wrong player is refused; a template that is already banned is refused; restart the bot between the two bans and it continues
 
 ## 9. Milestone: the trade, bids only
 

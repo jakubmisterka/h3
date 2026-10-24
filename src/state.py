@@ -42,12 +42,16 @@ RECORD_FIELDS: dict[str, tuple[str, ...]] = {
     # and the template id the players agreed on (None when bans and picks choose the templates)
     "match_started": ("p1", "p2", "mode", "phase", "template"),
     "coinflip": ("winner",),  # the Discord user id of the coinflip winner, A
+    "ban": ("player", "template"),  # who banned which template (Discord user id, template id)
+    "pick": ("player", "template"),
 }
 
 # Record type -> the short code written in the tag.
 CODES: dict[str, str] = {
     "match_started": "ms",
     "coinflip": "cf",
+    "ban": "bn",
+    "pick": "pk",
 }
 _TYPE_OF_CODE = {code: type_ for type_, code in CODES.items()}
 
@@ -74,10 +78,21 @@ def _read_coinflip(body: str) -> dict:
     return {"winner": int(found.group(1))}
 
 
+def _read_step(body: str) -> dict:
+    """A ban or a pick: the player is the first mention, the template id the first `quoted` word."""
+    player = MENTION.search(body)
+    template = QUOTED.search(body)
+    if player is None or template is None:
+        raise RecordError("a ban or pick message must mention the player and give the template in `quotes`")
+    return {"player": int(player.group(1)), "template": template.group(1)}
+
+
 # Record type -> how to read its data out of the text after the tag.
 READERS = {
     "match_started": _read_match_started,
     "coinflip": _read_coinflip,
+    "ban": _read_step,
+    "pick": _read_step,
 }
 
 
@@ -116,6 +131,8 @@ def describe(record: Record) -> str:
         return f"match started: <@{data['p1']}> vs <@{data['p2']}>, mode {data['mode']}, phase {data['phase']}{template}"
     if record.type == "coinflip":
         return f"coinflip won by <@{record.data['winner']}>"
+    if record.type in ("ban", "pick"):
+        return f"<@{record.data['player']}> {record.type}s {record.data['template']}"
     return f"{record.type} {record.data}"
 
 
@@ -139,6 +156,7 @@ class Match:
     template: str | None  # the template the players agreed on, if the phase has them agree
     a: int  # the coinflip winner
     b: int  # the other player
+    taken: tuple[tuple[int, str, str], ...] = ()  # the bans and picks so far: (player id, "ban" or "pick", template id)
 
 
 def _only(records: list[Record], type: str, what: str) -> Record | None:
@@ -171,7 +189,12 @@ def rebuild(records: list[Record]) -> Match:
     p1, p2 = start.data["p1"], start.data["p2"]
     if winner not in (p1, p2):
         raise RecordError("the coinflip was won by somebody who is not a player of this match")
-    return Match(p1, p2, start.data["mode"], start.data["phase"], start.data["template"], winner, p2 if winner == p1 else p1)
+    steps = [r for r in records if r.type in ("ban", "pick")]
+    if any(r.n < flip.n for r in steps):
+        raise RecordError("a ban or pick comes before the coinflip in this thread, so I cannot tell how the match went")
+    taken = tuple((r.data["player"], r.type, r.data["template"]) for r in steps)
+    loser = p2 if winner == p1 else p1
+    return Match(p1, p2, start.data["mode"], start.data["phase"], start.data["template"], winner, loser, taken)
 
 
 def describe_match(match: Match) -> str:
