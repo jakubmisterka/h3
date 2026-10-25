@@ -18,6 +18,7 @@ from rules.info import AUTOCOMPLETE_LIMIT
 from rules.ledger import LedgerError
 from rules.selection import SelectionError
 from rules.situation import Situation, situation_of
+from rules.template_facts import setting_line
 from rules.trade import (
     COLORS,
     REPORTED_REPLY,
@@ -84,6 +85,8 @@ async def post_opening(thread, bot_id: int, registry, s: Situation, records, num
     previous = s.log.open
     if previous is not None and not previous.finished:
         await thread.send(closed_note(previous.game))
+    if kind == "start" and (rules := setting_line("additional_rules", s.settings(trade.template))):
+        await thread.send(rules)  # once, when the trade of the game first starts (not when it is resumed)
     await post_next_steps(thread, registry, records + [posted])
 
 

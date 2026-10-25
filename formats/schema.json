@@ -12,6 +12,8 @@
       "description": "Lowercase words joined by dashes, for example sample-cup. Must match the file name."
     },
     "name": { "type": "string", "minLength": 1, "description": "The name players see, for example Sample Cup." },
+    "description": { "type": "string", "description": "What the tournament is, shown by /info. At most 1000 characters." },
+    "additional_rules": { "type": "string", "description": "Additional rules of the tournament as a whole, shown by /info. At most 1000 characters. Rules for one template go in its settings." },
     "status": {
       "enum": ["active", "archived"],
       "description": "Archived formats stay in the repository but cannot start new matches. Default: active."
@@ -23,6 +25,10 @@
     "roll_rules": {
       "$ref": "#/$defs/rollRules",
       "description": "Roll rules for every template of the tournament. Leave out what you do not change: the defaults apply."
+    },
+    "settings": {
+      "$ref": "#/$defs/tournamentSettings",
+      "description": "The timer, and the recommended simultaneous turns, for every template of the tournament. Roads, map size and computer players can only be chosen for a template."
     },
     "allowed_towns": {
       "$ref": "#/$defs/townList",
@@ -57,6 +63,32 @@
         "max_roll_bans": { "type": "integer", "minimum": 0, "description": "Towns a player may ban when rolling. Default: 2." }
       }
     },
+    "tournamentSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timer": { "type": "string", "description": "The chess timer of every game, written like 12:00+06:00+02:00: the time each player has at the start, the time added at the beginning of each of their turns, and the time added when each fight starts. Always mm:ss, two digits everywhere, seconds below 60." },
+        "sim_turns": { "type": "string", "description": "How long simultaneous turns are recommended to last: the last day, as month, week and day in digits, for example 117 (month 1, week 1, day 7). Replaces what the template recommends." },
+        "roads": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "map_size": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "ai": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "download": { "not": {}, "description": "A download link can only be given for a template (in the tournament's list of templates or in a phase's pool)." },
+        "additional_rules": { "not": {}, "description": "Rules for the whole tournament are written as \"additional_rules\" next to \"name\", not in \"settings\". In \"settings\" they are for one template." }
+      }
+    },
+    "templateSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timer": { "type": "string", "description": "The chess timer for this template, like 12:00+06:00+02:00. Replaces the tournament's timer." },
+        "sim_turns": { "type": "string", "description": "The recommended last day of simultaneous turns for this template, like 117. Replaces what the template recommends." },
+        "roads": { "type": "string", "description": "The roads for this template: none, or slow, mid and fast joined by + in that order (for example mid or slow+mid). Must be one of the values the template allows." },
+        "map_size": { "type": "string", "description": "The map size for this template: S, M, L, XL, H, XH or G, with +U for underground (for example L+U). Must be one of the sizes the template allows." },
+        "ai": { "type": "integer", "minimum": 0, "maximum": 6, "description": "The number of computer players for this template, 0 to 6. Must be one of the numbers the template allows." },
+        "additional_rules": { "type": "string", "description": "Additional rules for this template, at most 1000 characters. Replace the rules the template states." },
+        "download": { "type": "string", "description": "A link starting with https:// where the version of the template this tournament plays can be downloaded. Use it when it is not the version built into HotA." }
+      }
+    },
     "templateEntry": {
       "description": "A template id from data/templates.json, or an object with the id and settings for this template. Settings written here win over the ones written for the whole tournament, field by field.",
       "if": { "type": "object" },
@@ -65,7 +97,8 @@
         "additionalProperties": false,
         "properties": {
           "template": { "type": "string", "minLength": 1, "description": "Template id from data/templates.json." },
-          "roll_rules": { "$ref": "#/$defs/rollRules" }
+          "roll_rules": { "$ref": "#/$defs/rollRules" },
+          "settings": { "$ref": "#/$defs/templateSettings" }
         }
       },
       "else": { "type": "string", "minLength": 1 }

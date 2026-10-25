@@ -1,12 +1,52 @@
 {
   "id": "mp2026",
   "name": "Mistrzostwa Polski 2026",
-  "templates": ["JC", "6lm10a", "h3dm1", "Sapphire", "mt_Nebula", "Nostalgia", "mt_Jebus", "Diamond", "Conquest"],
+  "additional_rules": "Players may agree between themselves on the length of simultaneous turns and the starting clock",
+  "templates": [
+    {
+      "template": "JC",
+      "settings": {
+        "timer": "12:00+06:00+01:15",
+        "sim_turns": "116",
+        "additional_rules": "King of the Castle: ends on turn 133, or 3 turns after the central town is taken"
+      }
+    },
+    { "template": "6lm10a", "settings": { "timer": "16:00+07:00+01:30", "sim_turns": "121" } },
+    { "template": "h3dm1", "settings": { "timer": "18:00+07:00+01:30", "sim_turns": "117" } },
+    { "template": "Sapphire", "settings": { "timer": "16:00+07:00+01:30", "sim_turns": "121" } },
+    { "template": "mt_Nebula", "settings": { "timer": "18:00+07:00+01:30", "sim_turns": "121" } },
+    { "template": "Nostalgia", "settings": { "timer": "16:00+07:00+01:30", "sim_turns": "121" } },
+    { "template": "mt_Jebus", "settings": { "timer": "14:00+07:00+01:15", "sim_turns": "117" } },
+    {
+      "template": "Diamond",
+      "settings": {
+        "timer": "16:00+07:00+01:30",
+        "sim_turns": "116",
+        "additional_rules": "The host picks the AI towns, they must differ from each other"
+      }
+    },
+    {
+      "template": "Conquest",
+      "settings": {
+        "timer": "16:00+07:00+01:30",
+        "sim_turns": "122",
+        "download": "https://h3szablony.heroes.net.pl/templates/4",
+        "additional_rules": "Technical restart if guaranteed content is missing"
+      }
+    }
+  ],
   "phases": [
     {
       "name": "Group phase",
       "best_of": 1,
-      "pool": ["JC", "6lm10a", "h3dm1"],
+      "pool": [
+        {
+          "template": "JC",
+          "settings": { "additional_rules": "King of the Castle: ends on turn 211, or 3 turns after the central town is taken" }
+        },
+        "6lm10a",
+        "h3dm1"
+      ],
       "template_selection": {
         "type": "sequence",
         "steps": [
