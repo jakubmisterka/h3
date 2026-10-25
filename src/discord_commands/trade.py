@@ -1,8 +1,11 @@
 """The /trade commands: starting the trade of a game and reporting the result of a bid.
 
 Only one trade is open at a time (see `rules/trade.py`). `/trade start` opens a game's trade, closing the
-open one as incomplete, and `/trade report` reports a bid of the open trade.
+open one as incomplete; `/trade roll` and `/trade skip-roll` work the roll section, and `/trade report`
+reports a bid of the open trade.
 """
+
+import random
 
 import discord
 from discord import app_commands
@@ -20,17 +23,25 @@ from rules.trade import (
     check_startable,
     choose_game,
     draw_pair,
+    expected_report_section,
     make_report,
+    make_roll,
+    make_skip,
     new_trade,
     next_message,
     opening_line,
     prompt,
     report_line,
+    roll_line,
+    skip_line,
 )
 from state import MatchError, RecordError
 
 # Everything that means "tell the player why this cannot be done, and change nothing".
 REFUSALS = (MatchError, RecordError, SelectionError, TradeError, LedgerError)
+
+# The random source for the pairs the bot draws. None: the system's. Tests set a seeded one.
+random_source: random.Random | None = None
 
 group = app_commands.Group(name="trade", description="The trade of a game: starting it and reporting bids")
 
@@ -64,8 +75,9 @@ async def start(interaction: discord.Interaction, game: str | None = None) -> No
             number = choose_game(game, s.games, s.phase.best_of, s.log, registry.templates)
             kind = check_startable(s.log, number)
             if kind == "start":
-                pair = draw_pair(s.phase.allowed_towns)
-                trade = new_trade(number, s.games, pair, s.players, registry.templates)  # refuses before anything is posted
+                pair = draw_pair(s.phase.allowed_towns, random_source)
+                rules = s.roll_rules(s.games[number - 1])
+                trade = new_trade(number, s.games, pair, s.players, registry.templates, rules)  # refuses before anything is posted
             else:
                 trade = s.log.trades[number]
         except REFUSALS as e:
@@ -82,7 +94,7 @@ async def start(interaction: discord.Interaction, game: str | None = None) -> No
         previous = s.log.open
         if previous is not None and not previous.finished:
             await thread.send(f"The trade of game {previous.game} is closed, not finished. Start it again to continue.")
-        await thread.send(prompt(trade, s.mentions))
+        await thread.send(prompt(trade, s.mentions, registry.towns))
         await interaction.followup.send(f"Game {number}'s trade is open.")
 
 
@@ -118,6 +130,7 @@ async def report(interaction: discord.Interaction, winner: discord.Member, amoun
             return
 
         after = trade.with_report(made)
+        rolls_skipped = trade.section == "town_roll"  # reporting the town bid skips every roll still open
         log = ThreadLog(thread, interaction.client.user.id)
         log.last_n = records[-1].n
         data = {"town": made.choice} if made.section == "town_bid" else {"color": made.choice}
@@ -130,8 +143,87 @@ async def report(interaction: discord.Interaction, winner: discord.Member, amoun
             amount=made.amount,
             **data,
         )
+        if rolls_skipped:
+            await thread.send(f"Game {trade.game}: the rolls still open were skipped.")
         await thread.send(next_message(after, s.mentions, registry.towns, registry.templates))
         await interaction.followup.send("Reported.")
+
+
+@group.command(name="roll", description="Pay the roll cost to get a new pair of towns, banning towns of the current pair")
+@app_commands.describe(
+    ban_1="A town of the current pair to ban (leave out to roll without banning)",
+    ban_2="A second town of the current pair to ban",
+)
+async def roll(interaction: discord.Interaction, ban_1: str | None = None, ban_2: str | None = None) -> None:
+    thread = interaction.channel
+    if not isinstance(thread, discord.Thread):
+        await guarded_records(interaction)
+        return
+
+    registry = interaction.client.registry
+    async with thread_lock(thread.id):
+        records = await guarded_records(interaction)
+        if records is None:
+            return
+        s = await load(interaction, records)
+        if s is None:
+            return
+        try:
+            trade = s.log.open
+            if trade is None:
+                raise TradeError("No trade is open. Start one with /trade start.")
+            made = make_roll(
+                trade, registry.towns, s.phase.allowed_towns, interaction.user.id, [b for b in (ban_1, ban_2) if b], random_source
+            )
+        except REFUSALS as e:
+            await interaction.followup.send(str(e))
+            return
+
+        after = trade.with_roll(made)
+        log = ThreadLog(thread, interaction.client.user.id)
+        log.last_n = records[-1].n
+        await log.post(
+            "roll",
+            roll_line(after, made, s.mentions, registry.towns),
+            game=trade.game,
+            player=made.player,
+            bans=made.bans,
+            pair=made.pair,
+        )
+        await thread.send(next_message(after, s.mentions, registry.towns, registry.templates))
+        await interaction.followup.send("Rolled.")
+
+
+@group.command(name="skip-roll", description="Give up your remaining rolls in this trade (the trade itself goes on)")
+async def skip_roll(interaction: discord.Interaction) -> None:
+    thread = interaction.channel
+    if not isinstance(thread, discord.Thread):
+        await guarded_records(interaction)
+        return
+
+    registry = interaction.client.registry
+    async with thread_lock(thread.id):
+        records = await guarded_records(interaction)
+        if records is None:
+            return
+        s = await load(interaction, records)
+        if s is None:
+            return
+        try:
+            trade = s.log.open
+            if trade is None:
+                raise TradeError("No trade is open. Start one with /trade start.")
+            make_skip(trade, interaction.user.id)
+        except REFUSALS as e:
+            await interaction.followup.send(str(e))
+            return
+
+        after = trade.with_skip(interaction.user.id)
+        log = ThreadLog(thread, interaction.client.user.id)
+        log.last_n = records[-1].n
+        await log.post("roll_skipped", skip_line(after, interaction.user.id, s.mentions), game=trade.game, player=interaction.user.id)
+        await thread.send(next_message(after, s.mentions, registry.towns, registry.templates))
+        await interaction.followup.send("You skip the roll.")
 
 
 # --- what is offered while typing ---------------------------------------------------------------------------
@@ -169,6 +261,25 @@ async def _game_options(interaction: discord.Interaction, current: str) -> list[
     return choices[:AUTOCOMPLETE_LIMIT]
 
 
+async def _ban_options(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    """The towns of the current pair, for the two ban options."""
+    s = await _situation_for_options(interaction)
+    trade = s.log.open if s else None
+    if trade is None or trade.section != "town_roll":
+        return []
+    towns = interaction.client.registry.towns
+    wanted = current.strip().lower()
+    return [
+        app_commands.Choice(name=towns.find(town).name, value=town)
+        for town in trade.pair
+        if wanted in towns.find(town).name.lower()
+    ]
+
+
+roll.autocomplete("ban_1")(_ban_options)
+roll.autocomplete("ban_2")(_ban_options)
+
+
 @report.autocomplete("choice")
 async def _choice_options(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     s = await _situation_for_options(interaction)
@@ -176,7 +287,7 @@ async def _choice_options(interaction: discord.Interaction, current: str) -> lis
     if trade is None or trade.finished:
         return []
     towns = interaction.client.registry.towns
-    if trade.section == "town_bid":
+    if expected_report_section(trade) == "town_bid":  # also during the roll section: reporting the town bid skips the rolls
         options = [(towns.find(town).name, town) for town in trade.pair]
     else:
         options = [(color, color) for color in COLORS]

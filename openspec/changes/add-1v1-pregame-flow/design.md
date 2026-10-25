@@ -96,7 +96,7 @@ Starting gold is not in any file. A small table in the rules layer maps a templa
 | `/info mode [template]` | any channel | shows a mode, or one template in a mode; reply only the asker sees |
 | `/match start mode opponent [phase] [template]` | any channel | creates the thread there, coinflip |
 | `/ban template`, `/pick template` | match thread | selection step, autocomplete from remaining pool |
-| `/trade roll [bans]`, `/trade decline` | match thread | roll the town pair (bot draws the new pair), or skip the roll |
+| `/trade roll [ban_1] [ban_2]`, `/trade skip-roll` | match thread | roll the town pair (bot draws the new pair), or skip the remaining rolls (only the roll, not the trade) |
 | `/trade start [game]` | match thread | opens the trade of a game, named by its number or its template (without a name: the first known game whose trade is not finished); closes the open trade as incomplete |
 | `/trade report ...` | match thread | reports a bid result of the open trade's current section |
 | `/trade undo` | match thread | cancels the latest trade report |
@@ -130,7 +130,7 @@ Two commands can arrive in one thread at nearly the same time. Per thread, handl
 
 A game's trade can start as soon as its template is known: the k-th game is known when the k-th pick is made, and the decider's game once selection has ended. So a trade can start while selection goes on, and its records interleave with the bans and picks in the same thread. Everything stays in one numbered sequence (a deleted message is detected anywhere), and the records that belong to a game carry its number in the tag, for example `[#7 tr g1]` (trade of game 1 started) and `[#8 tb g1]` (its town bid). The plain messages of a trade start with "Game 1:", so players can see which trade they are in.
 
-Only one trade is open at a time. Starting a trade (`/trade start`, naming the game or its template) closes the open one: it keeps its records and counts as incomplete. Starting it again reopens it where it stopped, with the same pair and gold, because random results are final. The records say which trade is open: the latest trade start or reopening. Reporting, rolling, declining and undoing act on the open trade only, so those commands need no game option. A finished trade cannot be started again.
+Only one trade is open at a time. Starting a trade (`/trade start`, naming the game or its template) closes the open one: it keeps its records and counts as incomplete. Starting it again reopens it where it stopped, with the same pair and gold, because random results are final. The records say which trade is open: the latest trade start or reopening. Reporting, rolling, skipping the roll and undoing act on the open trade only, so those commands need no game option. A finished trade cannot be started again.
 
 After an action the bot announces the next step of that action's own context only (the next ban, or the next section of the open trade). `/match status` is the one place that lists everything open: the next selection step and every started trade with its section and gold.
 

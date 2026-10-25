@@ -341,3 +341,49 @@ def test_a_trade_before_the_coinflip_is_reported():
     records = [started(111, 222), make_record(2, "trade_started", game=1, pair=("castle", "tower")), make_record(3, "coinflip", winner=222)]
     with pytest.raises(RecordError, match="before the coinflip"):
         rebuild(records)
+
+
+# --- the roll records ---------------------------------------------------------------------------------------------
+
+
+def test_a_roll_record_reads_the_roller_the_bans_and_the_new_pair():
+    text = "[#6 rl g1] Game 1 - <@1> rolled, banning Castle (`castle`), and paid 500 gold. New pair: Cove (`cove`) vs Tower (`tower`)."
+    assert parse(text) == make_record(6, "roll", game=1, player=1, bans=("castle",), pair=("cove", "tower"))
+
+
+def test_a_roll_without_bans_has_none():
+    text = "[#6 rl g1] Game 1 - <@1> rolled without banning a town. New pair: Cove (`cove`) vs Tower (`tower`)."
+    assert parse(text).data["bans"] == ()
+
+
+def test_a_roll_with_two_bans_reads_both():
+    text = "[#6 rl g2] <@2> rolled, banning Castle (`castle`), Tower (`tower`). New pair: `cove` vs `fortress`"
+    assert parse(text).data == {"player": 2, "bans": ("castle", "tower"), "pair": ("cove", "fortress")}
+
+
+def test_a_roll_record_that_cannot_be_read_is_reported():
+    with pytest.raises(RecordError, match="new pair"):
+        parse("[#6 rl g1] <@1> rolled and `castle`")
+    with pytest.raises(RecordError, match="mention the player"):
+        parse("[#6 rl g1] rolled. New pair: `cove` vs `tower`")
+
+
+def test_a_skipped_roll_record_reads_the_player():
+    assert parse("[#7 rs g1] Game 1 - <@2> skips the rolls.") == make_record(7, "roll_skipped", game=1, player=2)
+    with pytest.raises(RecordError, match="mention the player"):
+        parse("[#7 rs g1] skips")
+
+
+def test_roll_records_are_described():
+    assert describe(make_record(6, "roll", game=1, player=1, bans=("castle",), pair=("cove", "tower"))) == (
+        "game 1: <@1> rolled, banning castle, new pair cove vs tower"
+    )
+    assert describe(make_record(6, "roll", game=1, player=1, bans=(), pair=("cove", "tower"))) == (
+        "game 1: <@1> rolled, new pair cove vs tower"
+    )
+    assert describe(make_record(7, "roll_skipped", game=1, player=2)) == "game 1: <@2> skipped the roll"
+
+
+def test_the_roll_records_are_kept_by_the_rebuilt_match():
+    rolls = [make_record(3, "roll", game=1, player=111, bans=(), pair=("cove", "tower"))]
+    assert rebuild(clean_run() + rolls).trade_records == tuple(rolls)

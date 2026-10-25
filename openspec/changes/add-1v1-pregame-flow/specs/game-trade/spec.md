@@ -7,7 +7,7 @@ Covers the trade that players do before each game: rolling and banning towns, bi
 ## ADDED Requirements
 
 ### Requirement: Each game has its own trade, one open at a time
-A game's trade SHALL be able to start as soon as the game's template is known: a game that has been picked, or the decider's game once the bans and picks are done. This SHALL be possible while selection is still going on. A player starts a trade by naming the game (its number) or its template; without a name the bot SHALL take the first known game whose trade is not finished. Only one trade SHALL be open at a time. Starting a trade SHALL close the open one, which keeps what was recorded and counts as incomplete. Starting a trade that was started before SHALL reopen it where it stopped, with the same town pair and gold. Reports, rolls, declines and undo SHALL act on the open trade. A trade that is finished SHALL NOT be started again. Each game's trade SHALL start from its own starting gold; nothing carries over between games.
+A game's trade SHALL be able to start as soon as the game's template is known: a game that has been picked, or the decider's game once the bans and picks are done. This SHALL be possible while selection is still going on. A player starts a trade by naming the game (its number) or its template; without a name the bot SHALL take the first known game whose trade is not finished. Only one trade SHALL be open at a time. Starting a trade SHALL close the open one, which keeps what was recorded and counts as incomplete. Starting a trade that was started before SHALL reopen it where it stopped, with the same town pair and gold. Reports, rolls, skipped rolls and undo SHALL act on the open trade. A trade that is finished SHALL NOT be started again. Each game's trade SHALL start from its own starting gold; nothing carries over between games.
 
 #### Scenario: Start while selection goes on
 - **WHEN** A has picked JC in a best-of-3 and the bans and picks are not done
@@ -98,23 +98,23 @@ An eligible player SHALL be able to roll by naming the towns to ban (0 up to the
 - **WHEN** fewer than two allowed towns remain after the bans
 - **THEN** the bot refuses the roll and nobody pays
 
-### Requirement: Each eligible player rolls or declines
-The roll section SHALL end when every eligible player has rolled all their rolls or declined. A player SHALL be able to decline explicitly. Reporting the result of the town bid SHALL count as declining every roll still open, because players often start bidding without saying they skip the roll.
+### Requirement: Each eligible player rolls or skips the roll
+The roll section SHALL end when every eligible player has rolled all their rolls or skipped. A player SHALL be able to skip their remaining rolls explicitly, which skips only the roll and leaves the trade itself open. Reporting the result of the town bid SHALL count as skipping every roll still open, because players often start bidding without saying they skip the roll.
 
-#### Scenario: Explicit decline
-- **WHEN** both eligible players decline
+#### Scenario: Explicit skip
+- **WHEN** both eligible players skip the roll
 - **THEN** the section ends, nobody pays, and the town bid starts with the original pair
 
 #### Scenario: Skipped by bidding
 - **WHEN** both players may still roll and someone reports the town bid result
 - **THEN** the bot notes that the open rolls were skipped and accepts the result
 
-#### Scenario: One rolls, one declines
-- **WHEN** P1 rolls and P2 declines
+#### Scenario: One rolls, one skips
+- **WHEN** P1 rolls and P2 skips the roll
 - **THEN** the section ends and the town bid starts with the new pair
 
 #### Scenario: Waiting on the other player
-- **WHEN** P1 has rolled and P2 has neither rolled nor declined
+- **WHEN** P1 has rolled and P2 has neither rolled nor skipped
 - **THEN** the section stays open, and the bot's reminder names P2
 
 ### Requirement: Only allowed towns are accepted

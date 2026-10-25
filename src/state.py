@@ -54,9 +54,11 @@ RECORD_FIELDS: dict[str, tuple[str, ...]] = {
     "trade_resumed": (),  # a trade that was closed is opened again, where it stopped
     "town_bid": ("reporter", "winner", "amount", "town"),  # who reported, who won the bid, for how much, and the town chosen
     "color_bid": ("reporter", "winner", "amount", "color"),  # the same for the color ("red" or "blue")
+    "roll": ("player", "bans", "pair"),  # who rolled, the town ids they banned, and the new pair the bot drew
+    "roll_skipped": ("player",),  # a player gives up their remaining rolls
 }
 
-TRADE_TYPES = ("trade_started", "trade_resumed", "town_bid", "color_bid")
+TRADE_TYPES = ("trade_started", "trade_resumed", "town_bid", "color_bid", "roll", "roll_skipped")
 
 # Record type -> the short code written in the tag.
 CODES: dict[str, str] = {
@@ -68,6 +70,8 @@ CODES: dict[str, str] = {
     "trade_resumed": "tu",
     "town_bid": "tb",
     "color_bid": "cb",
+    "roll": "rl",
+    "roll_skipped": "rs",
 }
 _TYPE_OF_CODE = {code: type_ for type_, code in CODES.items()}
 
@@ -129,6 +133,22 @@ def _read_bid(choice_field: str):
     return read
 
 
+def _read_roll(body: str) -> dict:
+    """A roll: the roller is the first mention; the last two `quoted` words are the new pair, any before them the bans."""
+    player = MENTION.search(body)
+    quoted = QUOTED.findall(body)
+    if player is None or len(quoted) < 2:
+        raise RecordError("a roll message must mention the player and give the new pair in `quotes`")
+    return {"player": int(player.group(1)), "bans": tuple(quoted[:-2]), "pair": (quoted[-2], quoted[-1])}
+
+
+def _read_roll_skipped(body: str) -> dict:
+    player = MENTION.search(body)
+    if player is None:
+        raise RecordError("a skipped roll message must mention the player")
+    return {"player": int(player.group(1))}
+
+
 # Record type -> how to read its data out of the text after the tag.
 READERS = {
     "match_started": _read_match_started,
@@ -139,6 +159,8 @@ READERS = {
     "trade_resumed": _read_trade_resumed,
     "town_bid": _read_bid("town"),
     "color_bid": _read_bid("color"),
+    "roll": _read_roll,
+    "roll_skipped": _read_roll_skipped,
 }
 
 
@@ -185,6 +207,12 @@ def describe(record: Record) -> str:
         return f"game {record.game}: trade started, {record.data['pair'][0]} vs {record.data['pair'][1]}"
     if record.type == "trade_resumed":
         return f"game {record.game}: trade reopened"
+    if record.type == "roll":
+        data = record.data
+        bans = f", banning {', '.join(data['bans'])}" if data["bans"] else ""
+        return f"game {record.game}: <@{data['player']}> rolled{bans}, new pair {data['pair'][0]} vs {data['pair'][1]}"
+    if record.type == "roll_skipped":
+        return f"game {record.game}: <@{record.data['player']}> skipped the roll"
     if record.type in ("town_bid", "color_bid"):
         data = record.data
         choice = data.get("town") or data.get("color")

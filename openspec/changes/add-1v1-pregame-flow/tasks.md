@@ -106,11 +106,12 @@ Decided: there is no separate game order. The sequence ends with a `decider` ste
 
 *Paying to reroll the town pair, or skipping the roll.*
 
-- [ ] 10.1 Implement rolls (who is eligible, ban limits, cost, a new pair that excludes banned towns), declining, and the implicit decline when a town bid is reported, with pytest cases (seeded random source) for each scenario of the "A roll costs gold and draws a new pair" and "Each eligible player rolls or declines" requirements
-- [ ] 10.2 Add `/trade roll` and `/trade decline` as thin handlers, including the announcement of the pair, the cost and who may roll
-- [ ] 10.3 Milestone check in the dev guild: roll with bans, decline, skip the roll by bidding, and try rolling twice; the gold and the new pair are right each time
+- [x] 10.0 Add the roll and the skipped-roll record types (a roll and the new pair it drew are one record), read back from the thread, with pytest cases
+- [x] 10.1 Implement rolls (who is eligible, ban limits, cost, a new pair that excludes banned towns), skipping, and the implicit skip when a town bid is reported, with pytest cases (seeded random source) for each scenario of the "A roll costs gold and draws a new pair" and "Each eligible player rolls or skips the roll" requirements
+- [x] 10.2 Add `/trade roll [ban_1] [ban_2]` and `/trade skip-roll` as thin handlers, including the announcement of the pair, the cost and who may roll
+- [x] 10.3 Milestone check in the dev guild: roll with bans, skip the roll with the command, skip it by bidding, and try rolling twice; the gold and the new pair are right each time
 
-Decide: whether a roll and the new pair it draws are one record; whether a declined roll can be undone.
+Decided: a roll and the new pair it draws are one record; a skipped roll can be undone in milestone 11, but only while it is the latest action.
 
 ## 11. Milestone: undo, the summary and several games
 

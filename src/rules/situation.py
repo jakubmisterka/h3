@@ -11,6 +11,7 @@ from rules.catalogue import Catalogue
 from rules.formats import Format, Phase
 from rules.info import find_phase
 from rules.registry import Registry
+from rules.roll_rules import RollRules, effective_roll_rules
 from rules.selection import Action, known_games, next_step, player_steps, replay
 from rules.trade import TradeLog, signed, replay_trades
 from state import Match, MatchError, Record, rebuild
@@ -24,6 +25,10 @@ class Situation:
     actions: list[Action]  # the bans and picks so far (none when the players agreed on the template)
     games: tuple[str, ...]  # the template ids of the games decided so far, in play order
     log: TradeLog  # the trades
+
+    def roll_rules(self, template: str) -> RollRules:
+        """The roll rules of a template in this match's phase."""
+        return effective_roll_rules(self.fmt, self.phase, template)
 
     @property
     def players(self) -> tuple[int, int]:
@@ -47,7 +52,8 @@ def situation_of(registry: Registry, records: list[Record]) -> Situation:
     else:
         actions = replay(phase.steps, phase.pool_ids, match.a, match.b, match.taken)
         games = known_games(phase.steps, phase.pool_ids, actions)
-    log = replay_trades(match.trade_records, games, (match.a, match.b), registry.templates)
+    rules_of = lambda template: effective_roll_rules(fmt, phase, template)  # noqa: E731
+    log = replay_trades(match.trade_records, games, (match.a, match.b), registry.templates, phase.allowed_towns, rules_of)
     return Situation(match, fmt, phase, actions, games, log)
 
 
