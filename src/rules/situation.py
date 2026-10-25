@@ -21,6 +21,7 @@ from state import TRADE_TYPES, Match, MatchError, Record, rebuild, steps_that_co
 # The sentences the bot says. To change a wording, change it here; the logic that decides when is further down.
 
 NOT_IN_THREAD = "Use this command inside a match thread."
+ONLY_GAME_NOTE = "That was the only game of this match. To play another game, start a new match."
 
 
 def unreadable(error: Exception) -> str:
@@ -36,7 +37,7 @@ class Situation:
     match: Match
     fmt: Format
     phase: Phase
-    actions: list[Action]  # the bans and picks so far (none when the players agreed on the template)
+    actions: list[Action]  # the bans and picks so far (none when the template was named at the start)
     games: tuple[str, ...]  # the template ids of the games decided so far, in play order
     log: TradeLog  # the trades
     last_step: Record | None  # the latest step that counts (None: nothing but the start and the coinflip yet)
@@ -44,6 +45,15 @@ class Situation:
     def roll_rules(self, template: str) -> RollRules:
         """The roll rules of a template in this match's phase."""
         return effective_roll_rules(self.fmt, self.phase, template)
+
+    @property
+    def has_selection(self) -> bool:
+        """False when the match started with a named template: one game, and no bans or picks."""
+        return self.match.template is None
+
+    @property
+    def total_games(self) -> int:
+        return self.phase.best_of if self.has_selection else 1
 
     @property
     def players(self) -> tuple[int, int]:
@@ -61,7 +71,7 @@ def situation_of(registry: Registry, records: list[Record]) -> Situation:
     phase = find_phase(fmt, match.phase) if fmt else None
     if phase is None:
         raise MatchError(f"This match is in {match.mode!r}, phase {match.phase!r}, which I no longer have.")
-    if phase.agreed:
+    if match.template is not None:
         actions: list[Action] = []
         games = (match.template,)
     else:
@@ -74,8 +84,8 @@ def situation_of(registry: Registry, records: list[Record]) -> Situation:
 
 
 def _selection_line(s: Situation) -> str:
-    if s.phase.agreed:
-        return "Template Selection: the players agreed on the template"
+    if not s.has_selection:
+        return "Template Selection: none, the template was named when the match started"
     step = next_step(s.phase.steps, s.actions)
     if step is None:
         return "Template Selection: done"
@@ -114,7 +124,7 @@ def overview(s: Situation, templates: Catalogue, towns: Catalogue) -> str:
         f"Coinflip: <@{m.a}> is A (acts first), <@{m.b}> is B",
         _selection_line(s),
     ]
-    lines += [_game_line(s, number, templates, towns) for number in range(1, s.phase.best_of + 1)]
+    lines += [_game_line(s, number, templates, towns) for number in range(1, s.total_games + 1)]
     return "\n".join(lines)
 
 
@@ -127,15 +137,18 @@ def next_steps(s: Situation, templates: Catalogue, towns: Catalogue) -> list[str
 
     It depends on the latest step that counts. After a step of the open trade it is that trade's next section (or its
     lobby settings, when it is done). After a ban or a pick, or before any step, it is the selection's next step, and
-    the games the last step decided can be traded. Where the players agreed on the template there is no selection, so
+    the games the last step decided can be traded. Where the template was named at the start there is no selection, so
     it is the trade of the first game that is not finished.
     """
     trade = s.log.open
     if s.last_step is not None and s.last_step.type in TRADE_TYPES and trade is not None:
-        return [next_message(trade, s.mentions, towns, templates)]
+        messages = [next_message(trade, s.mentions, towns, templates)]
+        if trade.finished and not s.has_selection:
+            messages.append(ONLY_GAME_NOTE)
+        return messages
 
     messages: list[str] = []
-    if s.phase.agreed:
+    if not s.has_selection:
         for number, template in enumerate(s.games, start=1):
             if number not in s.log.trades or not s.log.trades[number].finished:
                 messages.append(_start_hint(number, template, templates))

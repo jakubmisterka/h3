@@ -192,11 +192,12 @@ def test_the_first_step_is_announced_after_the_coinflip(sample, templates, towns
     ]
 
 
-def test_an_agreed_phase_goes_straight_to_the_game(ranked, templates, towns, anna_wins):
+def test_an_agreed_phase_goes_straight_to_the_trade_which_the_bot_opens(ranked, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="JC")
-    assert len(thread.sent) == 6 and thread.sent[-2].startswith("[#2 cf]")
-    assert thread.sent[-1] == "Game 1 is Jebus Cross. Start its trade with /trade start."  # straight to the game
+    assert len(thread.sent) == 7 and thread.sent[4].startswith("[#2 cf]")
+    assert thread.sent[5].startswith("[#3 tr g1] Game 1 (Jebus Cross): the trade starts. Pair: ")
+    assert thread.sent[6].startswith("Game 1 town roll: ")  # no /trade start needed
 
 
 def test_an_agreed_template_is_stated_instead_of_a_selection(ranked, templates, towns, anna_wins):
@@ -285,9 +286,13 @@ def test_only_modes_that_can_start_matches_are_offered(sample, old, templates, t
     assert mode_choices(reg, "old") == []
 
 
-def test_templates_are_offered_only_for_agreed_phases(sample, ranked, templates, towns):
+def test_the_templates_of_the_phase_are_offered_for_every_phase(sample, ranked, templates, towns):
     reg = registry_of(templates, towns, sample, ranked)
-    assert template_choices(reg, "sample-cup", None, "") == []
+    assert template_choices(reg, "sample-cup", None, "") == [
+        ("Jebus Cross", "JC"),
+        ("6lm10a", "6lm10a"),
+        ("h3dm1", "h3dm1"),
+    ]
     assert template_choices(reg, "ranked", None, "") == [("Jebus Cross", "JC"), ("6lm10a", "6lm10a")]
     assert template_choices(reg, "ranked", "Open", "jeb") == [("Jebus Cross", "JC")]
     assert template_choices(reg, "nope", None, "") == []
@@ -331,3 +336,28 @@ def test_status_explains_a_thread_it_cannot_trust(sample, templates, towns, monk
     records = started_match() + [make_record(3, "trade_started", game=1, pair=("castle", "tower"))]
     text = status_of(registry_of(templates, towns, sample), records, monkeypatch)
     assert text.startswith("I can't read this thread:") and "game 1 is not decided" in text
+
+
+# --- a template named where bans and picks would choose --------------------------------------------------------------
+
+
+def test_naming_a_template_starts_a_one_game_match_without_selection(sample, templates, towns, anna_wins):
+    thread = FakeThread()
+    start(interaction(registry_of(templates, towns, sample), thread), "sample-cup", template="Jebus Cross")
+
+    assert parse(thread.sent[0]).data == {"p1": 1, "p2": 2, "mode": "sample-cup", "phase": "Main", "template": "JC"}
+    assert thread.sent[1:4] == ["One game", "The template: Jebus Cross", "The winner of the coinflip will be player A, the other player is B"]
+    assert thread.sent[4] == "[#2 cf] Coinflip: <@1> wins and is A, <@2> is B."
+    assert thread.sent[5].startswith("[#3 tr g1] Game 1 (Jebus Cross): the trade starts. Pair: ")
+    assert thread.sent[6].startswith("Game 1 town roll: ")  # the bot opened the trade, no /trade start needed
+    assert not any("Start its trade" in text for text in thread.sent)
+    assert not any("Step 1" in text or "bans first" in text or text.startswith("Templates:") for text in thread.sent)
+
+
+def test_a_template_outside_the_pool_is_refused_and_no_thread_appears(sample, templates, towns):
+    thread = FakeThread()
+    it = interaction(registry_of(templates, towns, sample), thread)
+    start(it, "sample-cup", template="Diamond")
+    assert "'Diamond' is not allowed in this phase. Allowed: Jebus Cross, 6lm10a, h3dm1" in refusal(it)
+    assert thread.sent == []
+    it.announcement.create_thread.assert_not_awaited()

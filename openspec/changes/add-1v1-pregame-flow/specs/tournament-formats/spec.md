@@ -124,7 +124,7 @@ Each template in the catalogue SHALL state its difficulty. A format SHALL NOT st
 
 #### Scenario: 200% difficulty
 - **WHEN** a game is played on a template with 200% difficulty
-- **THEN** both players start with 0 gold, and the trade is only a toss for color (see the `game-trade` spec)
+- **THEN** both players start with 0 gold, and the trade is only a toss for color (the trade of such a game is a follow-up change)
 
 #### Scenario: Difficulty or gold written in a format file
 - **WHEN** a format file contains a difficulty or a starting gold value

@@ -28,7 +28,7 @@ class Action:
 ###### Wording: what the bot says about the bans and picks #####################################################
 # The sentences the bot says. To change a wording, change it here; the logic that decides when is further down.
 
-NOT_A_STEP = "In this match the players agreed on the template, so there are no bans or picks."
+NOT_A_STEP = "This match has no bans or picks: its template was named when it started."
 _PAST = {"ban": "banned", "pick": "picked"}
 
 

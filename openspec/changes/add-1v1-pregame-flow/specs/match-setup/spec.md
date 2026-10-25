@@ -32,20 +32,36 @@ The bot SHALL ask which phase the match is in only if the chosen mode has more t
 - **WHEN** a player starts a match in a mode with one phase
 - **THEN** the match starts with no phase question
 
-### Requirement: Agreed-template modes need a template
-If the chosen phase lets players agree on the template, the starting player SHALL name the template, and it SHALL be one of the phase's allowed templates.
+### Requirement: A match can start straight at the trade with a named template
+The starting player SHALL be able to name a template when starting a match. The template SHALL be one of the templates the chosen phase uses (its pool). If the phase lets players agree on the template, naming one is required. A named template makes a match of one game: there are no bans or picks, the bot says which template is played and opens the trade of that game itself, so the players do not need a command first, with the roll rules and allowed towns of that phase. When that trade is done there is nothing more to do in the match: the bot says it was the only game, and another game needs a new match.
 
 #### Scenario: Ranked game with a template
 - **WHEN** a player starts a ranked match and names an allowed template
-- **THEN** the match goes straight to the trade for that template
+- **THEN** the match goes straight to the trade for that template, and the bot opens it
 
-#### Scenario: Missing or unknown template
-- **WHEN** the template is missing or not allowed in that phase
+#### Scenario: Missing template where players agree
+- **WHEN** a player starts a match in a phase where the players agree on the template and names none
 - **THEN** the bot refuses and lists the allowed templates
 
-#### Scenario: Template named where bans and picks choose
-- **WHEN** a player names a template in a phase whose templates are chosen by bans and picks
-- **THEN** the bot refuses and says to leave the template out
+#### Scenario: Template named where bans and picks would choose
+- **WHEN** a player starts a match in a phase with bans and picks and names a template from its pool
+- **THEN** the match has that one game, no ban or pick is asked, and the bot opens the trade of the game: the pair is drawn and the first section is announced
+
+#### Scenario: Template not in the pool
+- **WHEN** a player names a template that the phase does not use
+- **THEN** the bot refuses, creates no thread and lists the templates the phase uses
+
+#### Scenario: Bans in a match with a named template
+- **WHEN** a player uses the ban or pick command in a match that started with a named template
+- **THEN** the bot says this match has no bans or picks
+
+#### Scenario: The only game is done
+- **WHEN** the trade of a match with a named template is finished
+- **THEN** after the lobby settings the bot says that was the only game and that another game needs a new match, and the trade cannot be started again
+
+#### Scenario: The overview
+- **WHEN** a player asks for the status of a match with a named template in a best-of-3 phase
+- **THEN** the overview shows one game, the named template, and no template selection
 
 ### Requirement: The bot does the coinflip
 After a match starts, the bot SHALL decide at random which player wins the coinflip and announce the winner in the thread. The winner is A and the other player is B. A acts first in every step that has a first actor.

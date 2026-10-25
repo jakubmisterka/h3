@@ -8,7 +8,7 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 
 ### What a player sees
 
-1. In any channel the bot can see, a player runs `/match start` and names the **mode** (a tournament format, or a ranked game) and the **opponent**. If the mode has several phases (group stage, early knockout, late knockout), the bot also asks which one. If the mode lets players agree on the template themselves (ranked), the player gives the template.
+1. In any channel the bot can see, a player runs `/match start` and names the **mode** (a tournament format, or a ranked game) and the **opponent**. If the mode has several phases (group stage, early knockout, late knockout), the bot also asks which one. If the mode lets players agree on the template themselves (ranked), the player gives the template. The player can also name a **template**: the match then has that one game, skips the bans and picks and goes straight to its trade.
 2. The bot opens a **thread** for the match and flips the coinflip itself. It announces the winner (called **A**; the other player is **B**). A bans first and bids first.
 3. In the thread, players run `/ban` and `/pick` in the order the mode prescribes, with autocomplete of the remaining templates. The bot announces whose turn it is and rejects commands from the wrong player. When the sequence ends, the bot announces the games in play order with their templates.
 4. For each game, the bot walks the players through the **trade** one section at a time. First the bot draws a random pair of towns and announces it with the roll cost and who may roll; each eligible player rolls (banning 0-2 towns, and the bot draws a new pair) or skips, and bidding without a word counts as skipping. Then players bid between themselves in the thread for the town choice and for color, and either player reports each result (winner, amount, choice). The bot keeps the running gold and can undo the last player report; its own random draws are final. Players set the final towns in the lobby by hand.
@@ -39,6 +39,7 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 ### Follow-up ideas (not part of this change)
 
 - **More template facts in `/info`:** a timer, and a link to download the template when it is not available through the game. The template catalogue would get optional fields for them. Also trade rules and allowed towns in the mode view if players want them.
+- **Trade at 200% difficulty:** a game on 200% difficulty is an all-random lobby where nobody has gold, so there is no roll, no town choice and no bidding: the bot tosses a fair coin, and the winner chooses red or blue. The lobby settings then say the game assigns the towns.
 - **Resuming an archived thread:** if Discord archives a quiet match thread, slash commands may not work in it until someone reopens it by hand. The bot could reopen it itself when a command is used there. (A rewind with consent is not a follow-up any more: `/match undo` is part of this change.)
 
 ## Capabilities

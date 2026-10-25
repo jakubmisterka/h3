@@ -28,7 +28,7 @@ async def take_step(interaction: discord.Interaction, do: str, template_text: st
             return
         try:
             s = situation_of(registry, records)
-            if s.phase.agreed:
+            if not s.has_selection:
                 raise MatchError(NOT_A_STEP)
             who = "A" if interaction.user.id == s.match.a else "B"
             check_action(s.phase.steps, s.actions, who, do)
@@ -66,7 +66,7 @@ async def remaining_options(interaction: discord.Interaction, current: str) -> l
     except discord.HTTPException as e:
         logger.warning("Reading thread %s for autocomplete failed: %s", thread.id, e)
         return []
-    if s.phase.agreed:
+    if not s.has_selection:
         return []
     wanted = current.strip().lower()
     entries = [registry.templates.find(template) for template in remaining(s.phase.pool_ids, s.actions)]

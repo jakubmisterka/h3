@@ -54,11 +54,15 @@ A decider step SHALL take the one remaining template without any player acting. 
 - **WHEN** a best-of-2 phase ends after A's pick and B's pick, with no decider step
 - **THEN** the bot announces the two picks as game 1 and game 2
 
-### Requirement: Agreed templates skip selection
-In an agreed-template phase the bot SHALL post the template named at the start and go straight to the trade.
+### Requirement: A named template skips selection
+When a match starts with a named template, whether the phase lets players agree on it or chooses templates by bans and picks, the bot SHALL post the template and go straight to the trade, and SHALL NOT run the bans and picks.
 
 #### Scenario: Ranked
 - **WHEN** a ranked match starts with a template
+- **THEN** no bans or picks are asked and game 1 uses that template
+
+#### Scenario: Bans and picks skipped
+- **WHEN** a match in a phase with bans and picks starts with a template from its pool
 - **THEN** no bans or picks are asked and game 1 uses that template
 
 A ban or pick made by mistake is corrected with the undo of the `match-setup` capability: both players agree to go back to before that record.

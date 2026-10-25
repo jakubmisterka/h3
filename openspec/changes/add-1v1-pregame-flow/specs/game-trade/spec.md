@@ -181,41 +181,22 @@ Either player SHALL be able to report a section's result, with no confirmation f
 - **THEN** it is accepted and posted, naming who reported it
 
 ### Requirement: Final lobby settings
-When the color section is done, the bot SHALL post the lobby settings for the game as one message: game number, template, each player's town, color and gold difference from the starting gold. At 200% difficulty the towns are not listed, because the game assigns them.
+When the color section is done, the bot SHALL post the lobby settings for the game as one message: game number, template, each player's town, color and gold difference from the starting gold.
 
 #### Scenario: Summary
 - **WHEN** the last section of game 1 is reported
 - **THEN** the thread shows template JC, P1 Necropolis with gold +400, and P2 Tower with gold -400, each with their color
 
-### Requirement: At 200% difficulty only the color is tossed
-A game on 200% difficulty is started with all-random towns and nobody has gold, so there is no town roll, no town choice and no bidding. The trade SHALL be one toss section: the bot tosses a fair coin between the players and announces the winner, and the winner chooses red or blue. No gold changes hands.
-
-#### Scenario: Toss for color
-- **WHEN** a 200% game starts its trade and P1 wins the toss and chooses red
-- **THEN** P1 plays red and moves first, P2 plays blue, and no gold is paid
-
-#### Scenario: Fair toss
-- **WHEN** many 200% games are traded
-- **THEN** each player has an equal chance of winning the toss
-
-#### Scenario: No town steps
-- **WHEN** a 200% game starts its trade
-- **THEN** the bot does not ask for a roll, a town or a bid
-
-#### Scenario: Summary
-- **WHEN** the toss section is reported
-- **THEN** the lobby settings show the template, the colors, who moves first, and that the game assigns the towns
-
 ### Requirement: Trade sections come from data
-The list of sections of a trade SHALL come from data, so a template can later add or remove a section. Unless a template names its own, the sections SHALL follow from the difficulty: town roll, town bid and color bid below 200%, and the color toss alone at 200%.
+The list of sections of a trade SHALL come from data, so a template can later add or remove a section. Unless a template names its own, the sections SHALL be town roll, town bid and color bid. (Games on 200% difficulty, whose trade is only a toss for color, are a follow-up change; until then the bot says their trade is not available.)
 
 #### Scenario: Default sections
 - **WHEN** a template does not name sections and the game is on 160% difficulty
 - **THEN** town roll, town bid and color bid are used
 
-#### Scenario: Default sections at 200%
-- **WHEN** a template does not name sections and the game is on 200% difficulty
-- **THEN** only the color toss is used
+#### Scenario: A 200% game
+- **WHEN** a player starts the trade of a game on 200% difficulty
+- **THEN** the bot says the trade of such a game is not available yet and posts nothing
 
 Open question: who bids first in games after the first, including the decider. Provisional default: A bids first in every game. Players mostly agree among themselves, so this will be tuned once the interaction exists.
 

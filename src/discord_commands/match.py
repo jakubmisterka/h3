@@ -7,6 +7,7 @@ from discord_commands.guard import guarded_records
 from discord_commands.permissions import PRIVATE_THREAD, PUBLIC_THREAD, missing, missing_message
 from discord_commands.next_steps import post_next_steps
 from discord_commands.thread_log import ThreadLog
+from discord_commands.trade import open_only_game
 from locks import thread_lock
 from rules.formats import Format, Phase
 from rules.info import phase_choices
@@ -65,10 +66,13 @@ async def begin_match(
     winner, loser = (starter, opponent) if coinflip(starter.id, opponent.id) == starter.id else (opponent, starter)
     flip = await log.post(
         "coinflip",
-        coinflip_announcement(winner.mention, loser.mention, phase),
+        coinflip_announcement(winner.mention, loser.mention, phase, template_named=template_id is not None),
         winner=winner.id,
     )
-    await post_next_steps(thread, registry, [started, flip])
+    if template_id is None:
+        await post_next_steps(thread, registry, [started, flip])
+    else:  # one game and no selection: open its trade, so the players need no command
+        await open_only_game(thread, bot_id, registry, [started, flip])
 
 
 @group.command(name="start", description="Start a match against an opponent")
@@ -76,7 +80,7 @@ async def begin_match(
     mode="The tournament mode",
     opponent="The player you are playing against",
     phase="The phase of the tournament (only for modes with several phases)",
-    template="The template you agreed on (only for modes where players agree on it)",
+    template="Play just this template, straight to the trade (one of the phase's templates)",
 )
 async def start(
     interaction: discord.Interaction,

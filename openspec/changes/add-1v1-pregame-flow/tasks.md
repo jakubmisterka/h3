@@ -124,16 +124,20 @@ Decided: a roll and the new pair it draws are one record; a skipped roll can be 
 - [x] 11.4 Check that games trade one after another (a finished trade stays finished while the next one opens), with a pytest case
 - [x] 11.5 Milestone check in the dev guild with a best-of-3 format: undo a bid, undo a ban with a trade already started, undo a roll, let a request lapse, and confirm from the wrong player; finish game 1 and read the summary, then trade game 2 after a pause with game 1 staying complete; open game 2 while game 1 is half done and reopen game 1
 
-## 12. Milestone: trade at 200%
+## 12. Milestone: start straight at the trade
 
-*The special case: an all-random lobby, no gold, only a toss for color.*
+*Naming a template when starting a match skips the bans and picks: one game, straight to its trade.*
 
-- [ ] 12.1 Implement the 200% color toss section (fair coin from an injectable source, winner chooses red or blue, no gold moves, no roll or town steps), with pytest cases for each scenario of the "At 200% difficulty only the color is tossed" requirement
-- [ ] 12.2 Connect the toss to the trade commands
-- [ ] 12.3 Milestone check in the dev guild with a temporary 200% format file: the toss is announced, only the winner chooses the color, and the summary leaves out towns and gold
+- [x] 12.1 Accept a named template in any phase (it must be in the phase's pool; required where players agree), open the trade of its game when the match starts, and treat a match with a named template as one game with no selection: the situation, the announcements at the start, the refusal of `/ban` and `/pick`, the overview and the choice of a game, with pytest cases for each scenario of the "A match can start straight at the trade with a named template" requirement
+- [x] 12.2 Offer the phase's templates when typing the template option for every phase, and say after the lobby settings that it was the only game
+- [x] 12.3 Milestone check in the dev guild: start a match in the development format naming a template: the bot opens the trade itself, with no command needed; `/ban` is refused; a template outside the pool is refused and no thread appears; after the lobby settings the bot says it was the only game
+
+### Left out of this change
+
+Games on 200% difficulty (an all-random lobby, no gold, only a toss for color) are left to a follow-up OpenSpec change. Until then the bot says the trade of such a game is not available.
 
 ## 13. Wrap-up
 
-- [ ] 13.1 Update `CLAUDE.md` (it still says the bot is a single `/hello` command) for the new commands, modules and directories, and verify it matches `git ls-files src formats data`
-- [ ] 13.2 Run a complete match in the dev guild from `/match start` to the final lobby settings, including a bot restart in the middle and a reopened thread, and record any rule that needed a guess under the specs' Open question entries
-- [ ] 13.3 Run the final `poetry run pytest` and verify it passes before syncing the commands to the prod application
+- [x] 13.1 Update `CLAUDE.md` (it still says the bot is a single `/hello` command) for the new commands, modules and directories, and verify it matches `git ls-files src formats data`
+- [x] 13.2 Run a complete match in the dev guild from `/match start` to the final lobby settings, including a bot restart in the middle and a reopened thread, and record any rule that needed a guess under the specs' Open question entries
+- [x] 13.3 Run the final `poetry run pytest` and verify it passes before syncing the commands to the prod application

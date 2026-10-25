@@ -14,9 +14,10 @@ from rules.registry import Registry
 NOT_IN_A_TEXT_CHANNEL = "Start a match in a normal text channel, not inside a thread."
 
 
-def coinflip_announcement(winner: str, loser: str, phase: Phase) -> str:
-    """What the thread says after the coinflip. `winner` and `loser` are mentions. The winner is A."""
-    if phase.agreed:
+def coinflip_announcement(winner: str, loser: str, phase: Phase, template_named: bool = False) -> str:
+    """What the thread says after the coinflip. `winner` and `loser` are mentions. The winner is A.
+    With a template named at the start there are no bans or picks, so nobody acts first."""
+    if phase.agreed or template_named:
         return f"Coinflip: {winner} wins and is A, {loser} is B."
     first = "bans" if phase.steps[0].do == "ban" else "picks"
     return f"Coinflip: {winner} wins and is A, so {winner} {first} first. {loser} is B."
@@ -24,17 +25,18 @@ def coinflip_announcement(winner: str, loser: str, phase: Phase) -> str:
 
 def rules_announcement(phase: Phase, template_name: str | None, pool_names: list[str]) -> list[str]:
     """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes."""
-    messages = [f"Best of {phase.best_of}"]
-    if phase.agreed:
-        messages.append(f"The players agreed on the template: {template_name}")
+    if template_name is not None:  # no bans or picks: one game, straight to the trade
+        messages = [f"Best of {phase.best_of}" if phase.agreed else "One game"]
+        messages.append(f"The players agreed on the template: {template_name}" if phase.agreed else f"The template: {template_name}")
     else:
+        messages = [f"Best of {phase.best_of}"]
         # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own
         notation, _, meaning = template_selection_line(phase.steps).partition(": ")
         messages.append(f"Template Selection: {notation}" if meaning else notation)
         if meaning:
             messages.append(meaning)
     messages.append("The winner of the coinflip will be player A, the other player is B")
-    if not phase.agreed:
+    if template_name is None:
         messages.append(f"Templates: {', '.join(pool_names)}")
     return messages
 
@@ -94,15 +96,16 @@ def choose_phase(fmt: Format, text: str | None) -> Phase:
 
 
 def choose_template(phase: Phase, text: str | None, templates: Catalogue) -> str | None:
-    """The template id the players agreed on, or None when the phase chooses templates by bans and picks."""
-    if not phase.agreed:
-        if text:
-            raise StartError("The templates of this phase are chosen by bans and picks, so leave the template out.")
-        return None
+    """The template id named for the match, or None when none was named (the phase then chooses by bans and picks).
+
+    Any phase accepts a template from its pool, which makes the match one game with no selection. Where the players
+    agree on the template, naming one is required."""
     allowed = [templates.find(template_id) for template_id in phase.pool_ids]
     allowed_names = ", ".join(entry.name for entry in allowed)
     if not text:
-        raise StartError(f"In this phase the players agree on the template, so name one. Allowed: {allowed_names}.")
+        if phase.agreed:
+            raise StartError(f"In this phase the players agree on the template, so name one. Allowed: {allowed_names}.")
+        return None
     entry = templates.find(text)
     if entry is None or entry not in allowed:
         raise StartError(f"{text!r} is not allowed in this phase. Allowed: {allowed_names}.")
@@ -135,8 +138,6 @@ def template_choices(registry: Registry, mode_text: str, phase_text: str | None,
     try:
         phase = choose_phase(fmt, phase_text)
     except StartError:
-        return []
-    if not phase.agreed:
         return []
     wanted = typed.strip().lower()
     entries = [registry.templates.find(template_id) for template_id in phase.pool_ids]

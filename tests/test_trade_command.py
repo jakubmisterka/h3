@@ -621,3 +621,72 @@ def test_games_are_traded_one_after_another_and_a_finished_trade_stays_finished(
     assert "Game 1: Jebus Cross, trade done, gold difference <@1> +900 / <@2> -900" in status
     assert "Game 2: Diamond, trade open, next: town bid" in status
     assert "game 1 is finished" in told(start(registry, thread, "1"))
+
+
+# --- a match that started with a named template -----------------------------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def one_game(registry):
+    """A match in the best-of-3 mode that started by naming Jebus Cross, so it has one game and no selection."""
+    thread = make_thread(960)
+    fmt = registry.formats["bo3-cup"]
+    asyncio.run(match.begin_match(thread, BOT, registry, fmt, fmt.phases[0], "JC", ANNA, BORIS))
+    return thread
+
+
+def test_the_bot_opens_the_trade_of_the_only_game_itself(registry, one_game):
+    assert "[#3 tr g1] Game 1 (Jebus Cross): the trade starts." in texts(one_game)[-2]
+    assert texts(one_game)[-1].startswith("Game 1 town bid: Necropolis vs Tower.")
+    assert "already open" in told(start(registry, one_game))
+    assert "games 1 to 1, not 2" in told(start(registry, one_game, "2"))
+
+
+def test_a_game_that_has_no_trade_yet_gets_no_trade_if_it_cannot_be_opened(registry, templates, towns, monkeypatch):
+    """A 200% game has no trade yet: the thread says so and nothing else is posted."""
+    from rules.catalogue import TEMPLATE_FIELDS, parse_catalogue
+
+    impossible = parse_catalogue(
+        [{"id": "JC", "name": "Jebus Cross", "difficulty": 200}] + [{"id": t.id, "name": t.name, "difficulty": 160} for t in templates.entries if t.id != "JC"],
+        "templates",
+        TEMPLATE_FIELDS,
+    )
+    from rules.registry import Registry
+
+    other = Registry(registry.towns, impossible, registry.formats)
+    thread = make_thread(961)
+    fmt = other.formats["bo3-cup"]
+    asyncio.run(match.begin_match(thread, BOT, other, fmt, fmt.phases[0], "JC", ANNA, BORIS))
+    assert texts(thread)[-1] == "The trade of a 200% game (only a toss for color) is not available yet."
+    assert "trade_started" not in [r.type for r in map(parse, texts(thread)) if r is not None]
+
+
+def test_bans_and_picks_are_refused_in_it(registry, one_game):
+    before = texts(one_game)
+    for command in (selection.ban, selection.pick):
+        it = run(command, registry, one_game, ANNA, "JC")
+        assert "no bans or picks" in told(it)
+    assert texts(one_game) == before
+
+
+def test_the_overview_shows_one_game_and_no_selection(registry, one_game):
+    it = interaction(registry, one_game, ANNA)
+    asyncio.run(match.status.callback(it))
+    text = told(it)
+    assert "Template Selection: none, the template was named when the match started" in text
+    assert "Game 1: Jebus Cross, trade open, next: town bid Necropolis vs Tower" in text
+    assert "Game 2" not in text
+
+
+def test_when_the_trade_is_done_the_bot_says_it_was_the_only_game(registry, one_game):
+    report(registry, one_game, winner=ANNA, amount=2100, choice="Necropolis")
+    report(registry, one_game, winner=BORIS, amount=3000, choice="red", user=BORIS)
+    assert texts(one_game)[-2].startswith("Game 1 lobby settings - Jebus Cross")
+    assert texts(one_game)[-1] == "That was the only game of this match. To play another game, start a new match."
+    assert "all the games decided so far are finished" in told(start(registry, one_game))
+    assert "game 1 is finished" in told(start(registry, one_game, "1"))
+
+
+def test_the_note_about_the_only_game_comes_only_at_the_end(registry, one_game):
+    report(registry, one_game, winner=ANNA, amount=2100, choice="Necropolis")
+    assert not any("only game" in text for text in texts(one_game))

@@ -23,6 +23,7 @@ from rules.trade import (
     REPORTED_REPLY,
     ROLLED_REPLY,
     SKIPPED_REPLY,
+    Trade,
     TradeError,
     check_startable,
     choose_game,
@@ -59,6 +60,45 @@ async def load(interaction: discord.Interaction, records) -> Situation | None:
         return None
 
 
+def prepare_opening(registry, s: Situation, number: int) -> tuple[str, Trade]:
+    """What opening the trade of a game needs: "start" or "resume", and the trade. Raises when it cannot be opened.
+    Nothing is posted yet, so a refusal leaves the thread as it was."""
+    kind = check_startable(s.log, number)
+    if kind == "resume":
+        return kind, s.log.trades[number]
+    pair = draw_pair(s.phase.allowed_towns, random_source)
+    rules = s.roll_rules(s.games[number - 1])
+    return kind, new_trade(number, s.games, pair, s.players, registry.templates, rules)
+
+
+async def post_opening(thread, bot_id: int, registry, s: Situation, records, number: int, opening: tuple[str, Trade]) -> None:
+    """Open the trade of a game in the thread: its record, a note if another trade is closed, and what comes next."""
+    kind, trade = opening
+    log = ThreadLog(thread, bot_id)
+    log.last_n = records[-1].n
+    text = opening_line(trade, kind == "resume", s.mentions, registry.towns, registry.templates)
+    if kind == "start":
+        posted = await log.post("trade_started", text, game=number, pair=trade.pair)
+    else:
+        posted = await log.post("trade_resumed", text, game=number)
+    previous = s.log.open
+    if previous is not None and not previous.finished:
+        await thread.send(closed_note(previous.game))
+    await post_next_steps(thread, registry, records + [posted])
+
+
+async def open_only_game(thread, bot_id: int, registry, records) -> None:
+    """For a match that started with a named template: open the trade of its one game, so nobody needs a command.
+    Where that is not possible (a 200% game has no trade yet) the thread says so."""
+    try:
+        s = situation_of(registry, records)
+        opening = prepare_opening(registry, s, 1)
+    except REFUSALS as e:
+        await thread.send(str(e))
+        return
+    await post_opening(thread, bot_id, registry, s, records, 1, opening)
+
+
 @group.command(name="start", description="Open the trade of a game (a number or a template; leave out for the next game)")
 @app_commands.describe(game="The game number (1, 2, ...) or its template. Leave out for the first game not finished")
 async def start(interaction: discord.Interaction, game: str | None = None) -> None:
@@ -76,29 +116,13 @@ async def start(interaction: discord.Interaction, game: str | None = None) -> No
         if s is None:
             return
         try:
-            number = choose_game(game, s.games, s.phase.best_of, s.log, registry.templates)
-            kind = check_startable(s.log, number)
-            if kind == "start":
-                pair = draw_pair(s.phase.allowed_towns, random_source)
-                rules = s.roll_rules(s.games[number - 1])
-                trade = new_trade(number, s.games, pair, s.players, registry.templates, rules)  # refuses before anything is posted
-            else:
-                trade = s.log.trades[number]
+            number = choose_game(game, s.games, s.total_games, s.log, registry.templates)
+            opening = prepare_opening(registry, s, number)
         except REFUSALS as e:
             await interaction.followup.send(str(e))
             return
 
-        log = ThreadLog(thread, interaction.client.user.id)
-        log.last_n = records[-1].n
-        text = opening_line(trade, kind == "resume", s.mentions, registry.towns, registry.templates)
-        if kind == "start":
-            posted = await log.post("trade_started", text, game=number, pair=trade.pair)
-        else:
-            posted = await log.post("trade_resumed", text, game=number)
-        previous = s.log.open
-        if previous is not None and not previous.finished:
-            await thread.send(closed_note(previous.game))
-        await post_next_steps(thread, registry, records + [posted])
+        await post_opening(thread, interaction.client.user.id, registry, s, records, number, opening)
         await interaction.followup.send(opened_reply(number))
 
 
