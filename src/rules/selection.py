@@ -134,3 +134,15 @@ def after_a_step(
     else:
         messages.append("The bans and picks are done. The games:\n" + games_message(games(steps, pool, actions), templates))
     return messages
+
+
+def known_games(steps: tuple[Step, ...], pool: tuple[str, ...], actions: list[Action]) -> tuple[str, ...]:
+    """The games whose template is already decided, in play order.
+
+    The k-th game is known as soon as the k-th pick is made. The decider's game (the last one) is only known
+    once every ban and pick is done. So a trade can start while the selection is still going.
+    """
+    known = [action.template for action in actions if action.do == "pick"]
+    if next_step(steps, actions) is None and has_decider(steps):
+        known.append(remaining(pool, actions)[0])
+    return tuple(known)

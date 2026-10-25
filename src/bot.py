@@ -8,6 +8,7 @@ from config import load_config
 from discord_commands import match
 from discord_commands.info import info as info_command
 from discord_commands.selection import ban, pick
+from discord_commands.trade import group as trade_group
 from rules.registry import Registry, RegistryError, load_registry
 
 log = logging.getLogger("h3bot")
@@ -26,6 +27,7 @@ class H3Bot(discord.Client):
         self.tree.add_command(info_command)
         self.tree.add_command(ban)
         self.tree.add_command(pick)
+        self.tree.add_command(trade_group)
 
     async def setup_hook(self) -> None:
         if self.test_guild_id:

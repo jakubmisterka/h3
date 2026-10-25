@@ -4,9 +4,8 @@ import discord
 from discord import app_commands
 
 from discord_commands.guard import guarded_records
-from discord_commands.selection import post_next
-from rules.selection import games_message
 from discord_commands.permissions import PRIVATE_THREAD, PUBLIC_THREAD, missing, missing_message
+from discord_commands.selection import post_next
 from discord_commands.thread_log import ThreadLog
 from rules.formats import Format, Phase
 from rules.info import phase_choices
@@ -22,10 +21,15 @@ from rules.start import (
     rules_announcement,
     template_choices,
 )
-from state import describe_match, describe_records, rebuild
+from rules.selection import SelectionError, games_message
+from rules.situation import overview, situation_of
+from rules.trade import TradeError
+from state import MatchError, RecordError, describe_records
 
 # Players are often slow, so keep the thread open for a week before Discord archives it.
 THREAD_ARCHIVE_MINUTES = 10080
+
+MAX_REPLY = 1900  # Discord allows 2000 characters in a message
 
 group = app_commands.Group(name="match", description="Pre-game for a match")
 
@@ -68,6 +72,7 @@ async def begin_match(
     if phase.agreed:
         # no bans or picks: the template the players named is the game
         await thread.send(games_message((template_id,), registry.templates))
+        await thread.send("Start its trade with /trade start.")
     else:
         await post_next(thread, registry, phase, winner.mention, loser.mention, [])
 
@@ -168,5 +173,13 @@ async def status(interaction: discord.Interaction) -> None:
     records = await guarded_records(interaction)  # replies to the user itself when it says no
     if records is None:
         return
-    summary = describe_match(rebuild(records))  # the guard has already checked that this works
-    await interaction.followup.send(f"{summary}\n\n{describe_records(records)}")
+    registry = interaction.client.registry
+    try:
+        summary = overview(situation_of(registry, records), registry.templates, registry.towns)
+    except (MatchError, RecordError, SelectionError, TradeError) as e:
+        await interaction.followup.send(f"I can't read this thread: {e}")
+        return
+    listing = describe_records(records)
+    # A long match has many records and Discord limits a message, so the list is left out when it does not fit.
+    text = f"{summary}\n\n{listing}" if len(summary) + len(listing) < MAX_REPLY else summary
+    await interaction.followup.send(text)

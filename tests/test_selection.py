@@ -9,6 +9,7 @@ from rules.selection import (
     choose_available,
     games,
     has_decider,
+    known_games,
     next_step,
     remaining,
     replay,
@@ -240,3 +241,39 @@ def test_a_best_of_three_lists_every_game_in_order(templates):
         "Game 2: Diamond",
         "Game 3: h3dm1",
     ]
+
+
+# --- the games known before the selection is over ------------------------------------------------------------------
+
+BO3 = sequence("A-ban B-ban A-pick B-pick decider")
+FIVE = ("JC", "6lm10a", "h3dm1", "Diamond", "Sapphire")
+
+
+def test_no_game_is_known_before_the_first_pick():
+    assert known_games(BO3, FIVE, []) == ()
+    assert known_games(BO3, FIVE, [Action("A", "ban", "6lm10a"), Action("B", "ban", "Sapphire")]) == ()
+
+
+def test_a_game_is_known_as_soon_as_it_is_picked():
+    actions = [Action("A", "ban", "6lm10a"), Action("B", "ban", "Sapphire"), Action("A", "pick", "JC")]
+    assert known_games(BO3, FIVE, actions) == ("JC",)
+    assert known_games(BO3, FIVE, actions + [Action("B", "pick", "Diamond")]) == ("JC", "Diamond", "h3dm1")
+
+
+def test_the_decider_game_is_known_only_when_the_selection_is_done():
+    actions = [Action("A", "ban", "6lm10a"), Action("B", "ban", "Sapphire"), Action("A", "pick", "JC")]
+    assert "h3dm1" not in known_games(BO3, FIVE, actions)
+
+
+def test_known_games_end_up_the_same_as_the_games_of_a_finished_selection():
+    actions = [
+        Action("A", "ban", "6lm10a"),
+        Action("B", "ban", "Sapphire"),
+        Action("A", "pick", "JC"),
+        Action("B", "pick", "Diamond"),
+    ]
+    assert known_games(BO3, FIVE, actions) == games(BO3, FIVE, actions)
+
+
+def test_without_a_decider_the_picks_are_the_known_games():
+    assert known_games(NO_DECIDER, ("JC", "Diamond"), [Action("A", "pick", "JC")]) == ("JC",)

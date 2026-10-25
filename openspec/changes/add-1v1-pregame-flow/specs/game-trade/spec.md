@@ -6,16 +6,44 @@ Covers the trade that players do before each game: rolling and banning towns, bi
 
 ## ADDED Requirements
 
-### Requirement: Each game has its own trade
-Once the games are known, each game SHALL have its own trade that can be done independently of the others, in any order and at any time. The trade command SHALL target the first game whose trade is not finished unless the player names a game.
+### Requirement: Each game has its own trade, one open at a time
+A game's trade SHALL be able to start as soon as the game's template is known: a game that has been picked, or the decider's game once the bans and picks are done. This SHALL be possible while selection is still going on. A player starts a trade by naming the game (its number) or its template; without a name the bot SHALL take the first known game whose trade is not finished. Only one trade SHALL be open at a time. Starting a trade SHALL close the open one, which keeps what was recorded and counts as incomplete. Starting a trade that was started before SHALL reopen it where it stopped, with the same town pair and gold. Reports, rolls, declines and undo SHALL act on the open trade. A trade that is finished SHALL NOT be started again. Each game's trade SHALL start from its own starting gold; nothing carries over between games.
+
+#### Scenario: Start while selection goes on
+- **WHEN** A has picked JC in a best-of-3 and the bans and picks are not done
+- **THEN** a player can start the trade of game 1, and the trade begins with the template, the gold and the first section
+
+#### Scenario: Game not known yet
+- **WHEN** a player starts the trade of the decider's game while bans and picks are still going
+- **THEN** the bot refuses and says the template is not decided yet
 
 #### Scenario: Continue later
 - **WHEN** the trade of game 1 is done and players come back next day
-- **THEN** the bot offers the trade of game 2 without redoing game 1
+- **THEN** starting a trade without a name offers game 2, and game 1 stays finished
 
-#### Scenario: Starting early
-- **WHEN** selection is done and players start bidding for game 1 right away
-- **THEN** that trade proceeds while the trades of the other games wait
+#### Scenario: Naming the game by its template
+- **WHEN** a player starts a trade naming Jebus Cross, which is game 2
+- **THEN** the trade of game 2 is opened
+
+#### Scenario: Opening a second trade
+- **WHEN** the trade of game 1 is open and a player starts the trade of game 2
+- **THEN** game 1's trade is closed as incomplete and game 2's trade is the open one, and the bot says so
+
+#### Scenario: Reopening a trade
+- **WHEN** a player starts the trade of game 1 again after opening game 2
+- **THEN** game 1's trade continues where it stopped, with the same pair and the same gold, and game 2's trade is closed as incomplete
+
+#### Scenario: No open trade
+- **WHEN** a player reports a result and no trade is open
+- **THEN** the bot refuses and says to start a trade first
+
+#### Scenario: Finished trade
+- **WHEN** a player starts the trade of a game that is finished
+- **THEN** the bot refuses and says it is finished
+
+#### Scenario: Several trades in the overview
+- **WHEN** a player asks for the status of the match
+- **THEN** the bot lists the next selection step and every started trade with its section and gold, and marks the open one
 
 ### Requirement: The trade runs in sections
 The trade of a game SHALL run in sections in a fixed order: town roll, town bid, color bid. Each section starts with a bot message that says what to do, who starts and the minimum raise (100 gold). The bot SHALL not accept a result for a section until the sections before it are done.
@@ -123,15 +151,23 @@ In the color section the players SHALL bid in the same way. Either player SHALL 
 - **THEN** P2 pays 3000 to P1, P2 plays red and moves first
 
 ### Requirement: The bot keeps the gold
-The bot SHALL keep each player's gold from the starting gold of the game's difficulty, with every payment going to the opponent. After each report it SHALL post the current gold of both players.
+The bot SHALL keep each player's gold from the starting gold of the game's difficulty, with every payment going to the opponent. Gold moves in steps of 100: every payment (a bid, a roll cost) SHALL be a whole number of hundreds, 0 meaning nobody bid. A format SHALL NOT set a roll cost that is not a whole number of hundreds. The gold is stated in full when a trade starts (each player's starting gold) and is what the checks use. After that, because players think in differences, the thread SHALL show the gold as the difference from the starting gold, for both players, after each report and when a trade is reopened.
 
 #### Scenario: Worked example
 - **WHEN** the game is on 160% difficulty (10000 gold each), P1 pays a 500 roll, P1 pays 2100 for the town, and P2 pays 3000 for color
-- **THEN** P1 ends with 10400 and P2 with 9600
+- **THEN** P1 ends with 10400 and P2 with 9600, shown as P1 +400 and P2 -400
 
-#### Scenario: Gold shown after each section
+#### Scenario: Not a whole hundred
+- **WHEN** a player reports a bid of 2150
+- **THEN** the bot refuses and says gold moves in steps of 100
+
+#### Scenario: Difference shown after each section
 - **WHEN** a section is reported
-- **THEN** the thread shows both players' gold
+- **THEN** the thread shows how far each player is from the starting gold, for example "P1 -2100, P2 +2100"
+
+#### Scenario: Starting gold shown at the start
+- **WHEN** a trade starts
+- **THEN** the thread shows each player's starting gold, for example 10000 each at 160% difficulty
 
 ### Requirement: Either player may report, and undo
 Either player SHALL be able to report a section's result, with no confirmation from the other. Either player SHALL be able to undo the most recent player report (a bid result, a town or color choice) in the same game's trade. Random results drawn by the bot (a pair, a toss) and the rolls that caused them are final and SHALL NOT be undone.
@@ -153,11 +189,11 @@ Either player SHALL be able to report a section's result, with no confirmation f
 - **THEN** the bot says there is nothing to undo
 
 ### Requirement: Final lobby settings
-When the color section is done, the bot SHALL post the lobby settings for the game: game number, template, each player's town, color and starting gold, and who moves first. At 200% difficulty the towns are not listed, because the game assigns them.
+When the color section is done, the bot SHALL post the lobby settings for the game as one message: game number, template, each player's town, color and gold difference from the starting gold. At 200% difficulty the towns are not listed, because the game assigns them.
 
 #### Scenario: Summary
 - **WHEN** the last section of game 1 is reported
-- **THEN** the thread shows template JC, P1 Necropolis 10400, P2 Tower 9600 and who plays red
+- **THEN** the thread shows template JC, P1 Necropolis with gold +400, and P2 Tower with gold -400, each with their color
 
 ### Requirement: At 200% difficulty only the color is tossed
 A game on 200% difficulty is started with all-random towns and nobody has gold, so there is no town roll, no town choice and no bidding. The trade SHALL be one toss section: the bot tosses a fair coin between the players and announces the winner, and the winner chooses red or blue. No gold changes hands.
@@ -193,4 +229,4 @@ Open question: who bids first in games after the first, including the decider. P
 
 Open question: details of the roll. Provisional defaults: bans are chosen from the current pair; the new pair is drawn from all allowed towns that are not banned, so an unbanned town of the old pair may come back; bans stay in force for the rest of that game's roll section; the roll cost is paid gold, so it also reduces what a player can bid.
 
-Open question: whether bids must be multiples of 100, and who chooses when nobody bids.
+Open question: who chooses when nobody bids.

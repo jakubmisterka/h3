@@ -18,6 +18,7 @@ BOT = 7
 
 class FakeThread:
     def __init__(self):
+        self.id = 1
         self.sent = []
         self.add_user = AsyncMock()
         self.mention = "<#thread>"
@@ -194,8 +195,8 @@ def test_the_first_step_is_announced_after_the_coinflip(sample, templates, towns
 def test_an_agreed_phase_goes_straight_to_the_game(ranked, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="JC")
-    assert len(thread.sent) == 6 and thread.sent[-2].startswith("[#2 cf]")
-    assert thread.sent[-1] == "Game 1: Jebus Cross"  # straight to the game, no bans or picks
+    assert len(thread.sent) == 7 and thread.sent[-3].startswith("[#2 cf]")
+    assert thread.sent[-2:] == ["Game 1: Jebus Cross", "Start its trade with /trade start."]  # straight to the game
 
 
 def test_an_agreed_template_is_stated_instead_of_a_selection(ranked, templates, towns, anna_wins):
@@ -295,18 +296,38 @@ def test_templates_are_offered_only_for_agreed_phases(sample, ranked, templates,
 # --- /match status ---------------------------------------------------------------------------------------
 
 
-def test_status_shows_the_match_and_the_records(monkeypatch):
-    records = [
-        make_record(1, "match_started", p1=1, p2=2, mode="sample-cup", phase="Main", template=None),
-        make_record(2, "coinflip", winner=2),
-    ]
-
+def status_of(registry, records, monkeypatch):
     async def guarded(interaction):
         return records
 
     monkeypatch.setattr(match, "guarded_records", guarded)
-    it = interaction(None, None)
+    it = interaction(registry, None)
     asyncio.run(match.status.callback(it))
-    text = it.followup.send.await_args.args[0]
+    return it.followup.send.await_args.args[0]
+
+
+def started_match():
+    return [
+        make_record(1, "match_started", p1=1, p2=2, mode="sample-cup", phase="Main", template=None),
+        make_record(2, "coinflip", winner=2),
+    ]
+
+
+def test_status_shows_the_match_the_selection_and_the_records(sample, templates, towns, monkeypatch):
+    text = status_of(registry_of(templates, towns, sample), started_match(), monkeypatch)
     assert "Coinflip: <@2> is A (acts first), <@1> is B" in text
+    assert "Template Selection: step 1 of 2, <@2> bans" in text
+    assert "Game 1: not decided yet" in text
     assert "I read 2 record(s) in this thread:" in text
+
+
+def test_status_leaves_the_record_list_out_when_it_would_not_fit(sample, templates, towns, monkeypatch):
+    monkeypatch.setattr(match, "MAX_REPLY", 50)
+    text = status_of(registry_of(templates, towns, sample), started_match(), monkeypatch)
+    assert "Coinflip:" in text and "I read" not in text
+
+
+def test_status_explains_a_thread_it_cannot_trust(sample, templates, towns, monkeypatch):
+    records = started_match() + [make_record(3, "trade_started", game=1, pair=("castle", "tower"))]
+    text = status_of(registry_of(templates, towns, sample), records, monkeypatch)
+    assert text.startswith("I can't read this thread:") and "game 1 is not decided" in text

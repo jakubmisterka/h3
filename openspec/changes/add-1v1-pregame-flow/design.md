@@ -97,9 +97,10 @@ Starting gold is not in any file. A small table in the rules layer maps a templa
 | `/match start mode opponent [phase] [template]` | any channel | creates the thread there, coinflip |
 | `/ban template`, `/pick template` | match thread | selection step, autocomplete from remaining pool |
 | `/trade roll [bans]`, `/trade decline` | match thread | roll the town pair (bot draws the new pair), or skip the roll |
-| `/trade report ...` | match thread | reports a bid result of the current trade section |
+| `/trade start [game]` | match thread | opens the trade of a game, named by its number or its template (without a name: the first known game whose trade is not finished); closes the open trade as incomplete |
+| `/trade report ...` | match thread | reports a bid result of the open trade's current section |
 | `/trade undo` | match thread | cancels the latest trade report |
-| `/trade status` | match thread | shows section, gold, what is expected |
+| `/match status` | match thread | the records, the next selection step, and every started trade with its section and gold |
 
 `phase` is shown only when the chosen mode has several phases; because a slash command's options cannot appear conditionally, the option is optional and the bot answers with a follow-up prompt asking for it when it is missing and needed. The fields of `/trade report` depend on the section (roll, town, color), so they are optional and checked by the rules function. The exact set of fields is settled when the first version is tried in the dev guild.
 
@@ -124,6 +125,16 @@ Gold is stored as integers; a payment moves an amount from one player to the oth
 ### 6. Concurrency
 
 Two commands can arrive in one thread at nearly the same time. Per thread, handlers run under an in-process lock (a dict of `asyncio.Lock` keyed by thread id), and each handler rebuilds the match after taking the lock. The bot runs as one process, so this is enough.
+
+### 7. Trades: one open at a time, the game in the tag
+
+A game's trade can start as soon as its template is known: the k-th game is known when the k-th pick is made, and the decider's game once selection has ended. So a trade can start while selection goes on, and its records interleave with the bans and picks in the same thread. Everything stays in one numbered sequence (a deleted message is detected anywhere), and the records that belong to a game carry its number in the tag, for example `[#7 tr g1]` (trade of game 1 started) and `[#8 tb g1]` (its town bid). The plain messages of a trade start with "Game 1:", so players can see which trade they are in.
+
+Only one trade is open at a time. Starting a trade (`/trade start`, naming the game or its template) closes the open one: it keeps its records and counts as incomplete. Starting it again reopens it where it stopped, with the same pair and gold, because random results are final. The records say which trade is open: the latest trade start or reopening. Reporting, rolling, declining and undoing act on the open trade only, so those commands need no game option. A finished trade cannot be started again.
+
+After an action the bot announces the next step of that action's own context only (the next ban, or the next section of the open trade). `/match status` is the one place that lists everything open: the next selection step and every started trade with its section and gold.
+
+*Alternative:* several trades open at once, each command naming its game. Rejected by the maintainer: players who start a second trade have almost certainly finished the first elsewhere, and two open trades only invite reports to the wrong game.
 
 ## Risks / Trade-offs
 

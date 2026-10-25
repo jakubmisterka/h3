@@ -254,3 +254,90 @@ def test_the_match_is_described_in_words():
         "Mode sample-cup, phase Main",
         "Coinflip: <@222> is A (acts first), <@111> is B",
     ]
+
+
+# --- the game marker in the tag ----------------------------------------------------------------------------
+
+
+def test_a_record_of_a_game_shows_the_game_in_its_tag():
+    assert tag(make_record(7, "coinflip", game=1, winner=1)) == "[#7 cf g1]"
+    assert tag(make_record(7, "coinflip", winner=1)) == "[#7 cf]"
+
+
+def test_the_game_marker_is_read_back():
+    record = parse("[#7 cf g2] Coinflip: <@1> wins")
+    assert (record.n, record.game, record.data) == (7, 2, {"winner": 1})
+
+
+def test_a_record_without_a_marker_belongs_to_no_game():
+    assert parse("[#7 cf] Coinflip: <@1> wins").game is None
+
+
+def test_the_same_data_in_another_game_is_another_record():
+    assert make_record(1, "coinflip", game=1, winner=1) != make_record(1, "coinflip", game=2, winner=1)
+
+
+def test_a_malformed_game_marker_is_not_a_record():
+    assert parse("[#7 cf g] Coinflip: <@1> wins") is None
+    assert parse("[#7 cf gx] Coinflip: <@1> wins") is None
+    assert parse("[#7 cf g1 g2] Coinflip: <@1> wins") is None
+
+
+# --- the trade records --------------------------------------------------------------------------------------------
+
+
+def test_the_trade_started_record_reads_the_pair():
+    record = parse("[#5 tr g1] Game 1: the trade starts. Pair: Necropolis (`necropolis`) vs Tower (`tower`)")
+    assert record == make_record(5, "trade_started", game=1, pair=("necropolis", "tower"))
+
+
+def test_a_trade_started_record_without_two_towns_is_reported():
+    with pytest.raises(RecordError, match="two towns"):
+        parse("[#5 tr g1] the trade starts with `necropolis`")
+
+
+def test_a_reopened_trade_needs_no_data():
+    assert parse("[#6 tu g1] Game 1 continues") == make_record(6, "trade_resumed", game=1)
+
+
+def test_a_town_bid_record_reads_reporter_winner_amount_and_town():
+    record = parse("[#7 tb g2] <@1> reports: <@2> won the town bid at `2100` gold and chose Tower (`tower`)")
+    assert record == make_record(7, "town_bid", game=2, reporter=1, winner=2, amount=2100, town="tower")
+
+
+def test_a_color_bid_record_reads_the_color():
+    record = parse("[#8 cb g2] <@1> reports: <@1> won the color bid at `0` gold and chose `red`")
+    assert record == make_record(8, "color_bid", game=2, reporter=1, winner=1, amount=0, color="red")
+
+
+def test_a_bid_record_with_a_damaged_amount_is_reported():
+    with pytest.raises(RecordError, match="whole number"):
+        parse("[#7 tb g2] <@1> reports: <@2> won at `lots` and chose `tower`")
+    with pytest.raises(RecordError, match="reporter and the winner"):
+        parse("[#7 tb g2] <@1> reports at `2100` and chose `tower`")
+
+
+def test_a_trade_record_is_described_with_its_game():
+    assert describe(make_record(5, "trade_started", game=1, pair=("necropolis", "tower"))) == "game 1: trade started, necropolis vs tower"
+    assert describe(make_record(7, "town_bid", game=2, reporter=1, winner=2, amount=2100, town="tower")) == (
+        "game 2: <@2> won the town bid at 2100, chose tower"
+    )
+
+
+def test_the_trade_records_are_kept_in_order_by_the_rebuilt_match():
+    trade = [
+        make_record(3, "trade_started", game=1, pair=("castle", "tower")),
+        make_record(4, "town_bid", game=1, reporter=111, winner=111, amount=100, town="castle"),
+    ]
+    assert rebuild(clean_run() + trade).trade_records == tuple(trade)
+
+
+def test_a_trade_record_without_a_game_is_reported():
+    with pytest.raises(RecordError, match="does not say which game"):
+        rebuild(clean_run() + [make_record(3, "trade_started", pair=("castle", "tower"))])
+
+
+def test_a_trade_before_the_coinflip_is_reported():
+    records = [started(111, 222), make_record(2, "trade_started", game=1, pair=("castle", "tower")), make_record(3, "coinflip", winner=222)]
+    with pytest.raises(RecordError, match="before the coinflip"):
+        rebuild(records)
