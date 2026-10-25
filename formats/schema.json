@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tournament format",
+  "description": "The shape of a format file. Rules that compare values (pool size, number of games, known templates and towns) are checked in the code, not here.",
+  "type": "object",
+  "required": ["id", "name", "templates", "phases"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Lowercase words joined by dashes, for example sample-cup. Must match the file name."
+    },
+    "name": { "type": "string", "minLength": 1, "description": "The name players see, for example Sample Cup." },
+    "status": {
+      "enum": ["active", "archived"],
+      "description": "Archived formats stay in the repository but cannot start new matches. Default: active."
+    },
+    "thread_visibility": {
+      "enum": ["public", "private"],
+      "description": "Who can read the match thread. Default: public."
+    },
+    "roll_rules": {
+      "$ref": "#/$defs/rollRules",
+      "description": "Roll rules for every template of the tournament. Leave out what you do not change: the defaults apply."
+    },
+    "allowed_towns": {
+      "$ref": "#/$defs/townList",
+      "description": "Towns players can get in every phase, unless a phase states its own list. Leave it out to allow every town."
+    },
+    "templates": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/templateEntry" },
+      "description": "Every template used in the tournament, each once. Write a plain id, or an object to give the template settings of its own in all phases."
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/phase" },
+      "description": "One or more phases, for example group stage and knockout."
+    }
+  },
+  "$defs": {
+    "townList": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "type": "string" },
+      "description": "Town ids from data/towns.json. At least two, because the bot draws a pair of different towns from them."
+    },
+    "rollRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "roll_cost": { "type": "integer", "minimum": 0, "multipleOf": 100, "description": "Gold paid to roll the town pair, in whole hundreds (gold moves in steps of 100). Default: 500." },
+        "rolls_per_player": { "type": "integer", "minimum": 0, "description": "Rolls each player may use. Default: 1." },
+        "max_roll_bans": { "type": "integer", "minimum": 0, "description": "Towns a player may ban when rolling. Default: 2." }
+      }
+    },
+    "templateEntry": {
+      "description": "A template id from data/templates.json, or an object with the id and settings for this template. Settings written here win over the ones written for the whole tournament, field by field.",
+      "if": { "type": "object" },
+      "then": {
+        "required": ["template"],
+        "additionalProperties": false,
+        "properties": {
+          "template": { "type": "string", "minLength": 1, "description": "Template id from data/templates.json." },
+          "roll_rules": { "$ref": "#/$defs/rollRules" }
+        }
+      },
+      "else": { "type": "string", "minLength": 1 }
+    },
+    "phase": {
+      "type": "object",
+      "required": ["name", "best_of", "template_selection"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "best_of": {
+          "enum": [1, 2, 3, 5, 7, 9],
+          "description": "Games in the match. 2 is for league formats where both games are always played."
+        },
+        "pool": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/templateEntry" },
+          "description": "The templates of the tournament that this phase uses. An object entry gives a template settings for this phase only. Leave the pool out to use all the templates of the tournament."
+        },
+        "template_selection": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "enum": ["sequence", "agreed"],
+              "description": "sequence: bans and picks in a fixed order. agreed: the players agree on the template."
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "type": { "const": "sequence" } }, "required": ["type"] },
+              "then": {
+                "required": ["steps"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {},
+                  "steps": {
+                    "type": "array",
+                    "minItems": 1,
+                    "description": "What happens, in order. The games are played in the order of the picks, then the decider.",
+                    "items": {
+                      "type": "object",
+                      "required": ["do"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "who": { "enum": ["A", "B"], "description": "Who acts: A is the coinflip winner, B the other player. Not used by the decider." },
+                        "do": {
+                          "enum": ["ban", "pick", "decider"],
+                          "description": "ban or pick by the player in 'who'. decider: the template that is left becomes the last game. It has no 'who' and must be the last step."
+                        }
+                      },
+                      "if": { "properties": { "do": { "enum": ["ban", "pick"] } }, "required": ["do"] },
+                      "then": { "required": ["who"] }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "agreed" } }, "required": ["type"] },
+              "then": { "additionalProperties": false, "properties": { "type": {} } }
+            }
+          ]
+        },
+        "allowed_towns": {
+          "$ref": "#/$defs/townList",
+          "description": "Towns players can get in this phase. This list replaces the tournament's list. Leave it out to use the tournament's."
+        }
+      }
+    }
+  }
+}
