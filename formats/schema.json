@@ -44,15 +44,15 @@
   "$defs": {
     "townList": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 2,
       "items": { "type": "string" },
-      "description": "Town ids from data/towns.json."
+      "description": "Town ids from data/towns.json. At least two, because the bot draws a pair of different towns from them."
     },
     "rollRules": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "roll_cost": { "type": "integer", "minimum": 0, "description": "Gold paid to roll the town pair. Default: 500." },
+        "roll_cost": { "type": "integer", "minimum": 0, "multipleOf": 100, "description": "Gold paid to roll the town pair, in whole hundreds (gold moves in steps of 100). Default: 500." },
         "rolls_per_player": { "type": "integer", "minimum": 0, "description": "Rolls each player may use. Default: 1." },
         "max_roll_bans": { "type": "integer", "minimum": 0, "description": "Towns a player may ban when rolling. Default: 2." }
       }

@@ -108,7 +108,7 @@ In the example: the tournament sets the cost to 300; `h3dm1` is free (cost 0) ev
 
 ## Allowed towns
 
-By default players can get any town in [`../data/towns.json`](../data/towns.json). `allowed_towns` restricts that, using the town ids (`"castle"`). Written on the tournament it applies to every phase; written on a phase it **replaces** the tournament's list for that phase. In the example the whole tournament uses only the nine towns of the original games.
+By default players can get any town in [`../data/towns.json`](../data/towns.json). `allowed_towns` restricts that, using the town ids (`"castle"`). Written on the tournament it applies to every phase; written on a phase it **replaces** the tournament's list for that phase. A list needs at least two towns, because the bot draws a pair of different towns from it. In the example the whole tournament uses only the nine towns of the original games.
 
 ## Template selection
 

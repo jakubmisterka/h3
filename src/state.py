@@ -13,6 +13,10 @@ the two players and the first `code quoted` words are the mode, the phase and, i
 agreed on one, the template. Whatever comes after the data is free wording, and anything after the slots
 that a code needs is never read.
 
+A record that belongs to one game of the match (its trade) also names the game in the tag,
+`[#7 tr g1]`. The numbering stays one sequence for the whole thread, so a deleted message is found
+wherever it was, and the game marker is how the records of one game are picked out.
+
 To know where a match stands, the bot reads the thread back and parses its own messages.
 This module is plain Python (no Discord objects), so it can be tested.
 """
@@ -34,6 +38,7 @@ class Record:
     n: int
     type: str
     data: dict = field(default_factory=dict)
+    game: int | None = None  # the game this record belongs to, if it belongs to one
 
 
 # Record type -> the data fields it carries. Each milestone adds the types it needs.
@@ -44,7 +49,14 @@ RECORD_FIELDS: dict[str, tuple[str, ...]] = {
     "coinflip": ("winner",),  # the Discord user id of the coinflip winner, A
     "ban": ("player", "template"),  # who banned which template (Discord user id, template id)
     "pick": ("player", "template"),
+    # the trade of one game (these records carry the game in the tag, see `TRADE_TYPES`)
+    "trade_started": ("pair",),  # the two town ids the bot drew
+    "trade_resumed": (),  # a trade that was closed is opened again, where it stopped
+    "town_bid": ("reporter", "winner", "amount", "town"),  # who reported, who won the bid, for how much, and the town chosen
+    "color_bid": ("reporter", "winner", "amount", "color"),  # the same for the color ("red" or "blue")
 }
+
+TRADE_TYPES = ("trade_started", "trade_resumed", "town_bid", "color_bid")
 
 # Record type -> the short code written in the tag.
 CODES: dict[str, str] = {
@@ -52,10 +64,14 @@ CODES: dict[str, str] = {
     "coinflip": "cf",
     "ban": "bn",
     "pick": "pk",
+    "trade_started": "tr",
+    "trade_resumed": "tu",
+    "town_bid": "tb",
+    "color_bid": "cb",
 }
 _TYPE_OF_CODE = {code: type_ for type_, code in CODES.items()}
 
-TAG = re.compile(r"^\[#(\d+) ([a-z]+)\]")
+TAG = re.compile(r"^\[#(\d+) ([a-z]+)(?: g(\d+))?\]")
 MENTION = re.compile(r"<@!?(\d+)>")  # how Discord writes a mention of a user in message text
 QUOTED = re.compile(r"`([^`]+)`")  # a word the message writes as `code`, so it can be told apart from the wording
 
@@ -87,28 +103,59 @@ def _read_step(body: str) -> dict:
     return {"player": int(player.group(1)), "template": template.group(1)}
 
 
+def _read_trade_started(body: str) -> dict:
+    quoted = QUOTED.findall(body)
+    if len(quoted) < 2:
+        raise RecordError("a trade started message must give the two towns in `quotes`")
+    return {"pair": (quoted[0], quoted[1])}
+
+
+def _read_trade_resumed(body: str) -> dict:
+    return {}
+
+
+def _read_bid(choice_field: str):
+    """A bid result: reporter and winner are the first two mentions, the amount and the choice the first two `quoted` words."""
+
+    def read(body: str) -> dict:
+        ids = [int(found) for found in MENTION.findall(body)]
+        quoted = QUOTED.findall(body)
+        if len(ids) < 2 or len(quoted) < 2:
+            raise RecordError("a bid message must mention the reporter and the winner and give the amount and choice in `quotes`")
+        if not quoted[0].isdigit():
+            raise RecordError(f"the amount of a bid must be a whole number, not {quoted[0]!r}")
+        return {"reporter": ids[0], "winner": ids[1], "amount": int(quoted[0]), choice_field: quoted[1]}
+
+    return read
+
+
 # Record type -> how to read its data out of the text after the tag.
 READERS = {
     "match_started": _read_match_started,
     "coinflip": _read_coinflip,
     "ban": _read_step,
     "pick": _read_step,
+    "trade_started": _read_trade_started,
+    "trade_resumed": _read_trade_resumed,
+    "town_bid": _read_bid("town"),
+    "color_bid": _read_bid("color"),
 }
 
 
-def make_record(n: int, type: str, **data) -> Record:
-    """Build a record, checking that it has exactly the fields its type needs."""
+def make_record(n: int, type: str, game: int | None = None, **data) -> Record:
+    """Build a record, checking that it has exactly the fields its type needs. `game` is for records of one game."""
     if type not in RECORD_FIELDS:
         raise RecordError(f"unknown record type {type!r}")
     expected = set(RECORD_FIELDS[type])
     if set(data) != expected:
         raise RecordError(f"record {type!r} needs exactly {sorted(expected)}, got {sorted(data)}")
-    return Record(n, type, data)
+    return Record(n, type, data, game)
 
 
 def tag(record: Record) -> str:
-    """The tag that goes at the start of the record's message, for example `[#3 ms]`."""
-    return f"[#{record.n} {CODES[record.type]}]"
+    """The tag that goes at the start of the record's message, for example `[#3 ms]` or `[#7 tr g1]`."""
+    game = f" g{record.game}" if record.game is not None else ""
+    return f"[#{record.n} {CODES[record.type]}{game}]"
 
 
 def parse(text: str) -> Record | None:
@@ -120,7 +167,8 @@ def parse(text: str) -> Record | None:
     type_ = _TYPE_OF_CODE.get(code)
     if type_ is None:
         raise RecordError(f"unknown record code {code!r}: {text[:80]!r}")
-    return make_record(n, type_, **READERS[type_](text[found.end():]))
+    game = int(found.group(3)) if found.group(3) else None
+    return make_record(n, type_, game, **READERS[type_](text[found.end():]))
 
 
 def describe(record: Record) -> str:
@@ -133,6 +181,14 @@ def describe(record: Record) -> str:
         return f"coinflip won by <@{record.data['winner']}>"
     if record.type in ("ban", "pick"):
         return f"<@{record.data['player']}> {record.type}s {record.data['template']}"
+    if record.type == "trade_started":
+        return f"game {record.game}: trade started, {record.data['pair'][0]} vs {record.data['pair'][1]}"
+    if record.type == "trade_resumed":
+        return f"game {record.game}: trade reopened"
+    if record.type in ("town_bid", "color_bid"):
+        data = record.data
+        choice = data.get("town") or data.get("color")
+        return f"game {record.game}: <@{data['winner']}> won the {record.type.replace('_', ' ')} at {data['amount']}, chose {choice}"
     return f"{record.type} {record.data}"
 
 
@@ -157,6 +213,7 @@ class Match:
     a: int  # the coinflip winner
     b: int  # the other player
     taken: tuple[tuple[int, str, str], ...] = ()  # the bans and picks so far: (player id, "ban" or "pick", template id)
+    trade_records: tuple[Record, ...] = ()  # the records of the trades, in order; `rules/trade.py` turns them into trades
 
 
 def _only(records: list[Record], type: str, what: str) -> Record | None:
@@ -193,8 +250,14 @@ def rebuild(records: list[Record]) -> Match:
     if any(r.n < flip.n for r in steps):
         raise RecordError("a ban or pick comes before the coinflip in this thread, so I cannot tell how the match went")
     taken = tuple((r.data["player"], r.type, r.data["template"]) for r in steps)
+    trades = tuple(r for r in records if r.type in TRADE_TYPES)
+    for r in trades:
+        if r.game is None:
+            raise RecordError(f"message #{r.n} is part of a trade but does not say which game, so I cannot tell how the match went")
+        if r.n < flip.n:
+            raise RecordError("a trade comes before the coinflip in this thread, so I cannot tell how the match went")
     loser = p2 if winner == p1 else p1
-    return Match(p1, p2, start.data["mode"], start.data["phase"], start.data["template"], winner, loser, taken)
+    return Match(p1, p2, start.data["mode"], start.data["phase"], start.data["template"], winner, loser, taken, trades)
 
 
 def describe_match(match: Match) -> str:

@@ -95,12 +95,12 @@ Decided: there is no separate game order. The sequence ends with a `decider` ste
 
 *The money side of a game's trade: starting gold, the town bid, the color bid.*
 
-- [ ] 9.1 Implement the gold ledger (payments go to the opponent, whole numbers, balance check) as pure functions, with pytest cases including the worked example (10400 and 9600)
-- [ ] 9.2 Implement the trade sections and their order (town bid, color bid), the first town pair the bot draws (two different allowed towns, equal chances, injectable random source), and the report checks (winner is a player, amount within gold, town in the pair, color red or blue, allowed towns only), with pytest cases for the "The trade runs in sections", "The bot generates the town pair", "Only allowed towns are accepted", "Town bid is reported", "Color bid is reported" and "The bot keeps the gold" requirements
-- [ ] 9.3 Add `/trade report` and `/trade status` as thin handlers; the trade of the first game starts when selection ends
-- [ ] 9.4 Milestone check in the dev guild: play the bids of one game; a bid above the winner's gold, a town outside the pair and a color before the town are each refused; the gold shown after each report is right
+- [x] 9.0 Let a record tag carry the game (`[#7 tr g1]`) as an optional marker, parsed in `state.py` and kept in one numbered sequence with the other records, with pytest cases
+- [x] 9.1 Implement the gold ledger (payments go to the opponent, whole numbers, balance check) as pure functions, with pytest cases including the worked example (10400 and 9600)
+- [x] 9.2 Implement the games known so far (the picks in order, the decider once selection is done), the open trade (the latest start or reopening), and the trade sections and their order (town bid, color bid), the first town pair the bot draws (two different allowed towns, equal chances, injectable random source), and the report checks (winner is a player, amount within gold, town in the pair, color red or blue, allowed towns only), with pytest cases for the "The trade runs in sections", "The bot generates the town pair", "Only allowed towns are accepted", "Town bid is reported", "Color bid is reported" and "The bot keeps the gold" requirements
+- [x] 9.3 Add `/trade start [game]` (a game number or a template; closes the open trade as incomplete, reopens a trade started before) and `/trade report` as thin handlers, announce "Game N is <template>: start its trade with /trade start" when a pick makes a game known, show gold as the difference from the starting gold (the starting gold only at the start), post the lobby settings when the color bid is reported, and extend `/match status` into the overview (next selection step, every started trade with its section and gold)
+- [x] 9.4 Milestone check in the dev guild: play the bids of one game; a bid above the winner's gold, a town outside the pair and a color before the town are each refused; the gold shown after each report is right
 
-Decide: how the trade of a game starts and how the next game's trade starts.
 
 ## 10. Milestone: rolling
 
@@ -117,10 +117,10 @@ Decide: whether a roll and the new pair it draws are one record; whether a decli
 *Correcting a report, the final lobby settings, and trading the games of a match one after another.*
 
 - [ ] 11.1 Implement undo (the latest player report can be undone; rolls and the bot's random results cannot), with pytest cases for each scenario of the "Either player may report, and undo" requirement
-- [ ] 11.2 Implement the lobby settings summary as a pure function that builds the text from a finished trade, with a pytest case for the spec's summary scenario
-- [ ] 11.3 Add `/trade undo` as a thin handler and show the summary when a trade finishes
-- [ ] 11.4 Make the trade of each game independent (the command targets the first unfinished game unless one is named), with a pytest case
-- [ ] 11.5 Milestone check in the dev guild with a temporary BO3 format file: undo a bid, try to undo a roll, finish game 1 and read the summary, then trade game 2 after a pause with game 1 staying complete
+- [x] 11.2 Implement the lobby settings summary as a pure function that builds the text from a finished trade, with a pytest case for the spec's summary scenario (done with milestone 9, so every trade ends with it)
+- [ ] 11.3 Add `/trade undo` as a thin handler
+- [ ] 11.4 Check that games trade one after another (a finished trade stays finished while the next one opens), with a pytest case
+- [ ] 11.5 Milestone check in the dev guild with a temporary BO3 format file: undo a bid, try to undo a roll, finish game 1 and read the summary, then trade game 2 after a pause with game 1 staying complete; open game 2 while game 1 is half done and reopen game 1
 
 ## 12. Milestone: trade at 200%
 

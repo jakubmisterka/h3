@@ -4,36 +4,24 @@ import discord
 from discord import app_commands
 
 from discord_commands.guard import guarded_records
-from discord_commands.thread_log import ThreadLog
+from discord_commands.thread_log import ThreadLog, logger, records_for_autocomplete
 from locks import thread_lock
-from rules.info import AUTOCOMPLETE_LIMIT, find_phase
+from rules.info import AUTOCOMPLETE_LIMIT
 from rules.selection import (
     Action,
     SelectionError,
     after_a_step,
     check_action,
     choose_available,
-    next_step,
+    known_games,
     remaining,
-    replay,
 )
-from state import MatchError, RecordError, rebuild
-
+from rules.situation import situation_of
+from rules.trade import TradeError
+from state import MatchError, RecordError
 
 PAST = {"ban": "banned", "pick": "picked"}
-
-
-def situation(registry, records):
-    """The match, its phase and the actions so far, from the records. Raises when the thread cannot be trusted."""
-    match = rebuild(records)
-    fmt = registry.find_format(match.mode)
-    phase = find_phase(fmt, match.phase) if fmt else None
-    if phase is None:
-        raise MatchError(f"This match is in {match.mode!r}, phase {match.phase!r}, which I no longer have.")
-    if phase.agreed:
-        raise MatchError("In this match the players agreed on the template, so there are no bans or picks.")
-    actions = replay(phase.steps, phase.pool_ids, match.a, match.b, match.taken)
-    return match, phase, actions
+NOT_A_STEP = "In this match the players agreed on the template, so there are no bans or picks."
 
 
 async def post_next(thread: discord.Thread, registry, phase, a_mention: str, b_mention: str, actions) -> None:
@@ -56,11 +44,13 @@ async def take_step(interaction: discord.Interaction, do: str, template_text: st
         if records is None:
             return
         try:
-            match, phase, actions = situation(registry, records)
-            who = "A" if interaction.user.id == match.a else "B"
-            check_action(phase.steps, actions, who, do)
-            template_id = choose_available(template_text, remaining(phase.pool_ids, actions), registry.templates)
-        except (MatchError, RecordError, SelectionError) as e:
+            s = situation_of(registry, records)
+            if s.phase.agreed:
+                raise MatchError(NOT_A_STEP)
+            who = "A" if interaction.user.id == s.match.a else "B"
+            check_action(s.phase.steps, s.actions, who, do)
+            template_id = choose_available(template_text, remaining(s.phase.pool_ids, s.actions), registry.templates)
+        except (MatchError, RecordError, SelectionError, TradeError) as e:
             await interaction.followup.send(str(e))
             return
 
@@ -73,8 +63,14 @@ async def take_step(interaction: discord.Interaction, do: str, template_text: st
             player=interaction.user.id,
             template=template_id,
         )
-        actions.append(Action(who, do, template_id))
-        await post_next(thread, registry, phase, f"<@{match.a}>", f"<@{match.b}>", actions)
+        actions = s.actions + [Action(who, do, template_id)]
+        await post_next(thread, registry, s.phase, f"<@{s.match.a}>", f"<@{s.match.b}>", actions)
+
+        # A pick (or the last step, for the decider's game) makes a game known: its trade can start right away.
+        decided = known_games(s.phase.steps, s.phase.pool_ids, actions)
+        for number in range(len(s.games) + 1, len(decided) + 1):
+            game_name = registry.templates.find(decided[number - 1]).name
+            await thread.send(f"Game {number} is {game_name}. Start its trade with /trade start.")
         await interaction.followup.send(f"You {PAST[do]} {name}.")
 
 
@@ -85,12 +81,19 @@ async def remaining_options(interaction: discord.Interaction, current: str) -> l
         return []
     registry = interaction.client.registry
     try:
-        records = await ThreadLog(thread, interaction.client.user.id).read()
-        _, phase, actions = situation(registry, records)
-    except (MatchError, RecordError, SelectionError, discord.HTTPException):
+        records = await records_for_autocomplete(thread, interaction.client.user.id)
+        if records is None:
+            return []
+        s = situation_of(registry, records)
+    except (MatchError, RecordError, SelectionError, TradeError):
+        return []  # not a match thread, or one that cannot be read: nothing to suggest
+    except discord.HTTPException as e:
+        logger.warning("Reading thread %s for autocomplete failed: %s", thread.id, e)
+        return []
+    if s.phase.agreed:
         return []
     wanted = current.strip().lower()
-    entries = [registry.templates.find(template) for template in remaining(phase.pool_ids, actions)]
+    entries = [registry.templates.find(template) for template in remaining(s.phase.pool_ids, s.actions)]
     return [
         app_commands.Choice(name=entry.name, value=entry.id)
         for entry in entries

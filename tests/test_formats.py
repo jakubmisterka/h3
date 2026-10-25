@@ -309,10 +309,10 @@ def test_a_phase_can_restrict_the_towns(good_format, templates, towns):
 def test_each_phase_has_its_own_towns(good_format, templates, towns):
     second = json.loads(json.dumps(phase_of(good_format)))
     second["name"] = "Final"
-    second["allowed_towns"] = ["castle"]
+    second["allowed_towns"] = ["castle", "tower"]
     good_format["phases"].append(second)
     first, last = parse_format(good_format, templates, towns).phases
-    assert len(first.allowed_towns) == 12 and last.allowed_towns == ("castle",)
+    assert len(first.allowed_towns) == 12 and last.allowed_towns == ("castle", "tower")
 
 
 def test_a_town_added_to_the_catalogue_is_allowed_without_other_changes(good_format, templates, towns):

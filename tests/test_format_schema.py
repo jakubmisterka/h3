@@ -158,6 +158,7 @@ def test_a_town_list_cannot_be_empty_or_not_a_list(validator, where):
         return modify
 
     assert problems(validator, changed(set_list([])))
+    assert problems(validator, changed(set_list(["castle"])))  # a pair needs two different towns
     assert problems(validator, changed(set_list("castle")))
     assert problems(validator, changed(set_list([5])))
 
@@ -167,6 +168,7 @@ def test_a_town_list_cannot_be_empty_or_not_a_list(validator, where):
 
 def test_roll_rules_numbers_cannot_be_negative(validator):
     assert problems(validator, changed(lambda d: d.update(roll_rules={"roll_cost": -1})))
+    assert problems(validator, changed(lambda d: d.update(roll_rules={"roll_cost": 250})))  # gold moves in hundreds
     assert problems(validator, changed(lambda d: d.update(templates=[{"template": "JC", "roll_rules": {"roll_cost": -1}}])))
 
 

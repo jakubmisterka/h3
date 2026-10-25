@@ -13,6 +13,9 @@ Why separate: plain functions are easy to test (see [`../../tests/`](../../tests
 | `difficulty.py` | What a template's difficulty means: the gold each player starts with (80% to 200%) and which steps the trade has |
 | `roll_rules.py` | The roll rules (cost of a roll, rolls per player, bans per roll) that apply to one template in one phase, stacking the tournament, template and phase settings on top of the defaults |
 | `start.py` | Whether a match can be started: the opponent is another human, the phase and template are valid. The coinflip, the rules messages posted at the start, and the choices offered while typing |
+| `ledger.py` | The gold of the two players in one game's trade: the starting gold plus the payments so far, every payment going to the opponent, refused when the payer cannot afford it |
+| `trade.py` | The trade of a game: draws the town pair, checks the town and color bid reports, rebuilds the trades of a match from its records (one open at a time, the rest closed as incomplete or finished), finds the game a player means, and words what the thread says |
+| `situation.py` | Where a match stands, from the records of its thread: the match, its bans and picks, its games and its trades, each checked. The overview text of `/match status` |
 | `selection.py` | Template Selection: whose step is next, whether a ban or pick is allowed, what is left in the pool, and the games in play order once the bans and picks are done |
 
 If a function seems to need a Discord object (a member, a channel), pass in just the plain values it needs, for example `member.id` and `member.bot`.

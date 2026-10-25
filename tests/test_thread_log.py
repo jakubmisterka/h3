@@ -12,7 +12,8 @@ BOT, ANNA = 7, 111
 
 
 class FakeThread:
-    def __init__(self, messages=()):
+    def __init__(self, messages=(), thread_id=1):
+        self.id = thread_id
         self.messages = list(messages)
         self.sent = []  # the text of everything posted
 
@@ -96,3 +97,95 @@ def test_empty_thread_has_no_records_and_starts_at_one():
     log = ThreadLog(FakeThread(), BOT)
     assert asyncio.run(log.read()) == []
     assert asyncio.run(log.post("coinflip", "<@1> wins", winner=1)).n == 1
+
+
+def test_a_record_of_a_game_is_posted_with_the_marker_and_read_back():
+    thread = FakeThread()
+    posted = asyncio.run(ThreadLog(thread, BOT).post("coinflip", "Coinflip: <@1> wins.", game=2, winner=1))
+    assert thread.sent == ["[#1 cf g2] Coinflip: <@1> wins."]
+    thread.messages = [message(BOT, content) for content in thread.sent]
+    assert asyncio.run(ThreadLog(thread, BOT).read()) == [posted]
+
+
+# --- suggestions while typing --------------------------------------------------------------------------------------
+
+import discord_commands.thread_log as thread_log  # noqa: E402  (kept with the tests that use it)
+
+
+@pytest.fixture(autouse=True)
+def empty_cache():
+    thread_log.forget_cached_records()
+    yield
+    thread_log.forget_cached_records()
+
+
+class CountingThread(FakeThread):
+    """A thread that counts how often its history is read, and can be slow."""
+
+    def __init__(self, *args, delay=0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reads = 0
+        self.delay = delay
+
+    def history(self, limit=None, oldest_first=False):
+        self.reads += 1
+
+        async def messages():
+            await asyncio.sleep(self.delay)
+            for message in self.messages:
+                yield message
+
+        return messages()
+
+
+def suggestions(thread):
+    return asyncio.run(thread_log.records_for_autocomplete(thread, BOT))
+
+
+def test_recent_records_are_not_read_again_for_the_next_keystroke():
+    thread = CountingThread([bot_record(1)])
+    first = suggestions(thread)
+    second = suggestions(thread)
+    assert first == second and thread.reads == 1
+
+
+def test_records_are_read_again_once_they_are_old(monkeypatch):
+    thread = CountingThread([bot_record(1)])
+    clock = [1000.0]
+    monkeypatch.setattr(thread_log.time, "monotonic", lambda: clock[0])
+    suggestions(thread)
+    clock[0] += thread_log.AUTOCOMPLETE_CACHE_SECONDS + 1
+    suggestions(thread)
+    assert thread.reads == 2
+
+
+def test_a_post_by_the_bot_makes_the_remembered_records_old():
+    thread = CountingThread([bot_record(1)])
+    suggestions(thread)
+    asyncio.run(ThreadLog(thread, BOT).post("coinflip", "Coinflip: <@1> wins.", winner=1))
+    thread.messages = [message(BOT, content) for content in thread.sent]
+    assert [r.n for r in suggestions(thread)] == [1]  # read again, so it sees what was just posted
+    assert thread.reads == 2
+
+
+def test_each_thread_has_its_own_remembered_records():
+    one, other = CountingThread([bot_record(1)], thread_id=1), CountingThread([bot_record(1)], thread_id=2)
+    suggestions(one)
+    suggestions(other)
+    assert (one.reads, other.reads) == (1, 1)
+
+
+def test_a_read_that_takes_too_long_gives_up_instead_of_waiting(monkeypatch, caplog):
+    monkeypatch.setattr(thread_log, "AUTOCOMPLETE_TIMEOUT", 0.05)
+    thread = CountingThread([bot_record(1)], delay=5)
+    with caplog.at_level("WARNING", logger="h3bot"):
+        assert suggestions(thread) is None
+    assert "took more than" in caplog.text
+
+
+def test_a_failed_read_is_not_remembered(monkeypatch):
+    monkeypatch.setattr(thread_log, "AUTOCOMPLETE_TIMEOUT", 0.05)
+    slow = CountingThread([bot_record(1)], delay=5)
+    suggestions(slow)
+    slow.delay = 0
+    assert [r.n for r in suggestions(slow)] == [1]

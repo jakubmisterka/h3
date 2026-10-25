@@ -109,7 +109,8 @@ def test_a_full_selection_ends_with_the_games(registry, started):
     assert told(first) == "You banned Jebus Cross."
     command(selection.ban, registry, started, BORIS, "6lm10a")
 
-    assert texts(started)[-1] == "The bans and picks are done. The games:\nGame 1: h3dm1"
+    assert texts(started)[-2] == "The bans and picks are done. The games:\nGame 1: h3dm1"
+    assert texts(started)[-1] == "Game 1 is h3dm1. Start its trade with /trade start."
     assert "[#3 bn] <@1> banned **Jebus Cross** (`JC`)" in texts(started)
     assert "[#4 bn] <@2> banned **6lm10a** (`6lm10a`)" in texts(started)
 
@@ -127,7 +128,7 @@ def test_the_selection_continues_from_the_thread_alone(registry, started):
     # a restarted bot has the same thread and nothing else: a fresh registry object stands in for that
     again = Registry(registry.towns, registry.templates, dict(registry.formats))
     command(selection.ban, again, started, BORIS, "h3dm1")
-    assert texts(started)[-1] == "The bans and picks are done. The games:\nGame 1: 6lm10a"
+    assert texts(started)[-2] == "The bans and picks are done. The games:\nGame 1: 6lm10a"
 
 
 # --- refusals change nothing ---------------------------------------------------------------------------------
