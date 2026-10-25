@@ -12,6 +12,8 @@ from rules.difficulty import ALL_RANDOM_DIFFICULTY
 from rules.formats import Format, Phase, Step
 from rules.registry import Registry
 from rules.roll_rules import RollRules, effective_roll_rules
+from rules.template_facts import SETTINGS, fixed_lines, setting_line, setting_value
+from rules.template_settings import Settings, effective_settings
 
 # Discord refuses a message longer than 2000 characters. Stay safely under it.
 MAX_REPLY = 1900
@@ -105,11 +107,16 @@ def _phase_lines(fmt: Format, phase: Phase, templates: Catalogue) -> list[str]:
 def mode_info(fmt: Format, templates: Catalogue, phase: Phase | None = None) -> str:
     """Everything a player may want to know about a mode, or about one of its phases."""
     title = f"**{fmt.name}**" + ("" if fmt.active else " (archived: it cannot start new matches)")
-    lines = [title, f"Templates: {_names(templates, (entry.template for entry in fmt.templates))}"]
+    lines = [title]
+    if fmt.description:
+        lines.append(f"Description: {fmt.description}")
+    lines.append(f"Templates: {_names(templates, (entry.template for entry in fmt.templates))}")
     for shown in [phase] if phase else fmt.phases:
         if len(fmt.phases) > 1:
             lines.append("")
         lines += _phase_lines(fmt, shown, templates)
+    if fmt.additional_rules:
+        lines += ["", f"Additional rules: {fmt.additional_rules}"] if len(fmt.phases) > 1 else [f"Additional rules: {fmt.additional_rules}"]
     return _fit("\n".join(lines))
 
 
@@ -138,6 +145,26 @@ def _roll_lines(per_phase: list[tuple[Phase, RollRules]]) -> list[str]:
     return lines
 
 
+def _setting_lines(per_phase: list[tuple[Phase, Settings]]) -> list[str]:
+    """What is played on the template: its own facts once, then each stated setting once, with the phases that differ
+    named after it, as the roll rules are."""
+    lines = fixed_lines(per_phase[0][1])
+    for name in (*SETTINGS, "additional_rules"):
+        values = [getattr(settings, name) for _, settings in per_phase]
+        base = _most_common(values)
+        if base is not None:
+            lines.append(setting_line(name, Settings(**{name: base})))
+        for phase, settings in per_phase:
+            value = getattr(settings, name)
+            if value is None or value == base:
+                continue
+            if base is None:  # only some phases state it
+                lines.append(f"{setting_line(name, settings)} ({phase.name})")
+            else:
+                lines.append(f"  {phase.name}: {setting_value(name, settings)}")
+    return lines
+
+
 def template_info(fmt: Format, template_id: str, templates: Catalogue, phase: Phase | None = None) -> str:
     """How one template is played in a mode: in all the phases that use it, or in just one."""
     entry = templates.find(template_id)
@@ -146,6 +173,8 @@ def template_info(fmt: Format, template_id: str, templates: Catalogue, phase: Ph
     if phase and several:
         title += f" - {phase.name}"
     lines = [title]
+    if entry.details.get("description"):
+        lines.append(f"Description: {entry.details['description']}")
 
     using = [p for p in fmt.phases if template_id in p.pool_ids]
     if phase:
@@ -165,6 +194,7 @@ def template_info(fmt: Format, template_id: str, templates: Catalogue, phase: Ph
         lines.append("No roll: the trade is only a toss for color.")
     else:
         lines += _roll_lines([(p, effective_roll_rules(fmt, p, template_id)) for p in using])
+    lines += _setting_lines([(p, effective_settings(fmt, p, template_id, templates)) for p in using])
     return _fit("\n".join(lines))
 
 

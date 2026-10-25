@@ -23,11 +23,17 @@ def coinflip_announcement(winner: str, loser: str, phase: Phase, template_named:
     return f"Coinflip: {winner} wins and is A, so {winner} {first} first. {loser} is B."
 
 
-def rules_announcement(phase: Phase, template_name: str | None, pool_names: list[str]) -> list[str]:
-    """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes."""
+def rules_announcement(
+    phase: Phase, template_name: str | None, pool_names: list[str], facts: list[str] | tuple = ()
+) -> list[str]:
+    """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes.
+
+    `facts` are the lines about the named template (its timer, map and so on), one message each after its name.
+    """
     if template_name is not None:  # no bans or picks: one game, straight to the trade
         messages = [f"Best of {phase.best_of}" if phase.agreed else "One game"]
         messages.append(f"The players agreed on the template: {template_name}" if phase.agreed else f"The template: {template_name}")
+        messages += facts
     else:
         messages = [f"Best of {phase.best_of}"]
         # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own

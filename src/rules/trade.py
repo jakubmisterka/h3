@@ -534,18 +534,23 @@ def report_line(trade: Trade, report: Report, mentions: dict[int, str], towns: C
     return f"Game {trade.game} - {decided}\n{_difference_line(trade, mentions)}"
 
 
-def summary(trade: Trade, mentions: dict[int, str], towns: Catalogue, templates: Catalogue) -> str:
-    """The lobby settings of a finished trade: each player's town, color and gold difference."""
+def summary(
+    trade: Trade, mentions: dict[int, str], towns: Catalogue, templates: Catalogue, lobby: list[str] | tuple = ()
+) -> str:
+    """The lobby settings of a finished trade: the settings typed into the lobby (`lobby`, one line each, when they are
+    stated), then each player's town, color and gold difference."""
     town_report, color_report = trade.reports
     plays_town = {town_report.winner: town_report.choice, trade.other(town_report.winner): next(t for t in trade.pair if t != town_report.choice)}
     plays_color = {color_report.winner: color_report.choice, trade.other(color_report.winner): "blue" if color_report.choice == "red" else "red"}
     gold = trade.gold
-    lines = [f"Game {trade.game} lobby settings - {templates.find(trade.template).name}"]
+    lines = [f"Game {trade.game} lobby settings - {templates.find(trade.template).name}", *lobby]
     for player in trade.players:
         lines.append(f"{mentions[player]}: {towns.find(plays_town[player]).name}, {plays_color[player]}, gold {signed(gold[player] - trade.start_gold)}")
     return "\n".join(lines)
 
 
-def next_message(trade: Trade, mentions: dict[int, str], towns: Catalogue, templates: Catalogue) -> str:
+def next_message(
+    trade: Trade, mentions: dict[int, str], towns: Catalogue, templates: Catalogue, lobby: list[str] | tuple = ()
+) -> str:
     """What the thread says after the trade moved on: what to do next, or the lobby settings when it is done."""
-    return summary(trade, mentions, towns, templates) if trade.finished else prompt(trade, mentions, towns)
+    return summary(trade, mentions, towns, templates, lobby) if trade.finished else prompt(trade, mentions, towns)

@@ -82,6 +82,8 @@ Two phases, with a setting at each level. Everything below explains it piece by 
 | `templates` | Every template used in the tournament, each once. |
 | `phases` | One or more phases, for example group stage and final. |
 | `roll_rules`, `allowed_towns` | Optional settings for the whole tournament, see below. |
+| `settings` | Optional: the timer and the recommended simultaneous turns for the whole tournament, see below. |
+| `description`, `additional_rules` | Optional free text (1 to 1000 characters each) about the tournament as a whole, shown by `/info <mode>`. Rules for one template are written as that template's `additional_rules` setting instead. |
 
 ## Templates, and which phase uses which
 
@@ -105,6 +107,66 @@ built-in defaults
 ```
 
 In the example: the tournament sets the cost to 300; `h3dm1` is free (cost 0) everywhere; and in the Groups phase `6lm10a` gets two rolls per player (and still costs 300, because that is not overridden). Write only what differs, and leave the rest out.
+
+## Settings: the timer, roads, map size and more
+
+A template states in [`../data/templates.json`](../data/templates.json) what is normally played on it (see [`../data/README.md`](../data/README.md)). A tournament says what it plays with `settings`, written in the same three places as the roll rules, and the most specific one wins, setting by setting:
+
+```
+what the template states
+  -> the tournament's "settings"                          (only timer and sim_turns)
+    -> a template in the tournament's "templates" list    (that template, in every phase)
+      -> a template in a phase's "pool"                   (that template, in that phase only)
+```
+
+| Setting | Meaning |
+|---|---|
+| `timer` | **Only ever set here, never in the catalogue.** A chess timer written `12:00+06:00+02:00`: 12 minutes for each player at the start, 6 minutes added at the beginning of each of their turns, and 2 minutes added each time a fight starts. Always `mm:ss`, two digits everywhere, seconds below 60. |
+| `sim_turns` | How long simultaneous turns are recommended to last, as `117` or `121` (month, week, day). Any valid date. |
+| `roads`, `map_size`, `ai` | The roads, the map size and the number of computer players for **one template**. Each must be one of the values the template allows. A template that states no allowed values for a setting cannot have it chosen: complete its facts in `data/templates.json` first. Not allowed for the whole tournament. |
+| `download` | **For one template only**: a link starting with `https://` for the version of the template this tournament plays, when it is not the one built into HotA. It replaces `built_in`, so `/info` and the thread show the link instead of "Built into HotA". |
+| `additional_rules` | **For one template only** (never in the tournament's own `settings`): additional rules for the template, free text of 1 to 1000 characters. They replace the rules the template states in the catalogue, and a phase's `additional_rules` replace the list's, like any other setting. Shown by `/info`, and posted in the thread when the trade of a game on the template starts. |
+
+What a setting does not say, the template's default decides, and when that is not stated either, the bot says nothing about it. `/info` shows what is played on a template in your tournament, and the match thread repeats it where the template of a game is announced, with the timer, map size, roads and computer players again in the lobby settings.
+
+The example uses the three templates of the example in [`../data/README.md`](../data/README.md) (`JC`, `6lm10a` and `h3dm1`):
+
+<!-- settings example -->
+```json
+{
+  "id": "spring-cup",
+  "name": "Spring Cup",
+  "description": "The spring open",
+  "additional_rules": "Players may agree on the length of simultaneous turns",
+  "settings": { "timer": "12:00+06:00+02:00", "sim_turns": "121" },
+  "templates": [
+    { "template": "JC", "settings": { "map_size": "XL+U", "ai": 6, "additional_rules": "Ends on turn 133" } },
+    "6lm10a",
+    "h3dm1"
+  ],
+  "phases": [
+    {
+      "name": "Main",
+      "best_of": 1,
+      "pool": [
+        { "template": "JC", "settings": { "timer": "15:00+06:00+02:00", "roads": "fast" } },
+        "6lm10a",
+        "h3dm1"
+      ],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Here every template has the 12-minute timer except Jebus Cross in the phase, which has 15 minutes. Jebus Cross is played with extra large underground maps and six computer players, and in this phase on fast roads.
 
 ## Allowed towns
 
@@ -153,7 +215,7 @@ Every problem is reported at once, in words, starting with the file name. Typica
 
 ## Adding a template or a town
 
-Add an entry to [`../data/templates.json`](../data/templates.json) or [`../data/towns.json`](../data/towns.json); see [`../data/README.md`](../data/README.md). A new template needs its `difficulty`.
+Add an entry to [`../data/templates.json`](../data/templates.json) or [`../data/towns.json`](../data/towns.json); see [`../data/README.md`](../data/README.md). A new template needs its `difficulty`, and may state more facts about itself (roads, map size, computer players, where to get it).
 
 ## When a rule is unclear
 

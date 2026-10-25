@@ -16,13 +16,22 @@ Every problem found is reported at once, in plain words, so a contributor can fi
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
 from rules.catalogue import Catalogue
+from rules.lobby_values import (
+    check_computer_players,
+    check_download,
+    check_game_date,
+    check_map_size,
+    check_roads,
+    check_text,
+    check_timer,
+)
 
 SCHEMA_FILE = Path(__file__).resolve().parents[2] / "formats" / "schema.json"
 
@@ -47,6 +56,7 @@ class TemplateEntry:
 
     template: str  # template id
     roll_rules: dict  # roll rules written for this template here (empty: nothing special)
+    settings: dict = field(default_factory=dict)  # timer, roads, map size, computer players and sim turns written for it here
 
 
 @dataclass(frozen=True)
@@ -73,6 +83,9 @@ class Format:
     allowed_towns: tuple[str, ...]  # towns players can get unless a phase has its own list (all towns by default)
     templates: tuple[TemplateEntry, ...]  # every template of the tournament, once
     phases: tuple[Phase, ...]
+    settings: dict = field(default_factory=dict)  # timer and sim turns written for the whole tournament
+    description: str | None = None  # what the tournament is, for /info
+    additional_rules: str | None = None  # additional rules of the tournament as a whole, for /info
 
 
 # --- stage 1: the shape ---------------------------------------------------------------------
@@ -98,10 +111,13 @@ def _where(path, data) -> str:
 
 
 def _explain(error) -> str:
-    """The message of a schema error. A failed pattern reads like code, so add the field's plain description."""
+    """The message of a schema error. A failed pattern reads like code, so add the field's plain description,
+    and a field that is not allowed here just says why with its own description."""
     description = error.schema.get("description")
     if error.validator == "pattern" and description:
         return f"{error.message}. {description}"
+    if error.validator == "not" and description:
+        return description
     return error.message
 
 
@@ -187,6 +203,58 @@ def _sequence_problems(phase: dict, label: str, pool_size: int) -> list[str]:
     return problems
 
 
+# How each setting is read, and for the three that a template lists the allowed values of, the name of that list.
+_SETTING_CHECKS = {
+    "timer": check_timer,
+    "sim_turns": check_game_date,
+    "roads": check_roads,
+    "map_size": check_map_size,
+    "ai": check_computer_players,
+    "additional_rules": check_text,
+    "download": check_download,
+}
+_CHOSEN_FROM_ALLOWED = ("roads", "map_size", "ai")
+
+
+def _settings_problems(where: str, settings: dict, template: str | None, templates: Catalogue) -> list[str]:
+    """Problems with the settings written in one place: each value has the right form, and what is chosen for a
+    template is among the values that template allows. `template` is None for the whole tournament."""
+    problems = []
+    for name, value in settings.items():
+        try:
+            _SETTING_CHECKS[name](value)
+        except ValueError as e:
+            problems.append(f"{where}: {name}: {e}")
+            continue
+        entry = templates.find(template) if template else None
+        if name in _CHOSEN_FROM_ALLOWED and entry is not None:  # an unknown template is reported elsewhere
+            choice = entry.details.get(name)
+            if choice is None:
+                problems.append(
+                    f"{where}: {name} cannot be chosen, because the template {template!r} states no allowed {name} "
+                    f"in the template catalogue"
+                )
+            elif value not in choice.allowed:
+                problems.append(
+                    f"{where}: {name}: {value!r} is not allowed for {template!r}. "
+                    f"Allowed: {', '.join(str(v) for v in choice.allowed)}"
+                )
+    return problems
+
+
+def _all_settings_problems(data: dict, templates: Catalogue) -> list[str]:
+    problems = _settings_problems("settings", data.get("settings", {}), None, templates)
+    for raw in data["templates"]:
+        if isinstance(raw, dict):
+            problems += _settings_problems(f"templates, {raw['template']}: settings", raw.get("settings", {}), raw["template"], templates)
+    for phase in data["phases"]:
+        for raw in phase.get("pool", []):
+            if isinstance(raw, dict):
+                where = f'phase "{phase["name"]}", {raw["template"]}: settings'
+                problems += _settings_problems(where, raw.get("settings", {}), raw["template"], templates)
+    return problems
+
+
 def rule_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[str]:
     """Problems with the rules of a format whose shape is right, in words."""
     problems = []
@@ -205,6 +273,13 @@ def rule_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[st
         problems.append(f'two phases are called "{name}"')
     for phase in data["phases"]:
         problems += _phase_problems(phase, listed, towns)
+    problems += _all_settings_problems(data, templates)
+    for name in ("description", "additional_rules"):
+        if name in data:
+            try:
+                check_text(data[name])
+            except ValueError as e:
+                problems.append(f"{name}: {e}")
     return problems
 
 
@@ -222,7 +297,7 @@ def validate_format(data, templates: Catalogue, towns: Catalogue) -> list[str]:
 def _entry(raw) -> TemplateEntry:
     if isinstance(raw, str):
         return TemplateEntry(raw, {})
-    return TemplateEntry(raw["template"], raw.get("roll_rules", {}))
+    return TemplateEntry(raw["template"], raw.get("roll_rules", {}), raw.get("settings", {}))
 
 
 def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
@@ -259,6 +334,9 @@ def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
         allowed_towns=tournament_towns,
         templates=tournament_templates,
         phases=tuple(phases),
+        settings=data.get("settings", {}),
+        description=data.get("description"),
+        additional_rules=data.get("additional_rules"),
     )
 
 

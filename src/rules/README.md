@@ -13,6 +13,9 @@ Why separate: plain functions are easy to test (see [`../../tests/`](../../tests
 | `info.py` | The text of the `/info` replies (a mode, or a template in a mode), the lines they are built from, and the autocomplete choices. Plain text in, plain text out |
 | `registry.py` | Loads the towns, templates and formats together when the bot starts, and reports every problem in every file at once. Also answers which modes a match can be started in, and finds a mode by id or name |
 | `difficulty.py` | What a template's difficulty means: the gold each player starts with (80% to 200%) and which steps the trade has |
+| `lobby_values.py` | The forms of the values a template or tournament states about the game (timer, game date, roads, map size, computer players) and the checks that read them, with messages that show the form |
+| `template_settings.py` | What is played on one template in one phase: the template's defaults with what the tournament chose stacked on top, the most specific winning |
+| `template_facts.py` | The short lines that say it (timer, map, roads, computer players, where to get the template), the same words in `/info`, the thread and the lobby settings |
 | `roll_rules.py` | The roll rules (cost of a roll, rolls per player, bans per roll) that apply to one template in one phase, stacking the tournament, template and phase settings on top of the defaults |
 | `start.py` | Whether a match can be started: the opponent is another human, the phase and template are valid. The coinflip, the rules messages posted at the start, and the choices offered while typing |
 | `ledger.py` | The gold of the two players in one game's trade: the starting gold plus the payments so far, every payment going to the opponent, refused when the payer cannot afford it |

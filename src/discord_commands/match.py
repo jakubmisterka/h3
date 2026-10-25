@@ -14,6 +14,8 @@ from rules.info import phase_choices
 from rules.registry import ModeError, Registry
 from rules.selection import SelectionError
 from rules.situation import overview, situation_of, unreadable
+from rules.template_facts import fact_lines
+from rules.template_settings import effective_settings
 from rules.start import (
     NOT_IN_A_TEXT_CHANNEL,
     StartError,
@@ -61,7 +63,8 @@ async def begin_match(
     )
     names = [registry.templates.find(template).name for template in phase.pool_ids]
     template_name = registry.templates.find(template_id).name if template_id else None
-    for rule in rules_announcement(phase, template_name, names):
+    facts = fact_lines(effective_settings(fmt, phase, template_id, registry.templates)) if template_id else []
+    for rule in rules_announcement(phase, template_name, names, facts):
         await thread.send(rule)
     winner, loser = (starter, opponent) if coinflip(starter.id, opponent.id) == starter.id else (opponent, starter)
     flip = await log.post(
