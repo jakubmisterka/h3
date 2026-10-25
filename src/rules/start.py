@@ -8,6 +8,66 @@ from rules.info import AUTOCOMPLETE_LIMIT, find_phase, template_selection_line
 from rules.registry import Registry
 
 
+###### Wording: what the bot says when a match starts ##########################################################
+# The sentences the bot says. To change a wording, change it here; the logic that decides when is further down.
+
+NOT_IN_A_TEXT_CHANNEL = "Start a match in a normal text channel, not inside a thread."
+
+
+def coinflip_announcement(winner: str, loser: str, phase: Phase) -> str:
+    """What the thread says after the coinflip. `winner` and `loser` are mentions. The winner is A."""
+    if phase.agreed:
+        return f"Coinflip: {winner} wins and is A, {loser} is B."
+    first = "bans" if phase.steps[0].do == "ban" else "picks"
+    return f"Coinflip: {winner} wins and is A, so {winner} {first} first. {loser} is B."
+
+
+def rules_announcement(phase: Phase, template_name: str | None, pool_names: list[str]) -> list[str]:
+    """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes."""
+    messages = [f"Best of {phase.best_of}"]
+    if phase.agreed:
+        messages.append(f"The players agreed on the template: {template_name}")
+    else:
+        # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own
+        notation, _, meaning = template_selection_line(phase.steps).partition(": ")
+        messages.append(f"Template Selection: {notation}" if meaning else notation)
+        if meaning:
+            messages.append(meaning)
+    messages.append("The winner of the coinflip will be player A, the other player is B")
+    if not phase.agreed:
+        messages.append(f"Templates: {', '.join(pool_names)}")
+    return messages
+
+
+def thread_refused_text(reason: str) -> str:
+    """Text for a refusal from Discord that was not predicted. The permission check usually catches the cause first."""
+    return f"Discord refused to create the thread ({reason}). Please ask a server admin to check my permissions."
+
+
+def match_announcement(starter: str, opponent: str) -> str:
+    """The message a public thread hangs off. `starter` and `opponent` are mentions."""
+    return f"Match: {starter} vs {opponent}"
+
+
+def private_thread_link(opponent: str, thread: str) -> str:
+    """The private reply to the player who started a match in a private thread."""
+    return f"Your private match thread with {opponent}: {thread}"
+
+
+def match_started_text(
+    starter: str, opponent: str, mode_name: str, mode_id: str, phase_name: str, template_id: str | None
+) -> str:
+    """The text of the match started record. The first two mentions are the players and the first `quoted` words the
+    mode, the phase and the agreed template, which is how the record is read back."""
+    wording = f"Mode: {mode_name} (`{mode_id}`), phase `{phase_name}`"
+    if template_id:
+        wording += f", template `{template_id}`"
+    return f"Match started: {starter} vs {opponent}. {wording}. This is your match thread."
+
+
+################################################################################################################
+
+
 class StartError(ValueError):
     """The start command cannot be accepted. The message is shown to the player."""
 
@@ -54,14 +114,6 @@ def coinflip(player_1: int, player_2: int, random_source: random.Random | None =
     return (random_source or random).choice([player_1, player_2])
 
 
-def coinflip_announcement(winner: str, loser: str, phase: Phase) -> str:
-    """What the thread says after the coinflip. `winner` and `loser` are mentions. The winner is A."""
-    if phase.agreed:
-        return f"Coinflip: {winner} wins and is A, {loser} is B."
-    first = "bans" if phase.steps[0].do == "ban" else "picks"
-    return f"Coinflip: {winner} wins and is A, so {winner} {first} first. {loser} is B."
-
-
 # --- what the start command offers while a player is typing ------------------------------------------
 
 
@@ -89,20 +141,3 @@ def template_choices(registry: Registry, mode_text: str, phase_text: str | None,
     wanted = typed.strip().lower()
     entries = [registry.templates.find(template_id) for template_id in phase.pool_ids]
     return [(e.name, e.id) for e in entries if wanted in e.name.lower() or wanted in e.id.lower()][:AUTOCOMPLETE_LIMIT]
-
-
-def rules_announcement(phase: Phase, template_name: str | None, pool_names: list[str]) -> list[str]:
-    """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes."""
-    messages = [f"Best of {phase.best_of}"]
-    if phase.agreed:
-        messages.append(f"The players agreed on the template: {template_name}")
-    else:
-        # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own
-        notation, _, meaning = template_selection_line(phase.steps).partition(": ")
-        messages.append(f"Template Selection: {notation}" if meaning else notation)
-        if meaning:
-            messages.append(meaning)
-    messages.append("The winner of the coinflip will be player A, the other player is B")
-    if not phase.agreed:
-        messages.append(f"Templates: {', '.join(pool_names)}")
-    return messages

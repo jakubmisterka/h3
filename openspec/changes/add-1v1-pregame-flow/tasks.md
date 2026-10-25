@@ -113,15 +113,16 @@ Decided: there is no separate game order. The sequence ends with a `decider` ste
 
 Decided: a roll and the new pair it draws are one record; a skipped roll can be undone in milestone 11, but only while it is the latest action.
 
-## 11. Milestone: undo, the summary and several games
+## 11. Milestone: undo and several games
 
-*Correcting a report, the final lobby settings, and trading the games of a match one after another.*
+*Going back after a mistake with both players' consent, the final lobby settings, and trading the games of a match one after another.*
 
-- [ ] 11.1 Implement undo (the latest player report can be undone; rolls and the bot's random results cannot), with pytest cases for each scenario of the "Either player may report, and undo" requirement
+- [x] 11.0 Add the undo request and undone record types and `effective_records` (the records that still count after the undos), read back from the thread and used by the rebuilt match, with pytest cases
+- [x] 11.1 Implement the undo logic as pure functions (what a request undoes, the checks, the pending request, the text of the request and of the confirmation), with pytest cases for each scenario of the "Either player can ask to undo, and the other must agree" requirement
 - [x] 11.2 Implement the lobby settings summary as a pure function that builds the text from a finished trade, with a pytest case for the spec's summary scenario (done with milestone 9, so every trade ends with it)
-- [ ] 11.3 Add `/trade undo` as a thin handler
-- [ ] 11.4 Check that games trade one after another (a finished trade stays finished while the next one opens), with a pytest case
-- [ ] 11.5 Milestone check in the dev guild with a temporary BO3 format file: undo a bid, try to undo a roll, finish game 1 and read the summary, then trade game 2 after a pause with game 1 staying complete; open game 2 while game 1 is half done and reopen game 1
+- [x] 11.3 Add `/match undo [from]` as a thin handler (a plain number option; agreeing needs no number), mark the undone records in the match status, and show where the match stands after an undo
+- [x] 11.4 Check that games trade one after another (a finished trade stays finished while the next one opens), with a pytest case
+- [x] 11.5 Milestone check in the dev guild with a best-of-3 format: undo a bid, undo a ban with a trade already started, undo a roll, let a request lapse, and confirm from the wrong player; finish game 1 and read the summary, then trade game 2 after a pause with game 1 staying complete; open game 2 while game 1 is half done and reopen game 1
 
 ## 12. Milestone: trade at 200%
 

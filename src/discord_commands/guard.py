@@ -8,9 +8,9 @@ import discord
 
 from discord_commands.permissions import READ_THREAD, missing, missing_message
 from discord_commands.thread_log import ThreadLog
+from rules.situation import NOT_IN_THREAD, unreadable
 from state import MatchError, Record, RecordError, check_player, rebuild
 
-NOT_IN_THREAD = "Use this command inside a match thread."
 
 
 async def guarded_records(interaction: discord.Interaction) -> list[Record] | None:
@@ -38,7 +38,7 @@ async def guarded_records(interaction: discord.Interaction) -> list[Record] | No
         rebuild(records)  # refuses a thread with a message missing, before any command acts on it
         check_player(records, interaction.user.id)
     except RecordError as e:
-        await interaction.followup.send(f"I can't read this thread: {e}")
+        await interaction.followup.send(unreadable(e))
         return None
     except MatchError as e:
         await interaction.followup.send(str(e))

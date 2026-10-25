@@ -111,4 +111,59 @@ The bot SHALL keep no match data outside the thread. After a bot restart, or whe
 - **WHEN** a bot message needed to rebuild the match was deleted
 - **THEN** the bot says the match cannot be rebuilt and does not guess
 
+### Requirement: Either player can ask to undo, and the other must agree
+A player SHALL be able to ask to undo the match from a record number (the `8` in a tag like `[#8 tb g1]`): that record and every record after it stop counting, whatever kind of step they are (bans, picks, trades, rolls, skipped rolls, bids), so the match is exactly as it was before record 8. Without a number the latest step SHALL be undone. The records the bot posted when the match started, the start and the coinflip, SHALL NOT be undoable. The bot SHALL post which step the request starts from and that everything after it stops counting too, and point to the match status for where the match stands. The undo SHALL happen only when the other player agrees, which they do by running the undo command without a number (naming the same number also works). A request SHALL lapse when anything else is posted after it. Nothing SHALL be deleted: the request and the undo are records of their own, and the history stays in the thread.
+
+#### Scenario: Asking
+- **WHEN** a player asks to undo from record 8
+- **THEN** the bot says what record 8 is, that everything after it stops counting too, that the match status shows where the match stands, and that the other player must run the undo command to agree
+
+#### Scenario: Confirming
+- **WHEN** the other player runs the undo command without a number right after, or with the same number
+- **THEN** the match is exactly as it was before record 8, the bot says so, shows where the match stands, and says what the players can do next (the next ban or pick, the open trade's next section, or the trade that can be started)
+
+#### Scenario: Latest step by default
+- **WHEN** a player asks to undo without a number
+- **THEN** the request covers only the latest step
+
+#### Scenario: Later steps go too
+- **WHEN** a ban is record 5, the trade of game 1 started in record 8, and a player asks to undo from 5
+- **THEN** the request says the steps after the ban go too, and once confirmed neither the ban nor the trade count
+
+#### Scenario: A roll can be undone
+- **WHEN** both players agree to undo from a roll
+- **THEN** the roll, the pair it drew and the payment stop counting
+
+#### Scenario: The same player twice
+- **WHEN** the player who asked runs the undo command again
+- **THEN** the bot says it is waiting for the other player and changes nothing
+
+#### Scenario: A request that went stale
+- **WHEN** something is posted after a request and then the other player runs the undo command
+- **THEN** the bot treats it as a new request for the latest step instead of an undo
+
+#### Scenario: Another record number replaces the request
+- **WHEN** a request is waiting and either player runs the undo command naming a different record
+- **THEN** the new request replaces the old one, the bot says so, and only the new one can be agreed to (by the player who did not make it)
+
+#### Scenario: Not a step
+- **WHEN** a player names a record that is not a step or does not exist
+- **THEN** the bot refuses and points to the match status
+
+#### Scenario: Already undone
+- **WHEN** a player names a record that was already undone
+- **THEN** the bot says that record was already undone and points to the match status, which marks the undone records
+
+#### Scenario: The start cannot be undone
+- **WHEN** a player names the record of the match start or of the coinflip
+- **THEN** the bot refuses and says the start of the match cannot be undone
+
+#### Scenario: Nothing to undo
+- **WHEN** a player asks to undo before any step was taken
+- **THEN** the bot says there is nothing to undo
+
+#### Scenario: Starting again after an undo
+- **WHEN** a ban is undone and the player bans another template
+- **THEN** the new ban counts, and the numbering carries on after the undo
+
 Open question: whether slash commands work in an archived thread. This has not been tested. A match thread stays open for 7 days of silence, which is assumed to be enough; if players do run into archived threads, they reopen them by hand, and resuming one automatically is a follow-up idea (see the proposal).

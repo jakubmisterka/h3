@@ -122,7 +122,7 @@ def test_a_trade_can_start_while_the_selection_goes_on(registry, thread):
     assert told(it) == "Game 1's trade is open."
     assert texts(thread)[-2].startswith("[#6 tr g1] Game 1 (Jebus Cross): the trade starts. Pair: Necropolis")
     assert "Starting gold: <@1> 10000, <@2> 10000" in texts(thread)[-2]
-    assert texts(thread)[-1].startswith("Game 1 town bid: Necropolis, Tower. <@1> bids first")
+    assert texts(thread)[-1].startswith("Game 1 town bid: Necropolis vs Tower. <@1> bids first")
 
 
 def test_a_game_that_is_not_decided_yet_is_refused(registry, thread):
@@ -322,7 +322,7 @@ def test_status_lists_every_game_with_its_trade(registry, open_trade):
     text = told(it)
     assert "Template Selection: done" in text
     assert "Game 1: Jebus Cross, trade closed, not finished, next: color bid, gold difference <@1> -2100 / <@2> +2100" in text
-    assert "Game 2: Diamond, trade open, next: town bid, gold difference <@1> 0 / <@2> 0" in text
+    assert "Game 2: Diamond, trade open, next: town bid Necropolis vs Tower, gold difference <@1> 0 / <@2> 0" in text
     assert "Game 3: h3dm1, trade not started" in text
 
 
@@ -401,7 +401,7 @@ def rolls_in(thread):
 
 def test_a_trade_with_rolls_starts_with_the_roll_section(rolling):
     assert texts(rolling)[-1] == (
-        "Game 1 town roll. A roll costs 500 gold. Both players may roll. "
+        "Game 1 town roll: Necropolis vs Tower. A roll costs 500 gold. Both players may roll. "
         "Roll with /trade roll (banning up to 1 town of the pair), or skip with /trade skip-roll."
     )
 
@@ -415,7 +415,7 @@ def test_a_roll_pays_the_opponent_and_announces_the_new_pair_and_who_may_still_r
     line = texts(rolling)[-2]
     assert "<@1> rolled, banning Necropolis (`necropolis`), and paid 500 gold to <@2>." in line
     assert line.endswith("Gold difference: <@1> -500, <@2> +500")
-    assert texts(rolling)[-1].startswith("Game 1 town roll. A roll costs 500 gold. <@2> may roll.")
+    assert "A roll costs 500 gold. <@2> may roll." in texts(rolling)[-1]
 
 
 def test_a_roll_without_bans_is_possible(rolling_registry, rolling):
@@ -427,7 +427,7 @@ def test_the_new_pair_is_the_one_the_bid_is_reported_on(rolling_registry, rollin
     roll(rolling_registry, rolling, ANNA)
     skip(rolling_registry, rolling, BORIS)
     pair = rolls_in(rolling)[0].data["pair"]
-    assert texts(rolling)[-1].startswith(f"Game 1 town bid: {rolling_registry.towns.find(pair[0]).name}, ")
+    assert texts(rolling)[-1].startswith(f"Game 1 town bid: {rolling_registry.towns.find(pair[0]).name} vs ")
     it = run(trade_commands.report, rolling_registry, rolling, ANNA, ANNA, 2100, pair[1])
     assert told(it) == "Reported."
 
@@ -465,13 +465,13 @@ def test_skipping_the_roll_waits_for_the_other_player_and_leaves_the_trade_open(
     assert told(it) == "You skip the roll."
     assert parse(texts(rolling)[-2]).type == "roll_skipped"
     assert texts(rolling)[-2] == "[#7 rs g1] Game 1 - <@1> skips the roll."
-    assert texts(rolling)[-1].startswith("Game 1 town roll. A roll costs 500 gold. <@2> may roll.")
+    assert "A roll costs 500 gold. <@2> may roll." in texts(rolling)[-1]
 
 
 def test_when_both_skip_the_town_bid_starts_with_the_original_pair(rolling_registry, rolling):
     skip(rolling_registry, rolling, ANNA)
     skip(rolling_registry, rolling, BORIS)
-    assert texts(rolling)[-1].startswith("Game 1 town bid: Necropolis, Tower.")
+    assert texts(rolling)[-1].startswith("Game 1 town bid: Necropolis vs Tower.")
     assert rolls_in(rolling) == []
 
 
@@ -487,18 +487,32 @@ def test_skipping_with_no_roll_left_is_refused(rolling_registry, rolling):
     assert "no roll left" in told(it)
 
 
-def test_reporting_the_town_bid_skips_the_open_rolls_and_says_so(rolling_registry, rolling):
+def test_reporting_the_town_bid_records_a_skip_for_every_roll_still_open(rolling_registry, rolling):
     run(trade_commands.report, rolling_registry, rolling, ANNA, ANNA, 2100, "Tower")
-    assert "tb g1]" in texts(rolling)[-3]
-    assert texts(rolling)[-2] == "Game 1: the rolls still open were skipped."
+    skips = [r for r in records_in_thread(rolling) if r.type == "roll_skipped"]
+    assert [(r.n, r.data["player"]) for r in skips] == [(7, 1), (8, 2)]  # one for each player, before the bid
+    assert texts(rolling)[-4] == "[#7 rs g1] Game 1 - <@1> skips the roll (the town bid was reported)."
+    assert texts(rolling)[-3] == "[#8 rs g1] Game 1 - <@2> skips the roll (the town bid was reported)."
+    assert texts(rolling)[-2].startswith("[#9 tb g1]")
     assert texts(rolling)[-1].startswith("Game 1 color bid.")
 
 
-def test_no_note_about_skipped_rolls_when_none_were_open(rolling_registry, rolling):
+def test_only_the_rolls_still_open_are_skipped_by_a_report(rolling_registry, rolling):
+    roll(rolling_registry, rolling, ANNA)  # Anna used her roll; only Boris's is open
+    run(trade_commands.report, rolling_registry, rolling, ANNA, ANNA, 100, rolls_in(rolling)[0].data["pair"][0])
+    skips = [r for r in records_in_thread(rolling) if r.type == "roll_skipped"]
+    assert [r.data["player"] for r in skips] == [2]
+
+
+def test_no_skip_is_recorded_when_no_roll_was_open(rolling_registry, rolling):
     skip(rolling_registry, rolling, ANNA)
     skip(rolling_registry, rolling, BORIS)
     run(trade_commands.report, rolling_registry, rolling, ANNA, ANNA, 2100, "Tower")
-    assert not any("rolls still open" in text for text in texts(rolling))
+    assert [r.data["player"] for r in records_in_thread(rolling) if r.type == "roll_skipped"] == [1, 2]  # only the two explicit ones
+
+
+def records_in_thread(thread):
+    return [r for r in map(parse, texts(thread)) if r is not None]
 
 
 def test_a_roll_after_the_roll_section_is_refused(rolling_registry, rolling):
@@ -557,7 +571,7 @@ def test_no_bans_are_offered_once_the_roll_section_is_over(rolling_registry, rol
 def test_the_overview_shows_the_roll_section_as_next(rolling_registry, rolling):
     it = interaction(rolling_registry, rolling, ANNA)
     asyncio.run(match.status.callback(it))
-    assert "trade open, next: town roll" in told(it)
+    assert "trade open, next: town bid Necropolis vs Tower (rolls still open)" in told(it)
 
 
 def test_the_roll_commands_have_the_expected_options():
@@ -585,3 +599,25 @@ def test_the_towns_of_the_new_pair_are_offered_after_a_roll_while_the_other_play
 def test_colors_are_offered_once_the_town_bid_is_reported(rolling_registry, rolling):
     run(trade_commands.report, rolling_registry, rolling, ANNA, ANNA, 100, "Tower")
     assert report_choices(rolling_registry, rolling) == [("red", "red"), ("blue", "blue")]
+
+
+# --- games one after another ----------------------------------------------------------------------------------------------------------
+
+
+def test_games_are_traded_one_after_another_and_a_finished_trade_stays_finished(registry, thread):
+    select(registry, thread, *WHOLE_SELECTION)
+    start(registry, thread)  # without a name: game 1
+    report(registry, thread, winner=ANNA, amount=2100, choice="Necropolis")
+    report(registry, thread, winner=BORIS, amount=3000, choice="red", user=BORIS)
+    assert texts(thread)[-1].startswith("Game 1 lobby settings")
+
+    start(registry, thread)  # without a name: the first game not finished, which is game 2
+    assert "Game 2 (Diamond): the trade starts." in texts(thread)[-2]
+    assert not any("is closed, not finished" in text for text in texts(thread))
+
+    it = interaction(registry, thread, ANNA)
+    asyncio.run(match.status.callback(it))
+    status = told(it)
+    assert "Game 1: Jebus Cross, trade done, gold difference <@1> +900 / <@2> -900" in status
+    assert "Game 2: Diamond, trade open, next: town bid" in status
+    assert "game 1 is finished" in told(start(registry, thread, "1"))

@@ -43,7 +43,7 @@ A game's trade SHALL be able to start as soon as the game's template is known: a
 
 #### Scenario: Several trades in the overview
 - **WHEN** a player asks for the status of the match
-- **THEN** the bot lists the next selection step and every started trade with its section and gold, and marks the open one
+- **THEN** the bot lists the next selection step and every started trade with what is next in it (the town bid names the pair that stands, and says when a roll is still possible) and its gold difference, and marks the open one
 
 ### Requirement: The trade runs in sections
 The trade of a game SHALL run in sections in a fixed order: town roll, town bid, color bid. Each section starts with a bot message that says what to do, who starts and the minimum raise (100 gold). The bot SHALL not accept a result for a section until the sections before it are done.
@@ -99,7 +99,7 @@ An eligible player SHALL be able to roll by naming the towns to ban (0 up to the
 - **THEN** the bot refuses the roll and nobody pays
 
 ### Requirement: Each eligible player rolls or skips the roll
-The roll section SHALL end when every eligible player has rolled all their rolls or skipped. A player SHALL be able to skip their remaining rolls explicitly, which skips only the roll and leaves the trade itself open. Reporting the result of the town bid SHALL count as skipping every roll still open, because players often start bidding without saying they skip the roll.
+The roll section SHALL end when every eligible player has rolled all their rolls or skipped. A player SHALL be able to skip their remaining rolls explicitly, which skips only the roll and leaves the trade itself open. Reporting the result of the town bid SHALL count as skipping every roll still open, and the bot SHALL record that skip for each player whose roll was open, before the bid, so that undoing the bid alone does not open the roll section again, because players often start bidding without saying they skip the roll.
 
 #### Scenario: Explicit skip
 - **WHEN** both eligible players skip the roll
@@ -107,7 +107,11 @@ The roll section SHALL end when every eligible player has rolled all their rolls
 
 #### Scenario: Skipped by bidding
 - **WHEN** both players may still roll and someone reports the town bid result
-- **THEN** the bot notes that the open rolls were skipped and accepts the result
+- **THEN** the bot records a skip for each open roll and accepts the result
+
+#### Scenario: Undoing the bid keeps the rolls skipped
+- **WHEN** a town bid skipped the open rolls and then only that bid is undone
+- **THEN** the town bid is expected again and the roll section stays closed; it opens again only if the recorded skip itself is undone
 
 #### Scenario: One rolls, one skips
 - **WHEN** P1 rolls and P2 skips the roll
@@ -169,24 +173,12 @@ The bot SHALL keep each player's gold from the starting gold of the game's diffi
 - **WHEN** a trade starts
 - **THEN** the thread shows each player's starting gold, for example 10000 each at 160% difficulty
 
-### Requirement: Either player may report, and undo
-Either player SHALL be able to report a section's result, with no confirmation from the other. Either player SHALL be able to undo the most recent player report (a bid result, a town or color choice) in the same game's trade. Random results drawn by the bot (a pair, a toss) and the rolls that caused them are final and SHALL NOT be undone.
+### Requirement: Either player may report
+Either player SHALL be able to report a section's result, with no confirmation from the other. A mistaken report, roll or skip is corrected with the undo of the `match-setup` capability, which needs both players.
 
 #### Scenario: Opponent reports
 - **WHEN** the loser of a bid reports the result
 - **THEN** it is accepted and posted, naming who reported it
-
-#### Scenario: Correcting a mistake
-- **WHEN** a player undoes the last report
-- **THEN** the gold and section return to how they were before it, and the bot asks for the result again
-
-#### Scenario: Undoing a roll
-- **WHEN** a player tries to undo a roll, or the report right after a roll
-- **THEN** the bot refuses and says random results are final, so a roll cannot be redone for a better pair
-
-#### Scenario: Nothing to undo
-- **WHEN** a player asks to undo before any report in that game
-- **THEN** the bot says there is nothing to undo
 
 ### Requirement: Final lobby settings
 When the color section is done, the bot SHALL post the lobby settings for the game as one message: game number, template, each player's town, color and gold difference from the starting gold. At 200% difficulty the towns are not listed, because the game assigns them.

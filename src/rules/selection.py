@@ -25,6 +25,63 @@ class Action:
     template: str  # template id
 
 
+###### Wording: what the bot says about the bans and picks #####################################################
+# The sentences the bot says. To change a wording, change it here; the logic that decides when is further down.
+
+NOT_A_STEP = "In this match the players agreed on the template, so there are no bans or picks."
+_PAST = {"ban": "banned", "pick": "picked"}
+
+
+def games_message(order: tuple[str, ...], templates: Catalogue) -> str:
+    """The games in play order, one per line."""
+    lines = [f"Game {number}: {templates.find(template).name}" for number, template in enumerate(order, start=1)]
+    return "\n".join(lines)
+
+
+def _names(templates: Catalogue, ids) -> str:
+    return ", ".join(templates.find(template).name for template in ids) or "none"
+
+
+def after_a_step(
+    steps: tuple[Step, ...], pool: tuple[str, ...], actions: list[Action], mentions: dict[str, str], templates: Catalogue
+) -> list[str]:
+    """What the thread says after the coinflip and after each ban or pick: the pool, then what comes next.
+
+    `mentions` maps "A" and "B" to the mentions of the two players. Once the bans and picks are done,
+    the last message lists the games in play order.
+    """
+    left = remaining(pool, actions)
+    lines = [f"Remaining ({len(left)}): {_names(templates, left)}"]
+    banned = [action.template for action in actions if action.do == "ban"]
+    picked = [action.template for action in actions if action.do == "pick"]
+    if banned or picked:
+        lines.append(f"Banned: {_names(templates, banned)}. Picked: {_names(templates, picked)}.")
+    messages = ["\n".join(lines)]
+
+    step = next_step(steps, actions)
+    if step is not None:
+        number = len(actions) + 1
+        total = len(player_steps(steps))
+        command = "/ban" if step.do == "ban" else "/pick"
+        messages.append(f"Step {number} of {total}: {mentions[step.who]} {step.do}s a template with {command}")
+    else:
+        messages.append("The bans and picks are done. The games:\n" + games_message(games(steps, pool, actions), templates))
+    return messages
+
+
+def step_text(mention: str, do: str, template_name: str, template_id: str) -> str:
+    """The text of the ban or pick record. The first mention is the player and the first `quoted` word the template id."""
+    return f"{mention} {_PAST[do]} **{template_name}** (`{template_id}`)"
+
+
+def step_reply(do: str, template_name: str) -> str:
+    """The private reply to the player who banned or picked."""
+    return f"You {_PAST[do]} {template_name}."
+
+
+################################################################################################################
+
+
 def player_steps(steps: tuple[Step, ...]) -> tuple[Step, ...]:
     """The steps a player acts in. The decider is left out: nobody acts in it."""
     return tuple(step for step in steps if step.do != "decider")
@@ -97,43 +154,6 @@ def replay(
             raise SelectionError(f"Ban or pick number {number} in this thread does not follow the rules: {e}") from e
         actions.append(Action(letter[player_id], do, template))
     return actions
-
-
-def _names(templates: Catalogue, ids) -> str:
-    return ", ".join(templates.find(template).name for template in ids) or "none"
-
-
-def games_message(order: tuple[str, ...], templates: Catalogue) -> str:
-    """The games in play order, one per line."""
-    lines = [f"Game {number}: {templates.find(template).name}" for number, template in enumerate(order, start=1)]
-    return "\n".join(lines)
-
-
-def after_a_step(
-    steps: tuple[Step, ...], pool: tuple[str, ...], actions: list[Action], mentions: dict[str, str], templates: Catalogue
-) -> list[str]:
-    """What the thread says after the coinflip and after each ban or pick: the pool, then what comes next.
-
-    `mentions` maps "A" and "B" to the mentions of the two players. Once the bans and picks are done,
-    the last message lists the games in play order.
-    """
-    left = remaining(pool, actions)
-    lines = [f"Remaining ({len(left)}): {_names(templates, left)}"]
-    banned = [action.template for action in actions if action.do == "ban"]
-    picked = [action.template for action in actions if action.do == "pick"]
-    if banned or picked:
-        lines.append(f"Banned: {_names(templates, banned)}. Picked: {_names(templates, picked)}.")
-    messages = ["\n".join(lines)]
-
-    step = next_step(steps, actions)
-    if step is not None:
-        number = len(actions) + 1
-        total = len(player_steps(steps))
-        command = "/ban" if step.do == "ban" else "/pick"
-        messages.append(f"Step {number} of {total}: {mentions[step.who]} {step.do}s a template with {command}")
-    else:
-        messages.append("The bans and picks are done. The games:\n" + games_message(games(steps, pool, actions), templates))
-    return messages
 
 
 def known_games(steps: tuple[Step, ...], pool: tuple[str, ...], actions: list[Action]) -> tuple[str, ...]:

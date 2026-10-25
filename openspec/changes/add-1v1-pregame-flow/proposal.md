@@ -14,6 +14,7 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 4. For each game, the bot walks the players through the **trade** one section at a time. First the bot draws a random pair of towns and announces it with the roll cost and who may roll; each eligible player rolls (banning 0-2 towns, and the bot draws a new pair) or skips, and bidding without a word counts as skipping. Then players bid between themselves in the thread for the town choice and for color, and either player reports each result (winner, amount, choice). The bot keeps the running gold and can undo the last player report; its own random draws are final. Players set the final towns in the lobby by hand.
 5. When the trade of a game is complete, the bot posts the **lobby settings**: template, towns, colors and starting gold for each player.
 6. Players may stop at any point, for example after the first game's trade, and continue later by reopening the thread. The bot rebuilds the match from the thread's own messages.
+7. If a mistake was made (a wrong ban, a wrong bid report, a roll that should not have happened), either player runs `/match undo` naming the number of the record to undo from, or naming nothing to undo the latest step. The bot lists what would stop counting, and the other player confirms by running the same command. Everything after that record stops counting, so the match is exactly as it was before it; nothing is deleted from the thread.
 7. At any time, in any channel, a player can look up a mode with `/info` and see its phases, template pools and how templates are chosen. Naming a template as well shows how that template is played in the mode: difficulty, starting gold and roll rules. Only the person who asked sees the reply. Contributors can use it to check a new format file.
 
 ### Behind that flow
@@ -38,7 +39,7 @@ HotA tournament games last 6h+, yet players still spend lobby time on the same r
 ### Follow-up ideas (not part of this change)
 
 - **More template facts in `/info`:** a timer, and a link to download the template when it is not available through the game. The template catalogue would get optional fields for them. Also trade rules and allowed towns in the mode view if players want them.
-- **Rewind with consent:** a `/rewind` command with autocomplete of recent steps, so a player can ask to go back to an earlier step (for example after a mistaken ban or pick), and the opponent must accept. It would be one more event in the thread, so nothing is deleted. It must not go back past a random draw (a roll, a toss), to prevent rerolling for a better result. It could also resume an archived thread. A right-click "Rewind to here" message command was considered and can be added later.
+- **Resuming an archived thread:** if Discord archives a quiet match thread, slash commands may not work in it until someone reopens it by hand. The bot could reopen it itself when a command is used there. (A rewind with consent is not a follow-up any more: `/match undo` is part of this change.)
 
 ## Capabilities
 

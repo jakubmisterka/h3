@@ -9,10 +9,13 @@ from state import (
     describe,
     describe_match,
     describe_records,
+    effective_records,
     make_record,
     parse,
+    pending_undo,
     players_of,
     rebuild,
+    steps_that_count,
     tag,
 )
 
@@ -387,3 +390,155 @@ def test_roll_records_are_described():
 def test_the_roll_records_are_kept_by_the_rebuilt_match():
     rolls = [make_record(3, "roll", game=1, player=111, bans=(), pair=("cove", "tower"))]
     assert rebuild(clean_run() + rolls).trade_records == tuple(rolls)
+
+
+# --- the undo records -----------------------------------------------------------------------------------------------
+
+
+def test_an_undo_request_reads_the_player_and_the_record_number():
+    text = "[#9 ur] <@1> asks to undo from record `8`. <@2> confirms with /match undo."
+    assert parse(text) == make_record(9, "undo_requested", player=1, start=8)
+
+
+def test_an_undo_confirmation_reads_the_player_and_the_record_number():
+    text = "[#10 ud] <@2> agreed: the match is back to how it was before record `8`."
+    assert parse(text) == make_record(10, "undone", player=2, start=8)
+
+
+def test_an_undo_record_that_cannot_be_read_is_reported():
+    with pytest.raises(RecordError, match="record number"):
+        parse("[#9 ur] <@1> asks to undo from record `eight`")
+    with pytest.raises(RecordError, match="record number"):
+        parse("[#9 ur] asks to undo from record `8`")
+    with pytest.raises(RecordError, match="record number"):
+        parse("[#9 ud] <@1> agreed")
+
+
+def test_undo_records_are_described():
+    assert describe(make_record(9, "undo_requested", player=1, start=8)) == "<@1> asks to undo everything from record 8"
+    assert describe(make_record(10, "undone", player=2, start=8)) == "<@2> agreed to undo everything from record 8"
+
+
+# --- which records still count --------------------------------------------------------------------------------------------
+
+
+def ban(n, template="JC", player=111):
+    return make_record(n, "ban", player=player, template=template)
+
+
+def ask(n, start, player=111):
+    return make_record(n, "undo_requested", player=player, start=start)
+
+
+def agree(n, start, player=222):
+    return make_record(n, "undone", player=player, start=start)
+
+
+def numbers(records):
+    return [r.n for r in records]
+
+
+def test_without_undos_every_record_counts():
+    records = clean_run() + [ban(3), ban(4, "6lm10a", 222)]
+    assert effective_records(records) == records
+
+
+def test_a_request_alone_changes_nothing_and_is_not_a_step_itself():
+    records = clean_run() + [ban(3), ban(4, "6lm10a", 222), ask(5, 4)]
+    assert numbers(effective_records(records)) == [1, 2, 3, 4]
+
+
+def test_an_agreed_undo_drops_that_record_and_everything_after_it():
+    records = clean_run() + [ban(3), ban(4, "6lm10a", 222), ban(5, "h3dm1"), ask(6, 4), agree(7, 4)]
+    assert numbers(effective_records(records)) == [1, 2, 3]
+
+
+def test_the_latest_step_can_be_undone_alone():
+    records = clean_run() + [ban(3), ban(4, "6lm10a", 222), ask(5, 4), agree(6, 4)]
+    assert numbers(effective_records(records)) == [1, 2, 3]
+
+
+def test_records_posted_after_an_undo_count_again():
+    records = clean_run() + [ban(3), ask(4, 3), agree(5, 3), ban(6, "Diamond")]
+    assert numbers(effective_records(records)) == [1, 2, 6]
+
+
+def test_a_second_undo_can_go_back_further():
+    records = clean_run() + [ban(3), ban(4, "6lm10a", 222), ask(5, 4), agree(6, 4), ask(7, 3, 222), agree(8, 3, 111)]
+    assert numbers(effective_records(records)) == [1, 2]
+
+
+def test_the_start_and_the_coinflip_cannot_be_undone():
+    for start in (1, 2):
+        records = clean_run() + [ban(3), ask(4, start), agree(5, start)]
+        with pytest.raises(RecordError, match=f"from record {start}, which is not a step that counts"):
+            effective_records(records)
+
+
+def test_a_record_that_does_not_exist_or_was_already_undone_cannot_be_undone():
+    with pytest.raises(RecordError, match="from record 9, which is not a step that counts"):
+        effective_records(clean_run() + [ban(3), ask(4, 9), agree(5, 9)])
+    already = clean_run() + [ban(3), ask(4, 3), agree(5, 3), ask(6, 3, 222), agree(7, 3, 111)]
+    with pytest.raises(RecordError, match="from record 3, which is not a step that counts"):
+        effective_records(already)
+
+
+@pytest.mark.parametrize(
+    "records",
+    [
+        [ban(3), agree(4, 3)],  # nobody asked
+        [ban(3), ask(4, 3), ban(5, "6lm10a", 222), agree(6, 3)],  # something was posted in between
+        [ban(3), ask(4, 3), agree(5, 3, player=111)],  # the same player cannot confirm their own request
+        [ban(3), ask(4, 3), agree(5, 2)],  # another record number than the request
+    ],
+)
+def test_an_undo_that_was_not_asked_for_by_the_other_player_is_reported(records):
+    with pytest.raises(RecordError, match="did not just ask to undo"):
+        effective_records(clean_run() + records)
+
+
+def test_the_pending_request_is_the_last_record_if_it_is_a_request():
+    records = clean_run() + [ban(3), ask(4, 3)]
+    assert pending_undo(records) == ask(4, 3)
+    assert pending_undo(records + [ban(5, "6lm10a", 222)]) is None
+    assert pending_undo(clean_run() + [ban(3), ask(4, 3), agree(5, 3)]) is None
+    assert pending_undo([]) is None
+
+
+def test_the_steps_that_count_leave_out_the_start_the_coinflip_and_the_undo_records():
+    records = clean_run() + [ban(3), ban(4, "6lm10a", 222), ask(5, 4), agree(6, 4), ban(7, "h3dm1", 222)]
+    assert numbers(steps_that_count(records)) == [3, 7]
+
+
+# --- the match after undos ------------------------------------------------------------------------------------------------
+
+
+def test_an_undone_ban_is_no_longer_taken():
+    records = clean_run() + [ban(3), ban(4, "6lm10a", 222), ask(5, 4), agree(6, 4)]
+    assert rebuild(records).taken == ((111, "ban", "JC"),)
+
+
+def test_trades_after_an_undone_step_no_longer_count_either():
+    trade = [
+        make_record(4, "trade_started", game=1, pair=("castle", "tower")),
+        make_record(5, "town_bid", game=1, reporter=111, winner=111, amount=100, town="castle"),
+    ]
+    records = clean_run() + [make_record(3, "pick", player=111, template="JC")] + trade + [ask(6, 3, 222), agree(7, 3, 111)]
+    match = rebuild(records)
+    assert match.taken == () and match.trade_records == ()
+
+
+def test_a_pending_request_changes_nothing_in_the_match():
+    with_request = clean_run() + [ban(3), ask(4, 3)]
+    assert rebuild(with_request) == rebuild(clean_run() + [ban(3)])
+
+
+def test_the_numbering_is_still_checked_over_every_record_including_the_undo_ones():
+    records = clean_run() + [ban(3), ask(4, 3), agree(6, 3)]  # record 5 is missing
+    with pytest.raises(RecordError, match="message #5 of this match is missing"):
+        rebuild(records)
+
+
+def test_a_thread_with_an_undo_that_cannot_be_trusted_is_refused():
+    with pytest.raises(RecordError, match="did not just ask to undo"):
+        rebuild(clean_run() + [ban(3), agree(4, 3)])

@@ -17,6 +17,12 @@ A record that belongs to one game of the match (its trade) also names the game i
 `[#7 tr g1]`. The numbering stays one sequence for the whole thread, so a deleted message is found
 wherever it was, and the game marker is how the records of one game are picked out.
 
+Either player can ask to undo the match from a record number, and the other must agree. The request and the
+confirmation are records too (`ur` and `ud`). A confirmation says "everything from record N on no longer counts":
+`effective_records` drops those records before anything else is worked out, so the selection, the trades and the
+gold need no undo logic of their own. Nothing is deleted from the thread. The start and the coinflip can never be
+undone, so they always count.
+
 To know where a match stands, the bot reads the thread back and parses its own messages.
 This module is plain Python (no Discord objects), so it can be tested.
 """
@@ -56,6 +62,8 @@ RECORD_FIELDS: dict[str, tuple[str, ...]] = {
     "color_bid": ("reporter", "winner", "amount", "color"),  # the same for the color ("red" or "blue")
     "roll": ("player", "bans", "pair"),  # who rolled, the town ids they banned, and the new pair the bot drew
     "roll_skipped": ("player",),  # a player gives up their remaining rolls
+    "undo_requested": ("player", "start"),  # who asks to undo the match from record number `start`
+    "undone": ("player", "start"),  # the other player agreed: record `start` and all after it no longer count
 }
 
 TRADE_TYPES = ("trade_started", "trade_resumed", "town_bid", "color_bid", "roll", "roll_skipped")
@@ -72,6 +80,8 @@ CODES: dict[str, str] = {
     "color_bid": "cb",
     "roll": "rl",
     "roll_skipped": "rs",
+    "undo_requested": "ur",
+    "undone": "ud",
 }
 _TYPE_OF_CODE = {code: type_ for type_, code in CODES.items()}
 
@@ -149,6 +159,15 @@ def _read_roll_skipped(body: str) -> dict:
     return {"player": int(player.group(1))}
 
 
+def _read_undo(body: str) -> dict:
+    """An undo request or confirmation: the player is the first mention, the record number the first `quoted` word."""
+    player = MENTION.search(body)
+    quoted = QUOTED.findall(body)
+    if player is None or not quoted or not quoted[0].isdigit():
+        raise RecordError("an undo message must mention the player and give the record number in `quotes`")
+    return {"player": int(player.group(1)), "start": int(quoted[0])}
+
+
 # Record type -> how to read its data out of the text after the tag.
 READERS = {
     "match_started": _read_match_started,
@@ -161,6 +180,8 @@ READERS = {
     "color_bid": _read_bid("color"),
     "roll": _read_roll,
     "roll_skipped": _read_roll_skipped,
+    "undo_requested": _read_undo,
+    "undone": _read_undo,
 }
 
 
@@ -211,6 +232,9 @@ def describe(record: Record) -> str:
         data = record.data
         bans = f", banning {', '.join(data['bans'])}" if data["bans"] else ""
         return f"game {record.game}: <@{data['player']}> rolled{bans}, new pair {data['pair'][0]} vs {data['pair'][1]}"
+    if record.type in ("undo_requested", "undone"):
+        verb = "asks to undo" if record.type == "undo_requested" else "agreed to undo"
+        return f"<@{record.data['player']}> {verb} everything from record {record.data['start']}"
     if record.type == "roll_skipped":
         return f"game {record.game}: <@{record.data['player']}> skipped the roll"
     if record.type in ("town_bid", "color_bid"):
@@ -224,8 +248,14 @@ def describe_records(records: list[Record]) -> str:
     """What the bot found in a thread, as a numbered list."""
     if not records:
         return "I found no match records in this thread."
+    try:
+        counting = {r.n for r in effective_records(records)}
+    except RecordError:
+        counting = {r.n for r in records}  # a thread that cannot be trusted is reported elsewhere; just list it
     lines = [f"I read {len(records)} record(s) in this thread:"]
-    lines += [f"{r.n}. {describe(r)}" for r in records]
+    for r in records:
+        undone = " (undone)" if r.n not in counting and r.type not in UNDO_TYPES else ""
+        lines.append(f"{r.n}. {describe(r)}{undone}")
     return "\n".join(lines)
 
 
@@ -251,6 +281,56 @@ def _only(records: list[Record], type: str, what: str) -> Record | None:
     return found[0] if found else None
 
 
+START_TYPES = ("match_started", "coinflip")  # the records of the start of a match: they can never be undone
+UNDO_TYPES = ("undo_requested", "undone")  # the records about undoing, which are not steps themselves
+
+
+def steps_that_count(records: list[Record]) -> list[Record]:
+    """The steps of the match that still count, oldest first: the records after the start and the coinflip,
+    without the ones about undoing. Whatever an undo cancelled is not here."""
+    return [r for r in effective_records(records) if r.type not in START_TYPES]
+
+
+def effective_records(records: list[Record]) -> list[Record]:
+    """The records that still count after the undos. The records about undoing are left out too.
+
+    An `undone` record must follow, with nothing between, the request of the other player for the same record
+    number, and must name a step that counts (not the start or the coinflip). Then that record and all after it
+    stop counting. Anything else is reported rather than guessed.
+    """
+    active: list[Record] = []
+    for position, record in enumerate(records):
+        if record.type == "undo_requested":
+            continue
+        if record.type == "undone":
+            asked = records[position - 1] if position > 0 else None
+            if (
+                asked is None
+                or asked.type != "undo_requested"
+                or asked.data["start"] != record.data["start"]
+                or asked.data["player"] == record.data["player"]
+            ):
+                raise RecordError(
+                    f"message #{record.n} undoes steps that the other player did not just ask to undo, "
+                    "so I cannot tell how the match went"
+                )
+            start = record.data["start"]
+            if start not in [r.n for r in active if r.type not in START_TYPES]:
+                raise RecordError(
+                    f"message #{record.n} undoes from record {start}, which is not a step that counts, "
+                    "so I cannot tell how the match went"
+                )
+            active = [r for r in active if r.n < start]
+            continue
+        active.append(record)
+    return active
+
+
+def pending_undo(records: list[Record]) -> Record | None:
+    """The undo request waiting for the other player: the last record, if it is a request."""
+    return records[-1] if records and records[-1].type == "undo_requested" else None
+
+
 def rebuild(records: list[Record]) -> Match:
     """The state of the match, from its records alone. Refuses to guess: whatever is wrong is said in words."""
     if not records:
@@ -264,6 +344,7 @@ def rebuild(records: list[Record]) -> Match:
         if record.n < position:
             raise RecordError(f"message #{record.n} appears twice in this thread, so I cannot tell which one is right")
 
+    records = effective_records(records)  # what is left after the undos
     start = _only(records, "match_started", "match start")
     if start is None:
         raise MatchError("This thread is not a match thread I know of.")

@@ -195,8 +195,8 @@ def test_the_first_step_is_announced_after_the_coinflip(sample, templates, towns
 def test_an_agreed_phase_goes_straight_to_the_game(ranked, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="JC")
-    assert len(thread.sent) == 7 and thread.sent[-3].startswith("[#2 cf]")
-    assert thread.sent[-2:] == ["Game 1: Jebus Cross", "Start its trade with /trade start."]  # straight to the game
+    assert len(thread.sent) == 6 and thread.sent[-2].startswith("[#2 cf]")
+    assert thread.sent[-1] == "Game 1 is Jebus Cross. Start its trade with /trade start."  # straight to the game
 
 
 def test_an_agreed_template_is_stated_instead_of_a_selection(ranked, templates, towns, anna_wins):

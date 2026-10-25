@@ -4,31 +4,14 @@ import discord
 from discord import app_commands
 
 from discord_commands.guard import guarded_records
+from discord_commands.next_steps import post_next_steps
 from discord_commands.thread_log import ThreadLog, logger, records_for_autocomplete
 from locks import thread_lock
 from rules.info import AUTOCOMPLETE_LIMIT
-from rules.selection import (
-    Action,
-    SelectionError,
-    after_a_step,
-    check_action,
-    choose_available,
-    known_games,
-    remaining,
-)
+from rules.selection import NOT_A_STEP, SelectionError, check_action, choose_available, remaining, step_reply, step_text
 from rules.situation import situation_of
 from rules.trade import TradeError
 from state import MatchError, RecordError
-
-PAST = {"ban": "banned", "pick": "picked"}
-NOT_A_STEP = "In this match the players agreed on the template, so there are no bans or picks."
-
-
-async def post_next(thread: discord.Thread, registry, phase, a_mention: str, b_mention: str, actions) -> None:
-    """The plain messages after the coinflip and after each step: the pool, then what comes next."""
-    mentions = {"A": a_mention, "B": b_mention}
-    for message in after_a_step(phase.steps, phase.pool_ids, actions, mentions, registry.templates):
-        await thread.send(message)
 
 
 async def take_step(interaction: discord.Interaction, do: str, template_text: str) -> None:
@@ -57,21 +40,14 @@ async def take_step(interaction: discord.Interaction, do: str, template_text: st
         name = registry.templates.find(template_id).name
         log = ThreadLog(thread, interaction.client.user.id)
         log.last_n = records[-1].n
-        await log.post(
+        posted = await log.post(
             do,
-            f"{interaction.user.mention} {PAST[do]} **{name}** (`{template_id}`)",
+            step_text(interaction.user.mention, do, name, template_id),
             player=interaction.user.id,
             template=template_id,
         )
-        actions = s.actions + [Action(who, do, template_id)]
-        await post_next(thread, registry, s.phase, f"<@{s.match.a}>", f"<@{s.match.b}>", actions)
-
-        # A pick (or the last step, for the decider's game) makes a game known: its trade can start right away.
-        decided = known_games(s.phase.steps, s.phase.pool_ids, actions)
-        for number in range(len(s.games) + 1, len(decided) + 1):
-            game_name = registry.templates.find(decided[number - 1]).name
-            await thread.send(f"Game {number} is {game_name}. Start its trade with /trade start.")
-        await interaction.followup.send(f"You {PAST[do]} {name}.")
+        await post_next_steps(thread, registry, records + [posted])
+        await interaction.followup.send(step_reply(do, name))
 
 
 async def remaining_options(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:

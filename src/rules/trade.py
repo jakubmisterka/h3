@@ -26,6 +26,27 @@ COLORS = ("red", "blue")  # red moves first
 REPORTED_SECTIONS = ("town_bid", "color_bid")  # the sections whose result the players report, in order
 
 
+###### Wording: short replies and notes ########################################################################
+# The sentences the bot says. To change a wording, change it here; the logic that decides when is further down.
+
+REPORTED_REPLY = "Reported."
+ROLLED_REPLY = "Rolled."
+SKIPPED_REPLY = "You skip the roll."
+
+
+def opened_reply(game: int) -> str:
+    """The private reply to the player who opened the trade of a game."""
+    return f"Game {game}'s trade is open."
+
+
+def closed_note(game: int) -> str:
+    """Said in the thread when opening another trade closes a trade that was not finished."""
+    return f"The trade of game {game} is closed, not finished. Start it again to continue."
+
+
+################################################################################################################
+
+
 class TradeError(ValueError):
     """The trade cannot do what was asked. The message is shown to the player."""
 
@@ -149,6 +170,11 @@ def draw_pair(
 
 def _count_towns(number: int) -> str:
     return f"{number} town" if number == 1 else f"{number} towns"
+
+
+def pair_names(towns: Catalogue, pair: tuple[str, str]) -> str:
+    """A pair of towns for a message: "Necropolis vs Tower"."""
+    return " vs ".join(towns.find(town).name for town in pair)
 
 
 def _town_names(towns: Catalogue, ids) -> str:
@@ -461,12 +487,13 @@ def prompt(trade: Trade, mentions: dict[int, str], towns: Catalogue) -> str:
     if trade.section == "town_roll":
         rules = trade.rules
         return (
-            f"Game {trade.game} town roll. A roll costs {rules.roll_cost} gold. {_who_may_roll(trade, mentions)} "
+            f"Game {trade.game} town roll: {pair_names(towns, trade.pair)}. A roll costs {rules.roll_cost} gold. "
+            f"{_who_may_roll(trade, mentions)} "
             f"Roll with /trade roll (banning up to {_count_towns(rules.max_roll_bans)} of the pair), or skip with /trade skip-roll."
         )
     raise_by = f"{mentions[trade.players[0]]} bids first, raising by at least {GOLD_STEP}."
     if trade.section == "town_bid":
-        return f"Game {trade.game} town bid: {_town_names(towns, trade.pair)}. {raise_by} Report the result with /trade report."
+        return f"Game {trade.game} town bid: {pair_names(towns, trade.pair)}. {raise_by} Report the result with /trade report."
     return f"Game {trade.game} color bid. {raise_by} Report the result with /trade report, choosing red or blue."
 
 
@@ -484,9 +511,11 @@ def roll_line(trade: Trade, roll: Roll, mentions: dict[int, str], towns: Catalog
     )
 
 
-def skip_line(trade: Trade, player: int, mentions: dict[int, str]) -> str:
-    """The text of the record posted when a player gives up their remaining rolls. The first mention is the player."""
-    return f"Game {trade.game} - {mentions[player]} skips the roll."
+def skip_line(trade: Trade, player: int, mentions: dict[int, str], by_report: bool = False) -> str:
+    """The text of the record posted when a player gives up their remaining rolls. The first mention is the player.
+    `by_report` says the skip is because the town bid was reported while the roll was still open."""
+    reason = " (the town bid was reported)" if by_report else ""
+    return f"Game {trade.game} - {mentions[player]} skips the roll{reason}."
 
 
 def report_line(trade: Trade, report: Report, mentions: dict[int, str], towns: Catalogue) -> str:

@@ -11,6 +11,7 @@ import discord
 from discord import app_commands
 
 from discord_commands.guard import guarded_records
+from discord_commands.next_steps import post_next_steps
 from discord_commands.thread_log import ThreadLog, logger, records_for_autocomplete
 from locks import thread_lock
 from rules.info import AUTOCOMPLETE_LIMIT
@@ -19,18 +20,21 @@ from rules.selection import SelectionError
 from rules.situation import Situation, situation_of
 from rules.trade import (
     COLORS,
+    REPORTED_REPLY,
+    ROLLED_REPLY,
+    SKIPPED_REPLY,
     TradeError,
     check_startable,
     choose_game,
+    closed_note,
     draw_pair,
     expected_report_section,
     make_report,
     make_roll,
     make_skip,
     new_trade,
-    next_message,
+    opened_reply,
     opening_line,
-    prompt,
     report_line,
     roll_line,
     skip_line,
@@ -88,14 +92,14 @@ async def start(interaction: discord.Interaction, game: str | None = None) -> No
         log.last_n = records[-1].n
         text = opening_line(trade, kind == "resume", s.mentions, registry.towns, registry.templates)
         if kind == "start":
-            await log.post("trade_started", text, game=number, pair=trade.pair)
+            posted = await log.post("trade_started", text, game=number, pair=trade.pair)
         else:
-            await log.post("trade_resumed", text, game=number)
+            posted = await log.post("trade_resumed", text, game=number)
         previous = s.log.open
         if previous is not None and not previous.finished:
-            await thread.send(f"The trade of game {previous.game} is closed, not finished. Start it again to continue.")
-        await thread.send(prompt(trade, s.mentions, registry.towns))
-        await interaction.followup.send(f"Game {number}'s trade is open.")
+            await thread.send(closed_note(previous.game))
+        await post_next_steps(thread, registry, records + [posted])
+        await interaction.followup.send(opened_reply(number))
 
 
 @group.command(name="report", description="Report the result of a bid in the open trade")
@@ -129,12 +133,19 @@ async def report(interaction: discord.Interaction, winner: discord.Member, amoun
             await interaction.followup.send(str(e))
             return
 
-        after = trade.with_report(made)
-        rolls_skipped = trade.section == "town_roll"  # reporting the town bid skips every roll still open
         log = ThreadLog(thread, interaction.client.user.id)
         log.last_n = records[-1].n
+        # Reporting the town bid skips every roll still open. Each skip is recorded, so undoing the bid alone
+        # does not open the roll section again.
+        skips = []
+        for player in trade.rollers if trade.section == "town_roll" else ():
+            trade = trade.with_skip(player)
+            skips.append(
+                await log.post("roll_skipped", skip_line(trade, player, s.mentions, by_report=True), game=trade.game, player=player)
+            )
+        after = trade.with_report(made)
         data = {"town": made.choice} if made.section == "town_bid" else {"color": made.choice}
-        await log.post(
+        posted = await log.post(
             made.section,
             report_line(after, made, s.mentions, registry.towns),
             game=trade.game,
@@ -143,10 +154,8 @@ async def report(interaction: discord.Interaction, winner: discord.Member, amoun
             amount=made.amount,
             **data,
         )
-        if rolls_skipped:
-            await thread.send(f"Game {trade.game}: the rolls still open were skipped.")
-        await thread.send(next_message(after, s.mentions, registry.towns, registry.templates))
-        await interaction.followup.send("Reported.")
+        await post_next_steps(thread, registry, records + skips + [posted])
+        await interaction.followup.send(REPORTED_REPLY)
 
 
 @group.command(name="roll", description="Pay the roll cost to get a new pair of towns, banning towns of the current pair")
@@ -182,7 +191,7 @@ async def roll(interaction: discord.Interaction, ban_1: str | None = None, ban_2
         after = trade.with_roll(made)
         log = ThreadLog(thread, interaction.client.user.id)
         log.last_n = records[-1].n
-        await log.post(
+        posted = await log.post(
             "roll",
             roll_line(after, made, s.mentions, registry.towns),
             game=trade.game,
@@ -190,8 +199,8 @@ async def roll(interaction: discord.Interaction, ban_1: str | None = None, ban_2
             bans=made.bans,
             pair=made.pair,
         )
-        await thread.send(next_message(after, s.mentions, registry.towns, registry.templates))
-        await interaction.followup.send("Rolled.")
+        await post_next_steps(thread, registry, records + [posted])
+        await interaction.followup.send(ROLLED_REPLY)
 
 
 @group.command(name="skip-roll", description="Give up your remaining rolls in this trade (the trade itself goes on)")
@@ -221,9 +230,11 @@ async def skip_roll(interaction: discord.Interaction) -> None:
         after = trade.with_skip(interaction.user.id)
         log = ThreadLog(thread, interaction.client.user.id)
         log.last_n = records[-1].n
-        await log.post("roll_skipped", skip_line(after, interaction.user.id, s.mentions), game=trade.game, player=interaction.user.id)
-        await thread.send(next_message(after, s.mentions, registry.towns, registry.templates))
-        await interaction.followup.send("You skip the roll.")
+        posted = await log.post(
+            "roll_skipped", skip_line(after, interaction.user.id, s.mentions), game=trade.game, player=interaction.user.id
+        )
+        await post_next_steps(thread, registry, records + [posted])
+        await interaction.followup.send(SKIPPED_REPLY)
 
 
 # --- what is offered while typing ---------------------------------------------------------------------------

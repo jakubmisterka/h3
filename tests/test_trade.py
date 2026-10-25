@@ -333,7 +333,7 @@ def test_a_reopened_trade_says_it_continues_and_shows_the_difference_so_far(temp
 
 def test_the_prompt_names_the_section_and_who_bids_first(trade, towns):
     assert prompt(trade, MENTIONS, towns) == (
-        "Game 1 town bid: Necropolis, Tower. <@111> bids first, raising by at least 100. "
+        "Game 1 town bid: Necropolis vs Tower. <@111> bids first, raising by at least 100. "
         "Report the result with /trade report."
     )
     after_town = trade.with_report(Report("town_bid", A, A, 2100, "necropolis"))
@@ -429,7 +429,7 @@ def test_a_trade_nobody_can_roll_in_starts_at_the_town_bid(trade):
 
 def test_the_roll_section_announces_the_cost_and_who_may_roll(rolling, towns):
     assert prompt(rolling, MENTIONS, towns) == (
-        "Game 1 town roll. A roll costs 500 gold. Both players may roll. "
+        "Game 1 town roll: Necropolis vs Tower. A roll costs 500 gold. Both players may roll. "
         "Roll with /trade roll (banning up to 2 towns of the pair), or skip with /trade skip-roll."
     )
 
@@ -454,7 +454,7 @@ def test_a_town_named_twice_is_banned_once(rolling, towns):
 def test_after_a_roll_the_other_player_may_still_roll_and_the_roller_may_not(rolling, towns):
     after = rolling.with_roll(roll(rolling, towns, player=A))
     assert after.rollers == (B,) and after.section == "town_roll"
-    assert prompt(after, MENTIONS, towns).startswith("Game 1 town roll. A roll costs 500 gold. <@222> may roll.")
+    assert "A roll costs 500 gold. <@222> may roll." in prompt(after, MENTIONS, towns)
 
 
 def test_only_the_player_who_can_pay_may_roll(templates, towns):
@@ -673,3 +673,9 @@ def test_a_reopened_trade_names_the_pair_that_stands(templates, towns):
     trade = replay(started(1, 1), roll_record(2, pair=("castle", "cove")), templates=templates, rules=ROLLS).open
     assert "Pair: Castle (`castle`) vs Cove (`cove`)" in opening_line(trade, True, MENTIONS, towns, templates)
     assert "Pair: Necropolis (`necropolis`) vs Tower (`tower`)" in opening_line(trade, False, MENTIONS, towns, templates)
+
+
+def test_the_roll_prompt_names_the_pair_that_stands_now(rolling, towns):
+    made = Roll(A, ("necropolis",), ("castle", "cove"))
+    assert prompt(rolling, MENTIONS, towns).startswith("Game 1 town roll: Necropolis vs Tower. ")
+    assert prompt(rolling.with_roll(made), MENTIONS, towns).startswith("Game 1 town roll: Castle vs Cove. ")

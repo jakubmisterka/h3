@@ -49,6 +49,8 @@ Reading the bot's own messages does not need the Message Content intent. The bot
 
 *Alternatives:* (a) SQLite or Postgres: more to run and back up, explicitly deferred by the maintainer. (b) Parse players' free text: needs the privileged intent, rejected. (c) In-memory state: lost on restart, and players are slow, so restarts will happen mid-match.
 
+Undo is a rewind of the whole match. An `undone` record says "everything from record N on no longer counts", and when the bot reads the thread it drops those records first (`state.effective_records`) and then works out the match, its selection and its trades from what is left. Bans, picks, trades and rolls therefore need no undo logic of their own, and the match cannot be left half undone. The start record and the coinflip come before any possible N, so they always count. An `undo requested` record asks for it; the undo happens when the other player asks for the same thing and nothing else was posted in between, which the record numbers show.
+
 ### 3. Formats: one JSON file per mode, validated by schema plus rules
 
 ```
@@ -99,7 +101,7 @@ Starting gold is not in any file. A small table in the rules layer maps a templa
 | `/trade roll [ban_1] [ban_2]`, `/trade skip-roll` | match thread | roll the town pair (bot draws the new pair), or skip the remaining rolls (only the roll, not the trade) |
 | `/trade start [game]` | match thread | opens the trade of a game, named by its number or its template (without a name: the first known game whose trade is not finished); closes the open trade as incomplete |
 | `/trade report ...` | match thread | reports a bid result of the open trade's current section |
-| `/trade undo` | match thread | cancels the latest trade report |
+| `/match undo [from]` | match thread | asks to undo the match from a record number (default: the latest step); the other player agrees by running it without a number |
 | `/match status` | match thread | the records, the next selection step, and every started trade with its section and gold |
 
 `phase` is shown only when the chosen mode has several phases; because a slash command's options cannot appear conditionally, the option is optional and the bot answers with a follow-up prompt asking for it when it is missing and needed. The fields of `/trade report` depend on the section (roll, town, color), so they are optional and checked by the rules function. The exact set of fields is settled when the first version is tried in the dev guild.
