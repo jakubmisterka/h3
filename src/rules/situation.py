@@ -12,10 +12,10 @@ from rules.formats import Format, Phase
 from rules.info import find_phase
 from rules.registry import Registry
 from rules.roll_rules import RollRules, effective_roll_rules
-from rules.selection import Action, after_a_step, known_games, next_step, player_steps, replay
+from rules.selection import Action, after_a_step, known_games, next_step, player_steps, replay, step_prompt
 from rules.template_facts import fact_lines, lobby_lines
 from rules.template_settings import Settings, effective_settings
-from rules.trade import TradeLog, next_message, pair_names, replay_trades, signed
+from rules.trade import TradeLog, next_message, next_words, replay_trades, signed
 from state import TRADE_TYPES, Match, MatchError, Record, rebuild, steps_that_count
 
 
@@ -24,6 +24,7 @@ from state import TRADE_TYPES, Match, MatchError, Record, rebuild, steps_that_co
 
 NOT_IN_THREAD = "Use this command inside a match thread."
 ONLY_GAME_NOTE = "That was the only game of this match. To play another game, start a new match."
+ALL_TRADED_NOTE = "Every game of this match is traded."
 
 
 def unreadable(error: Exception) -> str:
@@ -44,6 +45,7 @@ class Situation:
     log: TradeLog  # the trades
     last_step: Record | None  # the latest step that counts (None: nothing but the start and the coinflip yet)
     templates: Catalogue  # the template catalogue, for the settings of a template
+    latest: Record | None = None  # the last record of the thread, whether or not it counts (an undo, for example)
 
     def roll_rules(self, template: str) -> RollRules:
         """The roll rules of a template in this match's phase."""
@@ -85,9 +87,13 @@ def situation_of(registry: Registry, records: list[Record]) -> Situation:
         actions = replay(phase.steps, phase.pool_ids, match.a, match.b, match.taken)
         games = known_games(phase.steps, phase.pool_ids, actions)
     rules_of = lambda template: effective_roll_rules(fmt, phase, template)  # noqa: E731
-    log = replay_trades(match.trade_records, games, (match.a, match.b), registry.templates, phase.allowed_towns, rules_of)
+    kind_of = lambda template: effective_settings(fmt, phase, template, registry.templates).trade  # noqa: E731
+    log = replay_trades(
+        match.trade_records, games, (match.a, match.b), registry.templates, phase.allowed_towns, rules_of, kind_of,
+        registry.towns,
+    )
     steps = steps_that_count(records)
-    return Situation(match, fmt, phase, actions, games, log, steps[-1] if steps else None, registry.templates)
+    return Situation(match, fmt, phase, actions, games, log, steps[-1] if steps else None, registry.templates, records[-1] if records else None)
 
 
 def _selection_line(s: Situation) -> str:
@@ -110,13 +116,7 @@ def _game_line(s: Situation, number: int, templates: Catalogue, towns: Catalogue
     gold = trade.gold
     a, b = trade.players
     state = "trade done" if trade.finished else ("trade open" if s.log.open_game == number else "trade closed, not finished")
-    if trade.finished:
-        next_section = ""
-    elif trade.section == "color_bid":
-        next_section = ", next: color bid"
-    else:  # the roll is a side option until the town bid is reported, so the town bid is what comes next
-        rolls = " (rolls still open)" if trade.section == "town_roll" else ""
-        next_section = f", next: town bid {pair_names(towns, trade.pair)}{rolls}"
+    next_section = next_words(trade, towns)
     difference = f"gold difference {s.mentions[a]} {signed(gold[a] - trade.start_gold)} / {s.mentions[b]} {signed(gold[b] - trade.start_gold)}"
     return f"Game {number}: {name}, {state}{next_section}, {difference}"
 
@@ -142,6 +142,23 @@ def _start_hint(number: int, template: str, templates: Catalogue, facts: list[st
     return "\n".join([*facts, hint])
 
 
+def _after_a_finished_trade(s: Situation, templates: Catalogue) -> list[str]:
+    """What comes after the lobby settings of a game: for a match of one game, that it is over; otherwise the next ban
+    or pick, then how to trade the first decided game that is not traded, or that every game is."""
+    if not s.has_selection:
+        return [ONLY_GAME_NOTE]
+    mentions = {"A": s.mentions[s.match.a], "B": s.mentions[s.match.b]}
+    prompt = step_prompt(s.phase.steps, s.actions, mentions)
+    messages = [prompt] if prompt is not None else []
+    for number, template in enumerate(s.games, start=1):
+        if number not in s.log.trades or not s.log.trades[number].finished:
+            messages.append(_start_hint(number, template, templates, fact_lines(s.settings(template))))
+            return messages
+    if prompt is None:
+        messages.append(ALL_TRADED_NOTE)
+    return messages
+
+
 def next_steps(s: Situation, templates: Catalogue, towns: Catalogue) -> list[str]:
     """What the players can do now, as the messages the thread shows after any step.
 
@@ -152,9 +169,11 @@ def next_steps(s: Situation, templates: Catalogue, towns: Catalogue) -> list[str
     """
     trade = s.log.open
     if s.last_step is not None and s.last_step.type in TRADE_TYPES and trade is not None:
-        messages = [next_message(trade, s.mentions, towns, templates, lobby_lines(s.settings(trade.template)))]
-        if trade.finished and not s.has_selection:
-            messages.append(ONLY_GAME_NOTE)
+        # What was drawn is repeated only after an undo: otherwise the message that drew it is right above.
+        show_draw = s.latest is not None and s.latest.type == "undone"
+        messages = [next_message(trade, s.mentions, towns, templates, lobby_lines(s.settings(trade.template)), show_draw)]
+        if trade.finished:
+            messages += _after_a_finished_trade(s, templates)
         return messages
 
     messages: list[str] = []

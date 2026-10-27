@@ -168,7 +168,7 @@ def finish_trade(registry, thread):
 def test_the_lobby_settings_include_what_is_typed_into_the_lobby(registry, thread):
     select(registry, thread, *FIRST_PICK)
     finish_trade(registry, thread)
-    assert texts(thread)[-1].splitlines() == [
+    assert texts(thread)[-2].splitlines() == [  # the last message says what comes next
         "Game 1 lobby settings - Jebus Cross",
         "Timer: 12:00+06:00+02:00",
         "Map: L+U",

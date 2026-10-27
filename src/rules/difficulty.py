@@ -4,13 +4,15 @@ Difficulty is the in-game difficulty in percent. It belongs to the template (`da
 because that is how the template is played.
 """
 
+from rules.trade_kinds import TradeKind, sections
+
 # Gold each human player starts with at each difficulty. Source: https://heroes.thelazy.net/index.php/Difficulty
 DIFFICULTY_GOLD = {80: 30000, 100: 20000, 130: 15000, 160: 10000, 200: 0}
 
 # At 200% the lobby is all-random and nobody has gold, so there is nothing to roll or bid for.
 ALL_RANDOM_DIFFICULTY = 200
 
-TRADE_SECTIONS = ("town_roll", "town_bid", "color_bid")
+TRADE_SECTIONS = sections(TradeKind(), mirror=False)  # the sections of the standard trade
 ALL_RANDOM_SECTIONS = ("color_toss",)
 
 

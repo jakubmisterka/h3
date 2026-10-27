@@ -56,17 +56,24 @@ RECORD_FIELDS: dict[str, tuple[str, ...]] = {
     "ban": ("player", "template"),  # who banned which template (Discord user id, template id)
     "pick": ("player", "template"),
     # the trade of one game (these records carry the game in the tag, see `TRADE_TYPES`)
-    "trade_started": ("pair",),  # the two town ids the bot drew
+    "trade_started": ("towns",),  # the town ids the bot drew: two, or one for a mirror
     "trade_resumed": (),  # a trade that was closed is opened again, where it stopped
     "town_bid": ("reporter", "winner", "amount", "town"),  # who reported, who won the bid, for how much, and the town chosen
     "color_bid": ("reporter", "winner", "amount", "color"),  # the same for the color ("red" or "blue")
-    "roll": ("player", "bans", "pair"),  # who rolled, the town ids they banned, and the new pair the bot drew
-    "roll_skipped": ("player",),  # a player gives up their remaining rolls
+    "pack_bid": ("reporter", "winner", "amount", "pack"),  # the same for the pack of computer-player towns ("pack1" or "pack2")
+    "roll": ("player", "bans", "towns"),  # who rolled, the town ids they banned, and the new town(s) the bot drew
+    "roll_skipped": ("player",),  # a player passes on the towns that stand (until the next roll)
     "undo_requested": ("player", "start"),  # who asks to undo the match from record number `start`
     "undone": ("player", "start"),  # the other player agreed: record `start` and all after it no longer count
 }
 
-TRADE_TYPES = ("trade_started", "trade_resumed", "town_bid", "color_bid", "roll", "roll_skipped")
+# Fields a record may also carry, because only some kinds of trade draw them. They are left out when there are none.
+RECORD_OPTIONAL: dict[str, tuple[str, ...]] = {
+    "trade_started": ("packs",),  # the six town ids of the two packs of computer-player towns, pack1 first
+    "roll": ("packs",),  # the same, drawn again by the roll
+}
+
+TRADE_TYPES = ("trade_started", "trade_resumed", "town_bid", "pack_bid", "color_bid", "roll", "roll_skipped")
 
 # Record type -> the short code written in the tag.
 CODES: dict[str, str] = {
@@ -77,6 +84,7 @@ CODES: dict[str, str] = {
     "trade_started": "tr",
     "trade_resumed": "tu",
     "town_bid": "tb",
+    "pack_bid": "pb",
     "color_bid": "cb",
     "roll": "rl",
     "roll_skipped": "rs",
@@ -117,11 +125,34 @@ def _read_step(body: str) -> dict:
     return {"player": int(player.group(1)), "template": template.group(1)}
 
 
+# Where the town(s) of a draw begin in the text of the bot's message, and where the packs of computer-player towns do.
+# Without the marker, the words are read as they always were (the two towns of a standard pair).
+_START_MARKER = re.compile(r"(?:Pair|Town):")
+_ROLL_MARKER = re.compile(r"New (?:pair|town):")
+_PACKS_MARKER = re.compile(r"Packs:|Pack1:")  # where the packs begin: the line of pack1 (or an older "Packs:" line)
+
+
+def _read_draw(text: str, error: str) -> dict:
+    """The town(s) and the packs written after a marker: `towns` has one or two towns, `packs` six (or is left out)."""
+    found = _PACKS_MARKER.search(text)
+    towns_text, packs_text = (text[: found.start()], text[found.start() :]) if found else (text, "")
+    towns, packs = QUOTED.findall(towns_text), QUOTED.findall(packs_text)
+    if not 1 <= len(towns) <= 2:
+        raise RecordError(error)
+    if packs and len(packs) != 6:
+        raise RecordError("the two packs of computer-player towns must give six towns in `quotes`")
+    return {"towns": tuple(towns), **({"packs": tuple(packs)} if packs else {})}
+
+
 def _read_trade_started(body: str) -> dict:
+    error = "a trade started message must give the two towns (or the one town of a mirror) in `quotes`"
+    found = _START_MARKER.search(body)
+    if found is not None:
+        return _read_draw(body[found.end():], error)
     quoted = QUOTED.findall(body)
     if len(quoted) < 2:
         raise RecordError("a trade started message must give the two towns in `quotes`")
-    return {"pair": (quoted[0], quoted[1])}
+    return {"towns": (quoted[0], quoted[1])}
 
 
 def _read_trade_resumed(body: str) -> dict:
@@ -144,12 +175,19 @@ def _read_bid(choice_field: str):
 
 
 def _read_roll(body: str) -> dict:
-    """A roll: the roller is the first mention; the last two `quoted` words are the new pair, any before them the bans."""
+    """A roll: the roller is the first mention; the `quoted` words before "New pair:" (or "New town:") are the bans, the
+    ones after it the new draw. Without that marker, the last two words are the new pair, any before them the bans."""
     player = MENTION.search(body)
     quoted = QUOTED.findall(body)
-    if player is None or len(quoted) < 2:
+    if player is None:
         raise RecordError("a roll message must mention the player and give the new pair in `quotes`")
-    return {"player": int(player.group(1)), "bans": tuple(quoted[:-2]), "pair": (quoted[-2], quoted[-1])}
+    found = _ROLL_MARKER.search(body)
+    if found is not None:
+        draw = _read_draw(body[found.end():], "a roll message must mention the player and give the new pair in `quotes`")
+        return {"player": int(player.group(1)), "bans": tuple(QUOTED.findall(body[:found.start()])), **draw}
+    if len(quoted) < 2:
+        raise RecordError("a roll message must mention the player and give the new pair in `quotes`")
+    return {"player": int(player.group(1)), "bans": tuple(quoted[:-2]), "towns": (quoted[-2], quoted[-1])}
 
 
 def _read_roll_skipped(body: str) -> dict:
@@ -178,6 +216,7 @@ READERS = {
     "trade_resumed": _read_trade_resumed,
     "town_bid": _read_bid("town"),
     "color_bid": _read_bid("color"),
+    "pack_bid": _read_bid("pack"),
     "roll": _read_roll,
     "roll_skipped": _read_roll_skipped,
     "undo_requested": _read_undo,
@@ -190,7 +229,7 @@ def make_record(n: int, type: str, game: int | None = None, **data) -> Record:
     if type not in RECORD_FIELDS:
         raise RecordError(f"unknown record type {type!r}")
     expected = set(RECORD_FIELDS[type])
-    if set(data) != expected:
+    if not expected <= set(data) <= expected | set(RECORD_OPTIONAL.get(type, ())):
         raise RecordError(f"record {type!r} needs exactly {sorted(expected)}, got {sorted(data)}")
     return Record(n, type, data, game)
 
@@ -225,21 +264,21 @@ def describe(record: Record) -> str:
     if record.type in ("ban", "pick"):
         return f"<@{record.data['player']}> {record.type}s {record.data['template']}"
     if record.type == "trade_started":
-        return f"game {record.game}: trade started, {record.data['pair'][0]} vs {record.data['pair'][1]}"
+        return f"game {record.game}: trade started, {' vs '.join(record.data['towns'])}"
     if record.type == "trade_resumed":
         return f"game {record.game}: trade reopened"
     if record.type == "roll":
         data = record.data
         bans = f", banning {', '.join(data['bans'])}" if data["bans"] else ""
-        return f"game {record.game}: <@{data['player']}> rolled{bans}, new pair {data['pair'][0]} vs {data['pair'][1]}"
+        return f"game {record.game}: <@{data['player']}> rolled{bans}, new pair {' vs '.join(data['towns'])}"
     if record.type in ("undo_requested", "undone"):
         verb = "asks to undo" if record.type == "undo_requested" else "agreed to undo"
         return f"<@{record.data['player']}> {verb} everything from record {record.data['start']}"
     if record.type == "roll_skipped":
         return f"game {record.game}: <@{record.data['player']}> skipped the roll"
-    if record.type in ("town_bid", "color_bid"):
+    if record.type in ("town_bid", "pack_bid", "color_bid"):
         data = record.data
-        choice = data.get("town") or data.get("color")
+        choice = data.get("town") or data.get("pack") or data.get("color")
         return f"game {record.game}: <@{data['winner']}> won the {record.type.replace('_', ' ')} at {data['amount']}, chose {choice}"
     return f"{record.type} {record.data}"
 

@@ -175,7 +175,7 @@ def test_undoing_a_bid_returns_the_trade_to_before_it(registry, thread):
     posted = after_undo(thread)
     assert "Game 1: Jebus Cross, trade open, next: town bid Necropolis vs Tower, gold difference <@1> 0 / <@2> 0" in posted[0]
     assert len(posted) == 2  # the last step that counts is a step of the trade, so only the trade is asked about
-    assert posted[-1].startswith("Game 1 town bid: Necropolis vs Tower.")  # and it asks for the result again
+    assert posted[-1].startswith("Game 1 town bid: Necropolis vs Tower\n")  # and it asks for the result again
     it = run(trade_commands.report, registry, thread, BORIS, BORIS, 300, "Tower")
     assert told(it) == "Reported."
 
@@ -327,7 +327,7 @@ def test_after_undoing_a_roll_the_open_trade_asks_for_a_roll_or_a_skip_again(rol
     run(trade_commands.roll, rolling_registry, rolling, ANNA, None, None)
     undo(rolling_registry, rolling, ANNA)
     undo(rolling_registry, rolling, BORIS)
-    assert after_undo(rolling)[-1].startswith("Game 1 town roll: Necropolis vs Tower. A roll costs 500 gold. Both players may roll.")
+    assert after_undo(rolling)[-1].startswith("Game 1 town roll: Necropolis vs Tower\nA roll costs 500 gold. Both players may roll.")
 
 
 # --- undoing a bid does not reopen a roll that the bid had settled ----------------------------------------------------------------------------------
@@ -335,7 +335,7 @@ def test_after_undoing_a_roll_the_open_trade_asks_for_a_roll_or_a_skip_again(rol
 
 def bid_after_a_roll(rolling_registry, rolling):
     run(trade_commands.roll, rolling_registry, rolling, ANNA, None, None)  # Anna rolls; Boris has not decided
-    pair = rolls_in(rolling)[0].data["pair"]
+    pair = rolls_in(rolling)[0].data["towns"]
     run(trade_commands.report, rolling_registry, rolling, ANNA, ANNA, 100, pair[0])  # the bid settles Boris's roll
 
 

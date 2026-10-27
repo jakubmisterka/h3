@@ -261,7 +261,7 @@ def test_the_rules_come_after_the_start_of_the_trade_and_before_what_to_do_next(
     sent = texts(started(registry_of(good_format, towns), "JC"))
     at = sent.index(f"Additional rules: {CATALOGUE_RULES}")
     assert "trade" in sent[at - 1].lower()  # the opening of the trade
-    assert sent[at + 1].startswith("Game 1 town roll")  # the prompt stays the last thing said
+    assert sent[at + 1].startswith("A roll costs")  # the prompt stays the last thing said
 
 
 def test_the_rules_of_the_phase_are_the_ones_posted(good_format, towns):

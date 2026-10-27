@@ -72,6 +72,7 @@
         "roads": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
         "map_size": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
         "ai": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "trade": { "not": {}, "description": "How a game is traded can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
         "download": { "not": {}, "description": "A download link can only be given for a template (in the tournament's list of templates or in a phase's pool)." },
         "additional_rules": { "not": {}, "description": "Rules for the whole tournament are written as \"additional_rules\" next to \"name\", not in \"settings\". In \"settings\" they are for one template." }
       }
@@ -86,6 +87,16 @@
         "map_size": { "type": "string", "description": "The map size for this template: S, M, L, XL, H, XH or G, with +U for underground (for example L+U). Must be one of the sizes the template allows." },
         "ai": { "type": "integer", "minimum": 0, "maximum": 6, "description": "The number of computer players for this template, 0 to 6. Must be one of the numbers the template allows." },
         "additional_rules": { "type": "string", "description": "Additional rules for this template, at most 1000 characters. Replace the rules the template states." },
+        "trade": {
+          "description": "How a game on this template is traded: standard, standard_with_ai_packs, or roulette (a name, or an object with kind, hero_bans and roll_before_heroes).",
+          "type": ["string", "object"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["standard", "standard_with_ai_packs", "roulette"] },
+            "hero_bans": { "type": "integer", "minimum": 0, "maximum": 3, "description": "Heroes each player may ban before the heroes are drawn (roulette only). Default: 0." },
+            "roll_before_heroes": { "type": "boolean", "description": "true (default): the heroes are drawn after the rolls. false: together with the towns, and then no hero can be banned (roulette only)." }
+          }
+        },
         "download": { "type": "string", "description": "A link starting with https:// where the version of the template this tournament plays can be downloaded. Use it when it is not the version built into HotA." }
       }
     },

@@ -30,6 +30,10 @@ CHECK_STATUS = "Check /match status to see where the match stands."
 UNDONE_REPLY = "Undone."
 
 
+def _versus(towns: Catalogue, ids) -> str:
+    return " vs ".join(towns.find(town).name for town in ids)
+
+
 def step_words(record: Record, templates: Catalogue, towns: Catalogue) -> str:
     """One step in a few words."""
     data = record.data
@@ -38,18 +42,17 @@ def step_words(record: Record, templates: Catalogue, towns: Catalogue) -> str:
         return f"{who} {'banned' if record.type == 'ban' else 'picked'} {templates.find(data['template']).name}"
     game = f"game {record.game}: "
     if record.type == "trade_started":
-        first, second = (towns.find(town).name for town in data["pair"])
-        return f"{game}the trade started ({first} vs {second})"
+        return f"{game}the trade started ({_versus(towns, data['towns'])})"
     if record.type == "trade_resumed":
         return f"{game}the trade was reopened"
     if record.type == "roll":
         bans = ", ".join(towns.find(town).name for town in data["bans"])
-        first, second = (towns.find(town).name for town in data["pair"])
-        return f"{game}{who} rolled{', banning ' + bans if bans else ''} (new pair {first} vs {second})"
+        what = "new pair" if len(data["towns"]) == 2 else "new town"
+        return f"{game}{who} rolled{', banning ' + bans if bans else ''} ({what} {_versus(towns, data['towns'])})"
     if record.type == "roll_skipped":
         return f"{game}{who} skipped the roll"
-    if record.type in ("town_bid", "color_bid"):
-        choice = towns.find(data["town"]).name if record.type == "town_bid" else data["color"]
+    if record.type in ("town_bid", "pack_bid", "color_bid"):
+        choice = towns.find(data["town"]).name if record.type == "town_bid" else data.get("pack") or data["color"]
         what = record.type.replace("_", " ")
         return f"{game}{what}, <@{data['winner']}> won at {data['amount']} and chose {choice}"
     return record.type  # a kind of step this function does not know yet: its name is better than nothing

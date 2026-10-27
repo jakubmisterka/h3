@@ -66,3 +66,9 @@ def test_the_settings_example_in_the_formats_readme_is_valid_for_the_templates_o
     # The two guides refer to each other: the format example is checked against the templates of the data example.
     catalogue = parse_templates(_readme_block("data/README.md", "templates example"), "the example in data/README.md")
     assert validate_format(_readme_block("formats/README.md", "settings example"), catalogue, towns) == []
+
+
+def test_town_names_are_single_capitalised_words(towns):
+    # The thread quotes a town by its name (`Castle`), so a name is one word starting with a capital letter.
+    for entry in towns.entries:
+        assert re.fullmatch(r"[A-Z][A-Za-z]*", entry.name), f"town {entry.id!r} is called {entry.name!r}"

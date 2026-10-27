@@ -22,11 +22,11 @@ def pick(n, template="JC", player=B):
 
 
 def trade_started(n, game=1):
-    return make_record(n, "trade_started", game=game, pair=("castle", "tower"))
+    return make_record(n, "trade_started", game=game, towns=("castle", "tower"))
 
 
 def roll(n, game=1, player=A):
-    return make_record(n, "roll", game=game, player=player, bans=("castle",), pair=("cove", "tower"))
+    return make_record(n, "roll", game=game, player=player, bans=("castle",), towns=("cove", "tower"))
 
 
 def town_bid(n, game=1, winner=A, amount=2100):
@@ -165,7 +165,7 @@ def test_each_kind_of_step_is_described_in_a_few_words(templates, towns):
     assert words(trade_started(4)) == "game 1: the trade started (Castle vs Tower)"
     assert words(make_record(5, "trade_resumed", game=2)) == "game 2: the trade was reopened"
     assert words(roll(6)) == "game 1: <@111> rolled, banning Castle (new pair Cove vs Tower)"
-    assert words(make_record(6, "roll", game=1, player=A, bans=(), pair=("cove", "tower"))) == (
+    assert words(make_record(6, "roll", game=1, player=A, bans=(), towns=("cove", "tower"))) == (
         "game 1: <@111> rolled (new pair Cove vs Tower)"
     )
     assert words(make_record(7, "roll_skipped", game=1, player=B)) == "game 1: <@222> skipped the roll"

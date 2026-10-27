@@ -23,6 +23,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from rules.catalogue import Catalogue
+from rules.trade_kinds import PACKS_KIND, TradeKind, check_trade
 from rules.lobby_values import (
     check_computer_players,
     check_download,
@@ -212,6 +213,7 @@ _SETTING_CHECKS = {
     "ai": check_computer_players,
     "additional_rules": check_text,
     "download": check_download,
+    "trade": check_trade,
 }
 _CHOSEN_FROM_ALLOWED = ("roads", "map_size", "ai")
 
@@ -227,6 +229,8 @@ def _settings_problems(where: str, settings: dict, template: str | None, templat
             problems.append(f"{where}: {name}: {e}")
             continue
         entry = templates.find(template) if template else None
+        if name == "trade" and entry is not None and check_trade(value).name == PACKS_KIND and entry.details.get("mirror"):
+            problems.append(f"{where}: trade: a mirror template cannot have computer-player packs ({template!r} is a mirror)")
         if name in _CHOSEN_FROM_ALLOWED and entry is not None:  # an unknown template is reported elsewhere
             choice = entry.details.get(name)
             if choice is None:
@@ -238,6 +242,51 @@ def _settings_problems(where: str, settings: dict, template: str | None, templat
                 problems.append(
                     f"{where}: {name}: {value!r} is not allowed for {template!r}. "
                     f"Allowed: {', '.join(str(v) for v in choice.allowed)}"
+                )
+    return problems
+
+
+def _stacked(name: str, catalogue_value, *written_in):
+    """The value of a setting for a template as it is written, the most specific place winning: the catalogue, then
+    the template's entry in the tournament's list, then its entry in the phase's pool (`written_in`, least specific
+    first). The same order as `effective_settings`, on the raw data a format file is validated from."""
+    value = catalogue_value
+    for raw in written_in:
+        if isinstance(raw, dict) and name in raw.get("settings", {}):
+            value = raw["settings"][name]
+    return value
+
+
+def _trade_name(template: str, listed_entry, pool_entry, templates: Catalogue) -> str | None:
+    """The kind of trade a template has in a phase, as written, or None if none is stated (or it is not a kind,
+    which is reported with the setting itself)."""
+    entry = templates.find(template)
+    stated = _stacked("trade", entry.details.get("trade") if entry else None, listed_entry, pool_entry)
+    if stated is None:
+        return None
+    if isinstance(stated, TradeKind):  # the catalogue's value is already read
+        return stated.name
+    try:
+        return check_trade(stated).name
+    except ValueError:
+        return None
+
+
+def _packs_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[str]:
+    """Computer-player packs need eight different towns to draw from, in every phase that uses the template."""
+    listed = {_template_id(raw): raw for raw in data["templates"]}
+    problems = []
+    for phase in data["phases"]:
+        allowed = phase.get("allowed_towns", data.get("allowed_towns", towns.ids))
+        pool = phase.get("pool") or data["templates"]
+        for raw in pool:
+            template = _template_id(raw)
+            if template not in listed or len(set(allowed)) >= 8:
+                continue
+            if _trade_name(template, listed[template], raw, templates) == PACKS_KIND:
+                problems.append(
+                    f'phase "{phase["name"]}", {template}: trade: computer-player packs need at least eight allowed towns '
+                    f"(two for the players and six for the computer players), but this phase allows {len(set(allowed))}"
                 )
     return problems
 
@@ -274,6 +323,7 @@ def rule_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[st
     for phase in data["phases"]:
         problems += _phase_problems(phase, listed, towns)
     problems += _all_settings_problems(data, templates)
+    problems += _packs_problems(data, templates, towns)
     for name in ("description", "additional_rules"):
         if name in data:
             try:

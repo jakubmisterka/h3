@@ -80,15 +80,15 @@ async def begin_match(
 
 @group.command(name="start", description="Start a match against an opponent")
 @app_commands.describe(
-    mode="The tournament mode",
     opponent="The player you are playing against",
+    mode="The tournament mode",
     phase="The phase of the tournament (only for modes with several phases)",
     template="Play just this template, straight to the trade (one of the phase's templates)",
 )
 async def start(
     interaction: discord.Interaction,
-    mode: str,
     opponent: discord.Member,
+    mode: str,
     phase: str | None = None,
     template: str | None = None,
 ) -> None:

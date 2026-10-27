@@ -35,6 +35,7 @@
     "name": "Sapphire",
     "difficulty": 160,
     "built_in": true,
+    "trade": "standard_with_ai_packs",
     "map_size": { "default": "XH", "allowed": ["XH", "XL+U"] },
     "roads": { "default": "mid", "allowed": ["mid"] },
     "ai": { "default": 6, "allowed": [6] },

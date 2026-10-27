@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from rules.trade_kinds import PACKS_KIND, check_trade
 from rules.difficulty import DIFFICULTY_GOLD, supported_difficulties
 from rules.lobby_values import (
     check_computer_players,
@@ -93,6 +94,7 @@ TEMPLATE_OPTIONAL: dict[str, Callable[[object], object]] = {
     "download": check_download,
     "description": check_text,
     "additional_rules": check_text,
+    "trade": check_trade,
 }
 
 
@@ -192,6 +194,9 @@ def parse_templates(data: object, label: str) -> Catalogue:
             )
         if "built_in" in entry.details and "download" in entry.details:
             raise CatalogueError(f"{where}: state only one of built_in and download")
+        trade = entry.details.get("trade")
+        if trade is not None and trade.name == PACKS_KIND and entry.details.get("mirror"):
+            raise CatalogueError(f"{where}: trade: a mirror template cannot have computer-player packs")
         if entry.details.get("mirror"):
             sizes = entry.details.get("map_size")
             for size in (sizes.allowed if sizes else ()):
