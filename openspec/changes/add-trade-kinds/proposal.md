@@ -30,7 +30,7 @@ A game's trade has a **kind**. The kind decides what the bot draws when the trad
 - A new template setting **`trade`**, stacked like the other settings: the template's own default in the catalogue, then the tournament's template list, then the phase's pool. So the same template can be traded as plain mirror in the groups and as roulette in the knockout.
   - `"standard"` (the default when nothing is stated), `"standard_with_ai_packs"`, or an object `{ "kind": "roulette", "hero_bans": 1, "roll_before_heroes": true }` (`hero_bans` is the number of heroes each player may ban, default 0; `roll_before_heroes` defaults to true).
 - `mirror` stays a fact of the template. `standard_with_ai_packs` is refused for a mirror template; roulette works for both.
-- A new catalogue of **heroes** (`data/heroes.json`): each hero's id, name, town and a link to the community wiki. A template may list `banned_heroes`, the heroes of its towns that its map does not offer (a list of exclusions is shorter than a list of allowed heroes).
+- A new catalogue of **heroes** (`data/heroes.json`): each hero's id, name, town and a link to the community wiki. Heroes carry the **default bans** of HotA's template editor as flags: the campaign heroes (Gelu, Boragus, ...), three more it bans in every pack, the eight it bans for the water of a map (nobody plays with water), and, separately, the heroes banned on mirror templates. A map leaves those out unless the template lists them in `allowed_heroes`. A template may also list `banned_heroes`, the heroes of its towns that its map does not offer (a list of exclusions is shorter than a list of allowed heroes).
 - A format file is refused, with a message in plain words, when a kind cannot work: `standard_with_ai_packs` needs at least 8 allowed towns in the phase and no mirror template, `hero_bans` above 0 needs `roll_before_heroes`, a template's `banned_heroes` must be heroes in the catalogue, and a roulette needs enough heroes left to draw.
 
 ### Assumptions
@@ -57,6 +57,7 @@ A game's trade has a **kind**. The kind decides what the bot draws when the trad
 - `game-trade`: a trade has a kind; the mirror trade and the trade with computer-player packs; the sections, the draw, the roll and the lobby settings depend on the kind.
 - `tournament-formats`: the `trade` setting and its stacking; the checks that a kind can work.
 - `mode-info`: the template reply says how the trade is run in that mode.
+- `match-setup`: the match thread opens in a few short messages, and what it says about a template is cut to what players need.
 
 ## Impact
 

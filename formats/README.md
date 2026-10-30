@@ -125,6 +125,7 @@ what the template states
 | `sim_turns` | How long simultaneous turns are recommended to last, as `117` or `121` (month, week, day). Any valid date. |
 | `roads`, `map_size`, `ai` | The roads, the map size and the number of computer players for **one template**. Each must be one of the values the template allows. A template that states no allowed values for a setting cannot have it chosen: complete its facts in `data/templates.json` first. Not allowed for the whole tournament. |
 | `download` | **For one template only**: a link starting with `https://` for the version of the template this tournament plays, when it is not the one built into HotA. It replaces `built_in`, so `/info` and the thread show the link instead of "Built into HotA". |
+| `trade` | **For one template only**: how the trade of a game is run: `standard`, `standard_with_ai_packs`, a roulette or `roulette_with_ai_packs`. See [How a game is traded](#how-a-game-is-traded). |
 | `additional_rules` | **For one template only** (never in the tournament's own `settings`): additional rules for the template, free text of 1 to 1000 characters. They replace the rules the template states in the catalogue, and a phase's `additional_rules` replace the list's, like any other setting. Shown by `/info`, and posted in the thread when the trade of a game on the template starts. |
 
 What a setting does not say, the template's default decides, and when that is not stated either, the bot says nothing about it. `/info` shows what is played on a template in your tournament, and the match thread repeats it where the template of a game is announced, with the timer, map size, roads and computer players again in the lobby settings.
@@ -167,6 +168,76 @@ The example uses the three templates of the example in [`../data/README.md`](../
 ```
 
 Here every template has the 12-minute timer except Jebus Cross in the phase, which has 15 minutes. Jebus Cross is played with extra large underground maps and six computer players, and in this phase on fast roads.
+
+## How a game is traded
+
+Every game has a trade before it is played: a town roll, bids, and the lobby settings at the end. **The `trade` setting says how it is run**, for one template, at the same three places as the other settings (the template's own default in `data/templates.json`, then its entry in the tournament's `templates` list, then its entry in a phase's `pool`; the most specific wins). Nothing stated means the standard trade, so the same template can be a plain trade in the groups and a roulette in the final.
+
+| `trade` | What happens |
+|---|---|
+| `"standard"` | The bot draws a pair of towns, which can be rolled. Then the town bid, then the color bid. |
+| `"standard_with_ai_packs"` | The pair, and two packs of three towns for the computer players, named `pack1` and `pack2`, all eight towns different. A roll redraws everything and bans only towns of the pair (a banned town may come up in a pack). After the town bid comes the pack bid, whose winner chooses a pack, and then the color bid. The phase must allow at least 8 towns. |
+| `"roulette"` | The bot draws the heroes too, by itself, instead of a website. See below. |
+| `"roulette_with_ai_packs"` | A roulette that also has the two packs: the roll, the hero bans (if any), the town bid, the pack bid and the color bid. The heroes are of the pair's towns (the packs have none). It takes the same options as `roulette`, and like packs needs 8 allowed towns and no mirror template. |
+
+A **mirror template** (`mirror: true` in `data/templates.json`) gets one town that both players play instead of a pair. A roll pays and bans that town, and the only bid of a standard trade is the color bid. Packs cannot be used on a mirror template.
+
+### Roulette
+
+A roulette is written as a name, or as an object with options:
+
+```json
+{ "kind": "roulette", "hero_bans": 1, "roll_before_heroes": true }
+```
+
+| Option | What it does |
+|---|---|
+| `hero_bans` | How many heroes each player may ban (0 to 3, default 0) of the drawn town(s) before the heroes are drawn: the player who won the coinflip (A) first, then B, with `/trade ban-heroes`. |
+| `roll_before_heroes` | `true` (default): the towns are drawn and can be rolled first, and the heroes are drawn when the rolls and the bans are over. `false`: the heroes are drawn together with the towns, players see them before deciding to roll, and a roll redraws both. Then no hero can be banned, so `hero_bans` must be 0. |
+
+The heroes drawn are two different heroes of the town for a mirror, and one hero of each town of the pair otherwise. They come from the heroes the template's map offers: see [`../data/README.md`](../data/README.md) for `heroes.json`, the heroes banned by default (campaign heroes, and others), and the template's `banned_heroes` and `allowed_heroes`. The draw is public and final.
+
+The bids of a roulette are the same as in the standard trade, with a hero in place of a town. In a game with a pair, the town bid also decides the hero of that town, because each town of the pair comes with its hero. In a mirror there is one bid: its winner says whether they choose the **hero** or the **color** first, and the other player chooses the other. The bot does not track which hero or color is chosen.
+
+**What the bot does not run** is the procedure for choosing the starting hero in a standard mirror trade (who bans how many, who picks first). It differs between tournaments, so write it as additional rules, and the thread will show it when the trade starts:
+
+```json
+{
+  "template": "h3dm1",
+  "settings": { "additional_rules": "The winner of the color bid bans 0-3 heroes, then the loser picks first" }
+}
+```
+
+A format that cannot work is refused when the bot starts, with the reason: packs on a mirror template or with fewer than 8 allowed towns, hero bans together with `roll_before_heroes: false`, or a town that would have too few heroes left for the draw.
+
+<!-- trade example -->
+```json
+{
+  "id": "hero-cup",
+  "name": "Hero Cup",
+  "templates": [
+    { "template": "JC", "settings": { "trade": { "kind": "roulette", "hero_bans": 1 } } },
+    { "template": "6lm10a", "settings": { "trade": "standard_with_ai_packs" } },
+    { "template": "h3dm1", "settings": { "additional_rules": "The winner of the color bid bans 0-3 heroes, then the loser picks first" } }
+  ],
+  "phases": [
+    {
+      "name": "Main",
+      "best_of": 1,
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Here Jebus Cross is a roulette with one hero ban each, 6lm10a has computer-player packs, and h3dm1, a mirror, has the standard mirror trade with the hero procedure written as a rule.
 
 ## Allowed towns
 

@@ -28,20 +28,18 @@ def rules_announcement(
 ) -> list[str]:
     """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes.
 
-    `facts` are the lines about the named template (its timer, map and so on), one message each after its name.
+    `facts` are the lines about the named template (see `template_facts.announcement_lines`), one message each after its name.
     """
     if template_name is not None:  # no bans or picks: one game, straight to the trade
-        messages = [f"Best of {phase.best_of}" if phase.agreed else "One game"]
-        messages.append(f"The players agreed on the template: {template_name}" if phase.agreed else f"The template: {template_name}")
+        messages = [f"Format: BO{phase.best_of}" if phase.agreed else "Format: BO1"]  # the template is in the record above
         messages += facts
     else:
-        messages = [f"Best of {phase.best_of}"]
+        messages = [f"Format: BO{phase.best_of}"]
         # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own
         notation, _, meaning = template_selection_line(phase.steps).partition(": ")
         messages.append(f"Template Selection: {notation}" if meaning else notation)
         if meaning:
             messages.append(meaning)
-    messages.append("The winner of the coinflip will be player A, the other player is B")
     if template_name is None:
         messages.append(f"Templates: {', '.join(pool_names)}")
     return messages
@@ -67,10 +65,10 @@ def match_started_text(
 ) -> str:
     """The text of the match started record. The first two mentions are the players and the first `quoted` words the
     mode, the phase and the agreed template, which is how the record is read back."""
-    wording = f"Mode: {mode_name} (`{mode_id}`), phase `{phase_name}`"
+    lines = [f"Match started: {starter} vs {opponent}", f"Mode: {mode_name} (`{mode_id}`)", f"Phase: `{phase_name}`"]
     if template_id:
-        wording += f", template `{template_id}`"
-    return f"Match started: {starter} vs {opponent}. {wording}. This is your match thread."
+        lines.append(f"Template: `{template_id}`")
+    return "\n".join(lines)
 
 
 ################################################################################################################

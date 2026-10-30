@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: A game's trade has a kind
-The kind of a game's trade SHALL be the `trade` setting of the game's template in the match's phase. The kinds are the standard trade (the one this capability describes everywhere else), the trade with computer-player packs, and the roulette. When nothing is stated, the kind is the standard one. A mirror template keeps its kind, changed as the requirement about a mirror trade says. When a trade of any other kind opens, the thread SHALL say which kind it is.
+The kind of a game's trade SHALL be the `trade` setting of the game's template in the match's phase. The kinds are the standard trade (the one this capability describes everywhere else), the trade with computer-player packs, the roulette, and the roulette with computer-player packs. When nothing is stated, the kind is the standard one. A mirror template keeps its kind, changed as the requirement about a mirror trade says. When a trade of any other kind opens, the thread SHALL say which kind it is.
 
 #### Scenario: Nothing stated
 - **WHEN** a game's template states no trade
@@ -102,6 +102,21 @@ The pack bid SHALL be undone by the undo of the `match-setup` capability like an
 #### Scenario: Undoing a pack bid
 - **WHEN** both players agree to undo from the pack bid
 - **THEN** the pack bid stops counting and the bot asks for it again, with the same pair and packs
+
+### Requirement: The trade opens and asks for the next step in short lines
+When a trade opens, the bot SHALL post the game and its template, what was drawn, and the starting gold of each player, each on its own line and with every amount of gold written with a space between the thousands (10 000). It SHALL then say the next step on short lines, headed "Next step": for the roll, its cost and how many rolls each player has left; for a bid, who bids first; and how to report or roll. The opening SHALL NOT explain the kind of trade, since the rules at the start of the match did.
+
+#### Scenario: The opening of a trade
+- **WHEN** the trade of game 1 of a mirror template opens
+- **THEN** the thread gives "Game 1 (h3dm1)", the town and "Starting gold: 10 000", each on a line
+
+#### Scenario: The next step is the roll
+- **WHEN** the trade opens and both players have one roll
+- **THEN** the next step says it is the town roll, the cost of a roll, that each player has 1 roll left, and how to roll and how to skip
+
+#### Scenario: Rolls left
+- **WHEN** a player has used their roll
+- **THEN** the next step says they have 0 rolls left
 
 ## MODIFIED Requirements
 
@@ -214,7 +229,7 @@ The roll section SHALL end when no eligible player is left who has neither rolle
 
 #### Scenario: Skipping twice
 - **WHEN** a player who has skipped tries to skip or roll before the towns change
-- **THEN** the bot refuses and says they have already passed on these towns
+- **THEN** the bot refuses and says they have already skipped
 
 #### Scenario: Waiting on the other player
 - **WHEN** P1 has skipped and P2 has neither rolled nor skipped

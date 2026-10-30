@@ -10,10 +10,12 @@ same in every phase of a template is said once, with only the differences listed
 from rules.catalogue import Catalogue
 from rules.difficulty import ALL_RANDOM_DIFFICULTY
 from rules.formats import Format, Phase, Step
+from rules.ledger import spaced
 from rules.registry import Registry
 from rules.roll_rules import RollRules, effective_roll_rules
 from rules.template_facts import SETTINGS, fixed_lines, setting_line, setting_value
 from rules.template_settings import Settings, effective_settings
+from rules.trade_kinds import kind_words
 
 # Discord refuses a message longer than 2000 characters. Stay safely under it.
 MAX_REPLY = 1900
@@ -45,7 +47,7 @@ def template_selection_line(steps: tuple[Step, ...]) -> str:
 
 # The roll rules in words, one rule at a time, so that a difference can be named on its own.
 def _cost_words(rules: RollRules) -> str:
-    return "free" if rules.roll_cost == 0 else f"{rules.roll_cost} gold"
+    return "free" if rules.roll_cost == 0 else f"{spaced(rules.roll_cost)} gold"
 
 
 def _rolls_words(rules: RollRules) -> str:
@@ -165,6 +167,18 @@ def _setting_lines(per_phase: list[tuple[Phase, Settings]]) -> list[str]:
     return lines
 
 
+def _trade_lines(per_phase: list[tuple[Phase, Settings]]) -> list[str]:
+    """How the trade is run, when it is not the standard one: the kind most phases use, and the phases that differ."""
+    base = _most_common([settings.trade for _, settings in per_phase])
+    lines = [f"Trade: {kind_words(base)}"] if kind_words(base) else []
+    for phase, settings in per_phase:
+        if settings.trade == base:
+            continue
+        words = kind_words(settings.trade) or "standard"
+        lines.append(f"  {phase.name}: {words}" if kind_words(base) else f"Trade: {words} ({phase.name})")
+    return lines
+
+
 def template_info(fmt: Format, template_id: str, templates: Catalogue, phase: Phase | None = None) -> str:
     """How one template is played in a mode: in all the phases that use it, or in just one."""
     entry = templates.find(template_id)
@@ -194,7 +208,9 @@ def template_info(fmt: Format, template_id: str, templates: Catalogue, phase: Ph
         lines.append("No roll: the trade is only a toss for color.")
     else:
         lines += _roll_lines([(p, effective_roll_rules(fmt, p, template_id)) for p in using])
-    lines += _setting_lines([(p, effective_settings(fmt, p, template_id, templates)) for p in using])
+    settings = [(p, effective_settings(fmt, p, template_id, templates)) for p in using]
+    lines += _trade_lines(settings)
+    lines += _setting_lines(settings)
     return _fit("\n".join(lines))
 
 

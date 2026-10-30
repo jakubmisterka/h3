@@ -1,6 +1,6 @@
 import pytest
 
-from rules.ledger import LedgerError, Payment, check_payment, gold_after, pay
+from rules.ledger import LedgerError, Payment, check_payment, gold_after, pay, spaced
 
 P1, P2 = 111, 222
 
@@ -15,7 +15,7 @@ def test_a_payment_goes_to_the_opponent():
 
 
 def test_the_worked_example_ends_with_10400_and_9600():
-    # 160% difficulty: a 500 roll and the 2100 town bid paid by P1, the 3000 color bid paid by P2
+    # 160% difficulty: a 500 roll and the 2 100 town bid paid by P1, the 3000 color bid paid by P2
     payments = [Payment(P1, 500), Payment(P1, 2100), Payment(P2, 3000)]
     assert gold_after(10000, (P1, P2), payments) == {P1: 10400, P2: 9600}
 
@@ -30,7 +30,7 @@ def test_a_player_can_pay_everything_they_have():
 
 
 def test_more_than_the_payer_has_is_refused():
-    with pytest.raises(LedgerError, match="2100 gold is more than the 2000 the payer has"):
+    with pytest.raises(LedgerError, match="2 100 gold is more than the 2 000 the payer has"):
         gold_after(2000, (P1, P2), [Payment(P1, 2100)])
 
 
@@ -79,7 +79,7 @@ def test_whole_hundreds_can_be_paid(amount):
 
 @pytest.mark.parametrize("amount", [1, 50, 250, 2150, 9999])
 def test_other_amounts_are_refused_with_the_step_named(amount):
-    with pytest.raises(LedgerError, match=f"steps of 100, so {amount} is not possible"):
+    with pytest.raises(LedgerError, match=f"steps of 100, so {spaced(amount)} is not possible"):
         check_payment({P1: 10000, P2: 10000}, Payment(P1, amount))
 
 

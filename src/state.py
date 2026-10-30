@@ -30,6 +30,8 @@ This module is plain Python (no Discord objects), so it can be tested.
 import re
 from dataclasses import dataclass, field
 
+from rules.ledger import spaced
+
 
 class RecordError(ValueError):
     """A record is damaged or does not match its type."""
@@ -60,20 +62,26 @@ RECORD_FIELDS: dict[str, tuple[str, ...]] = {
     "trade_resumed": (),  # a trade that was closed is opened again, where it stopped
     "town_bid": ("reporter", "winner", "amount", "town"),  # who reported, who won the bid, for how much, and the town chosen
     "color_bid": ("reporter", "winner", "amount", "color"),  # the same for the color ("red" or "blue")
+    "first_choice_bid": ("reporter", "winner", "amount", "first"),  # the same for who chooses first, "hero" or "color"
     "pack_bid": ("reporter", "winner", "amount", "pack"),  # the same for the pack of computer-player towns ("pack1" or "pack2")
     "roll": ("player", "bans", "towns"),  # who rolled, the town ids they banned, and the new town(s) the bot drew
     "roll_skipped": ("player",),  # a player passes on the towns that stand (until the next roll)
+    "hero_bans": ("player", "heroes"),  # a player bans these heroes (by name; none if they ban nobody) before the draw
+    "heroes_drawn": ("heroes",),  # the heroes the bot drew (by name), in the order of the towns of the game
     "undo_requested": ("player", "start"),  # who asks to undo the match from record number `start`
     "undone": ("player", "start"),  # the other player agreed: record `start` and all after it no longer count
 }
 
 # Fields a record may also carry, because only some kinds of trade draw them. They are left out when there are none.
 RECORD_OPTIONAL: dict[str, tuple[str, ...]] = {
-    "trade_started": ("packs",),  # the six town ids of the two packs of computer-player towns, pack1 first
-    "roll": ("packs",),  # the same, drawn again by the roll
+    "trade_started": ("packs", "heroes"),  # the six towns of the two packs, pack1 first; the two heroes (by name)
+    "roll": ("packs", "heroes"),  # the same, drawn again by the roll
 }
 
-TRADE_TYPES = ("trade_started", "trade_resumed", "town_bid", "pack_bid", "color_bid", "roll", "roll_skipped")
+TRADE_TYPES = (
+    "trade_started", "trade_resumed", "town_bid", "pack_bid", "first_choice_bid", "color_bid", "roll", "roll_skipped",
+    "hero_bans", "heroes_drawn",
+)
 
 # Record type -> the short code written in the tag.
 CODES: dict[str, str] = {
@@ -85,9 +93,12 @@ CODES: dict[str, str] = {
     "trade_resumed": "tu",
     "town_bid": "tb",
     "pack_bid": "pb",
+    "first_choice_bid": "fb",
     "color_bid": "cb",
     "roll": "rl",
     "roll_skipped": "rs",
+    "hero_bans": "hb",
+    "heroes_drawn": "hd",
     "undo_requested": "ur",
     "undone": "ud",
 }
@@ -129,11 +140,15 @@ def _read_step(body: str) -> dict:
 # Without the marker, the words are read as they always were (the two towns of a standard pair).
 _START_MARKER = re.compile(r"(?:Pair|Town):")
 _ROLL_MARKER = re.compile(r"New (?:pair|town):")
+_HEROES_MARKER = re.compile(r"Hero1:")  # where the heroes drawn with the towns begin: the line of the first hero
 _PACKS_MARKER = re.compile(r"Packs:|Pack1:")  # where the packs begin: the line of pack1 (or an older "Packs:" line)
 
 
 def _read_draw(text: str, error: str) -> dict:
     """The town(s) and the packs written after a marker: `towns` has one or two towns, `packs` six (or is left out)."""
+    hero_found = _HEROES_MARKER.search(text)
+    heroes = QUOTED.findall(text[hero_found.start() :]) if hero_found else []
+    text = text[: hero_found.start()] if hero_found else text
     found = _PACKS_MARKER.search(text)
     towns_text, packs_text = (text[: found.start()], text[found.start() :]) if found else (text, "")
     towns, packs = QUOTED.findall(towns_text), QUOTED.findall(packs_text)
@@ -141,7 +156,13 @@ def _read_draw(text: str, error: str) -> dict:
         raise RecordError(error)
     if packs and len(packs) != 6:
         raise RecordError("the two packs of computer-player towns must give six towns in `quotes`")
-    return {"towns": tuple(towns), **({"packs": tuple(packs)} if packs else {})}
+    if heroes and len(heroes) != 2:
+        raise RecordError("the heroes drawn with the towns must give two heroes in `quotes`")
+    return {
+        "towns": tuple(towns),
+        **({"packs": tuple(packs)} if packs else {}),
+        **({"heroes": tuple(heroes)} if heroes else {}),
+    }
 
 
 def _read_trade_started(body: str) -> dict:
@@ -167,9 +188,10 @@ def _read_bid(choice_field: str):
         quoted = QUOTED.findall(body)
         if len(ids) < 2 or len(quoted) < 2:
             raise RecordError("a bid message must mention the reporter and the winner and give the amount and choice in `quotes`")
-        if not quoted[0].isdigit():
+        amount = quoted[0].replace(" ", "")  # the bot writes 1 000 with a space
+        if not amount.isdigit():
             raise RecordError(f"the amount of a bid must be a whole number, not {quoted[0]!r}")
-        return {"reporter": ids[0], "winner": ids[1], "amount": int(quoted[0]), choice_field: quoted[1]}
+        return {"reporter": ids[0], "winner": ids[1], "amount": int(amount), choice_field: quoted[1]}
 
     return read
 
@@ -197,6 +219,22 @@ def _read_roll_skipped(body: str) -> dict:
     return {"player": int(player.group(1))}
 
 
+def _read_hero_bans(body: str) -> dict:
+    """A player's hero bans: the player is the first mention, the banned heroes the `quoted` words (none: no ban)."""
+    player = MENTION.search(body)
+    if player is None:
+        raise RecordError("a hero bans message must mention the player")
+    return {"player": int(player.group(1)), "heroes": tuple(QUOTED.findall(body))}
+
+
+def _read_heroes_drawn(body: str) -> dict:
+    """The drawn heroes: every `quoted` word, in order."""
+    heroes = QUOTED.findall(body)
+    if not heroes:
+        raise RecordError("a heroes drawn message must give the heroes in `quotes`")
+    return {"heroes": tuple(heroes)}
+
+
 def _read_undo(body: str) -> dict:
     """An undo request or confirmation: the player is the first mention, the record number the first `quoted` word."""
     player = MENTION.search(body)
@@ -217,8 +255,11 @@ READERS = {
     "town_bid": _read_bid("town"),
     "color_bid": _read_bid("color"),
     "pack_bid": _read_bid("pack"),
+    "first_choice_bid": _read_bid("first"),
     "roll": _read_roll,
     "roll_skipped": _read_roll_skipped,
+    "hero_bans": _read_hero_bans,
+    "heroes_drawn": _read_heroes_drawn,
     "undo_requested": _read_undo,
     "undone": _read_undo,
 }
@@ -253,6 +294,12 @@ def parse(text: str) -> Record | None:
     return make_record(n, type_, game, **READERS[type_](text[found.end():]))
 
 
+def _ai_words(packs: tuple[str, ...]) -> str:
+    """The two packs of computer-player towns as ", AI: A, B, C vs D, E, F", or nothing when there are none."""
+    half = len(packs) // 2
+    return f", AI: {', '.join(packs[:half])} vs {', '.join(packs[half:])}" if packs else ""
+
+
 def describe(record: Record) -> str:
     """One record in words. `<@id>` is how Discord writes a mention; it is only text here."""
     if record.type == "match_started":
@@ -264,22 +311,27 @@ def describe(record: Record) -> str:
     if record.type in ("ban", "pick"):
         return f"<@{record.data['player']}> {record.type}s {record.data['template']}"
     if record.type == "trade_started":
-        return f"game {record.game}: trade started, {' vs '.join(record.data['towns'])}"
+        return f"game {record.game}: trade started, {' vs '.join(record.data['towns'])}{_ai_words(record.data.get('packs', ()))}"
     if record.type == "trade_resumed":
         return f"game {record.game}: trade reopened"
     if record.type == "roll":
         data = record.data
         bans = f", banning {', '.join(data['bans'])}" if data["bans"] else ""
-        return f"game {record.game}: <@{data['player']}> rolled{bans}, new pair {' vs '.join(data['towns'])}"
+        return f"game {record.game}: <@{data['player']}> rolled{bans}, new pair {' vs '.join(data['towns'])}{_ai_words(data.get('packs', ()))}"
     if record.type in ("undo_requested", "undone"):
         verb = "asks to undo" if record.type == "undo_requested" else "agreed to undo"
         return f"<@{record.data['player']}> {verb} everything from record {record.data['start']}"
     if record.type == "roll_skipped":
         return f"game {record.game}: <@{record.data['player']}> skipped the roll"
-    if record.type in ("town_bid", "pack_bid", "color_bid"):
+    if record.type == "hero_bans":
+        banned = ", ".join(record.data["heroes"]) or "no hero"
+        return f"game {record.game}: <@{record.data['player']}> banned {banned}"
+    if record.type == "heroes_drawn":
+        return f"game {record.game}: heroes drawn: {', '.join(record.data['heroes'])}"
+    if record.type in ("town_bid", "pack_bid", "first_choice_bid", "color_bid"):
         data = record.data
-        choice = data.get("town") or data.get("pack") or data.get("color")
-        return f"game {record.game}: <@{data['winner']}> won the {record.type.replace('_', ' ')} at {data['amount']}, chose {choice}"
+        choice = data.get("town") or data.get("pack") or data.get("first") or data.get("color")
+        return f"game {record.game}: <@{data['winner']}> won the {record.type.replace('_', ' ')} at {spaced(data['amount'])}, chose {choice}"
     return f"{record.type} {record.data}"
 
 

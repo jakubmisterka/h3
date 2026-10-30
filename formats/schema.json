@@ -88,11 +88,11 @@
         "ai": { "type": "integer", "minimum": 0, "maximum": 6, "description": "The number of computer players for this template, 0 to 6. Must be one of the numbers the template allows." },
         "additional_rules": { "type": "string", "description": "Additional rules for this template, at most 1000 characters. Replace the rules the template states." },
         "trade": {
-          "description": "How a game on this template is traded: standard, standard_with_ai_packs, or roulette (a name, or an object with kind, hero_bans and roll_before_heroes).",
+          "description": "How a game on this template is traded: standard, standard_with_ai_packs, roulette or roulette_with_ai_packs (a name, or an object with kind, hero_bans and roll_before_heroes).",
           "type": ["string", "object"],
           "additionalProperties": false,
           "properties": {
-            "kind": { "enum": ["standard", "standard_with_ai_packs", "roulette"] },
+            "kind": { "enum": ["standard", "standard_with_ai_packs", "roulette", "roulette_with_ai_packs"] },
             "hero_bans": { "type": "integer", "minimum": 0, "maximum": 3, "description": "Heroes each player may ban before the heroes are drawn (roulette only). Default: 0." },
             "roll_before_heroes": { "type": "boolean", "description": "true (default): the heroes are drawn after the rolls. false: together with the towns, and then no hero can be banned (roulette only)." }
           }

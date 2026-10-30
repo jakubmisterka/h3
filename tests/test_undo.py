@@ -169,7 +169,7 @@ def test_each_kind_of_step_is_described_in_a_few_words(templates, towns):
         "game 1: <@111> rolled (new pair Cove vs Tower)"
     )
     assert words(make_record(7, "roll_skipped", game=1, player=B)) == "game 1: <@222> skipped the roll"
-    assert words(town_bid(8)) == "game 1: town bid, <@111> won at 2100 and chose Tower"
+    assert words(town_bid(8)) == "game 1: town bid, <@111> won at 2 100 and chose Tower"
     assert words(make_record(9, "color_bid", game=1, reporter=A, winner=B, amount=300, color="red")) == (
         "game 1: color bid, <@222> won at 300 and chose red"
     )

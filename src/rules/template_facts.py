@@ -6,6 +6,7 @@ and nothing is guessed in its place. The timer is shown only in its compact form
 """
 
 from rules.template_settings import Settings
+from rules.trade_kinds import trade_rule
 
 # The settings a tournament or a template states, in the order they are shown.
 SETTINGS = ("timer", "map_size", "roads", "ai", "sim_turns")
@@ -50,11 +51,26 @@ def fixed_lines(settings: Settings) -> list[str]:
     return lines
 
 
-def fact_lines(settings: Settings) -> list[str]:
-    """Every stated fact, one short line each, in a fixed order."""
-    lines = fixed_lines(settings)
-    lines += [line for name in SETTINGS if (line := setting_line(name, settings))]
+def announcement_lines(settings: Settings, info_hint: str | None = None) -> list[str]:
+    """What players need when a template is announced, one short message each: where to get it if it is not built into
+    HotA, the timer, the recommended simultaneous turns, how its trade is run, and how to find out more (`info_hint`).
+    The map size, roads and computer players are left out: `/info` and the lobby settings give them."""
+    lines = []
+    if settings.download and not settings.built_in:
+        lines.append(f"Not built into HotA: [download](<{settings.download}>)")  # the angle brackets keep Discord from unfolding a preview
+    if settings.timer:
+        lines.append(f"Timer: `{settings.timer}`")
+    if settings.sim_turns:
+        lines.append(f"Sim turns: `{settings.sim_turns}`")
+    lines.append(trade_rule(settings.trade, settings.mirror))
+    if info_hint:
+        lines.append(info_hint)
     return lines
+
+
+def info_hint(mode_id: str, template_id: str) -> str:
+    """How to find out more about a template in a mode."""
+    return f"More about this template: /info with mode `{mode_id}` and template `{template_id}`"
 
 
 def lobby_lines(settings: Settings) -> list[str]:

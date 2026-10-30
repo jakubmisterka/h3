@@ -173,12 +173,11 @@ def test_an_agreed_template_is_recorded(ranked, templates, towns, anna_wins):
 def test_the_rules_come_one_per_message_between_the_start_and_the_coinflip(sample, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, sample), thread), "sample-cup")
-    assert [parse(text) is not None for text in thread.sent[:7]] == [True, False, False, False, False, False, True]
-    assert thread.sent[1:6] == [
-        "Best of 1",
+    assert [parse(text) is not None for text in thread.sent[:6]] == [True, False, False, False, False, True]
+    assert thread.sent[1:5] == [
+        "Format: BO1",
         "Template Selection: AB",
         "A bans, B bans, then decider",
-        "The winner of the coinflip will be player A, the other player is B",
         "Templates: Jebus Cross, 6lm10a, h3dm1",
     ]
 
@@ -186,7 +185,7 @@ def test_the_rules_come_one_per_message_between_the_start_and_the_coinflip(sampl
 def test_the_first_step_is_announced_after_the_coinflip(sample, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, sample), thread), "sample-cup")
-    assert thread.sent[7:] == [
+    assert thread.sent[6:] == [
         "Remaining (3): Jebus Cross, 6lm10a, h3dm1",
         "Step 1 of 2: <@1> bans a template with /ban",
     ]
@@ -196,17 +195,17 @@ def test_an_agreed_phase_goes_straight_to_the_trade_which_the_bot_opens(ranked, 
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="JC")
     assert len(thread.sent) == 7 and thread.sent[4].startswith("[#2 cf]")
-    assert thread.sent[5].startswith("[#3 tr g1] Game 1 (Jebus Cross): the trade starts.\nPair: ")
-    assert thread.sent[6].startswith("A roll costs 500 gold.")  # no /trade start needed
+    assert thread.sent[5].startswith("[#3 tr g1] Game 1 (Jebus Cross)\nPair: ")
+    assert thread.sent[6].startswith("Next step: town roll")  # no /trade start needed
 
 
 def test_an_agreed_template_is_stated_instead_of_a_selection(ranked, templates, towns, anna_wins):
     thread = FakeThread()
     start(interaction(registry_of(templates, towns, ranked), thread), "ranked", template="JC")
     assert thread.sent[1:4] == [
-        "Best of 1",
-        "The players agreed on the template: Jebus Cross",
-        "The winner of the coinflip will be player A, the other player is B",
+        "Format: BO1",
+        "Trade: town roll, then a bid for the town and for the color.",
+        "More about this template: /info with mode `ranked` and template `JC`",
     ]
 
 
@@ -346,10 +345,14 @@ def test_naming_a_template_starts_a_one_game_match_without_selection(sample, tem
     start(interaction(registry_of(templates, towns, sample), thread), "sample-cup", template="Jebus Cross")
 
     assert parse(thread.sent[0]).data == {"p1": 1, "p2": 2, "mode": "sample-cup", "phase": "Main", "template": "JC"}
-    assert thread.sent[1:4] == ["One game", "The template: Jebus Cross", "The winner of the coinflip will be player A, the other player is B"]
+    assert thread.sent[1:4] == [
+        "Format: BO1",
+        "Trade: town roll, then a bid for the town and for the color.",
+        "More about this template: /info with mode `sample-cup` and template `JC`",
+    ]
     assert thread.sent[4] == "[#2 cf] Coinflip: <@1> wins and is A, <@2> is B."
-    assert thread.sent[5].startswith("[#3 tr g1] Game 1 (Jebus Cross): the trade starts.\nPair: ")
-    assert thread.sent[6].startswith("A roll costs 500 gold.")  # the bot opened the trade, no /trade start needed
+    assert thread.sent[5].startswith("[#3 tr g1] Game 1 (Jebus Cross)\nPair: ")
+    assert thread.sent[6].startswith("Next step: town roll")  # the bot opened the trade, no /trade start needed
     assert not any("Start its trade" in text for text in thread.sent)
     assert not any("Step 1" in text or "bans first" in text or text.startswith("Templates:") for text in thread.sent)
 

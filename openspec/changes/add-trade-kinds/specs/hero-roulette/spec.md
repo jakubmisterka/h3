@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Heroes come from one catalogue
-The repository SHALL have a catalogue of heroes in `data/heroes.json`. Each hero SHALL have an id, a name, the id of its town (a town of the town catalogue) and a link, starting with `https://`, to the page that describes it on the community wiki. Ids SHALL be unique, ignoring letter case. A file that breaks this SHALL stop the bot from starting with a message that names the file and the hero.
+The repository SHALL have a catalogue of heroes in `data/heroes.json`. Each hero SHALL have an id, a name, the id of its town (a town of the town catalogue) and a link, starting with `https://`, to the page that describes it on the community wiki. A hero MAY state, each as true or false (left out means false): `campaign_hero` (it comes with a campaign), `banned_by_default` (it is not offered unless a template allows it: the campaign heroes, the heroes HotA bans in every pack, and the ones its editor bans for the water of a map) and `banned_on_mirrors` (it is not offered on a mirror template). Ids and names SHALL be unique, ignoring letter case. A file that breaks this SHALL stop the bot from starting with a message that names the file and the hero.
 
 #### Scenario: A valid hero
 - **WHEN** the catalogue has a hero with id, name, a known town and a link
@@ -11,16 +11,44 @@ The repository SHALL have a catalogue of heroes in `data/heroes.json`. Each hero
 - **WHEN** a hero names a town that is not in the town catalogue
 - **THEN** the bot does not start, and the message names the hero and the unknown town
 
+#### Scenario: A campaign hero
+- **WHEN** a hero states `campaign_hero` true
+- **THEN** the catalogue is accepted and the hero is known as a campaign hero
+
+#### Scenario: A flag that is not true or false
+- **WHEN** a hero states `campaign_hero` as "yes"
+- **THEN** the bot does not start, and the message names the hero and says the flag is true or false
+
 #### Scenario: A repeated id
 - **WHEN** two heroes have the same id
 - **THEN** the bot does not start, and the message names both entries
 
 ### Requirement: A template can list the heroes its map does not offer
-A template in the catalogue MAY list `banned_heroes`, the ids of heroes of the hero catalogue that the template's map does not offer. Such a hero SHALL NOT be drawn in a roulette. An id that is not a hero of the catalogue, or one listed twice, SHALL stop the bot from starting with a message that names the template and the id.
+A template in the catalogue MAY list `banned_heroes`, heroes of the hero catalogue that its map does not offer, and `allowed_heroes`, heroes that are banned by default (or banned on mirrors) but that its map enables. The heroes a template's map offers SHALL be those of the hero catalogue except: the ones it bans; the ones banned by default, unless it allows them; and, when it is a mirror template, the ones banned on mirrors, unless it allows them. The template's own lists win over the defaults, and a roulette SHALL NOT draw a hero its map does not offer. A hero SHALL NOT be in both lists, and only a hero that is banned by default or on mirrors can be allowed. An unknown hero, or one listed twice, SHALL stop the bot from starting, with a message that names the template and the entry.
 
 #### Scenario: A list
 - **WHEN** a template lists two heroes as banned
 - **THEN** the catalogue is accepted, and those heroes are never drawn for that template
+
+#### Scenario: Heroes banned by default are left out
+- **WHEN** a template lists no `allowed_heroes`
+- **THEN** no campaign hero is drawn for it, and neither is Galthran or Sylvia
+
+#### Scenario: Allowed heroes
+- **WHEN** a template lists Gelu in `allowed_heroes`
+- **THEN** Gelu can be drawn for it, and the other campaign heroes cannot
+
+#### Scenario: A mirror template
+- **WHEN** a mirror template does not allow Solmyr, whom the defaults ban on mirror templates
+- **THEN** Solmyr is never drawn for it, and he can be drawn for a template that is not a mirror
+
+#### Scenario: Allowing a hero who is not banned by default
+- **WHEN** a template lists Orrin in `allowed_heroes`
+- **THEN** the bot does not start, and the message says Orrin is not banned by default
+
+#### Scenario: Banned and allowed
+- **WHEN** a template lists Gelu in both lists
+- **THEN** the bot does not start, and the message names the template and Gelu
 
 #### Scenario: Unknown hero
 - **WHEN** a template lists a hero that is not in the hero catalogue
@@ -112,3 +140,26 @@ Hero bans and the bid of a roulette SHALL be undone by the undo of the `match-se
 #### Scenario: Undoing from the draw alone
 - **WHEN** a player asks to undo from the record of the hero draw
 - **THEN** the bot refuses and says to undo from the step before it
+
+### Requirement: A roulette can have computer-player packs
+The kind `roulette_with_ai_packs` SHALL be a roulette (same options, `hero_bans` and `roll_before_heroes`) that also has the two packs of the trade with computer-player packs. It SHALL NOT be used on a mirror template. The trade runs the roll, the hero bans when there are any, the town bid, the pack bid and the color bid, in that order. The draw is the pair, the two packs, and a hero for each town of the pair: the packs are computer-player towns and have no heroes. A roll redraws the pair and the packs and bans only towns of the pair, as with packs; with `roll_before_heroes` true the heroes are drawn after the rolls, otherwise with the towns and redrawn by a roll. The town bid decides the hero too.
+
+#### Scenario: The order of a roulette with packs
+- **WHEN** a trade of this kind has `hero_bans` 1
+- **THEN** it runs the roll, the hero bans, the town bid, the pack bid and the color bid
+
+#### Scenario: The heroes belong to the pair
+- **WHEN** the pair is Castle and Tower and the packs are of other towns
+- **THEN** the bot draws one hero of Castle and one of Tower, and none for the packs
+
+#### Scenario: The lobby settings
+- **WHEN** every bid of the trade is reported
+- **THEN** the lobby settings give each player's town with its hero, pack and color
+
+#### Scenario: A mirror template
+- **WHEN** a format gives a mirror template the trade `roulette_with_ai_packs`
+- **THEN** validation fails and says a mirror template cannot have packs
+
+#### Scenario: Too few towns
+- **WHEN** a phase allows seven towns and a template in its pool has this kind
+- **THEN** validation fails and says packs need eight allowed towns

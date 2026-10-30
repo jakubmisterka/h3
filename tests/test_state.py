@@ -290,7 +290,7 @@ def test_a_malformed_game_marker_is_not_a_record():
 
 
 def test_the_trade_started_record_reads_the_pair():
-    record = parse("[#5 tr g1] Game 1: the trade starts. Pair: Necropolis (`necropolis`) vs Tower (`tower`)")
+    record = parse("[#5 tr g1] Game 1 Pair: Necropolis (`necropolis`) vs Tower (`tower`)")
     assert record == make_record(5, "trade_started", game=1, towns=("necropolis", "tower"))
 
 
@@ -323,7 +323,7 @@ def test_a_bid_record_with_a_damaged_amount_is_reported():
 def test_a_trade_record_is_described_with_its_game():
     assert describe(make_record(5, "trade_started", game=1, towns=("necropolis", "tower"))) == "game 1: trade started, necropolis vs tower"
     assert describe(make_record(7, "town_bid", game=2, reporter=1, winner=2, amount=2100, town="tower")) == (
-        "game 2: <@2> won the town bid at 2100, chose tower"
+        "game 2: <@2> won the town bid at 2 100, chose tower"
     )
 
 

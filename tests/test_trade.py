@@ -145,7 +145,7 @@ def test_a_town_the_phase_does_not_allow_is_refused_and_the_allowed_towns_listed
 
 
 def test_more_than_the_winner_has_is_refused(trade, towns):
-    with pytest.raises(LedgerError, match="10100 gold is more than the 10000"):
+    with pytest.raises(LedgerError, match="10 100 gold is more than the 10 000"):
         report(trade, towns, amount=10100)
 
 
@@ -221,7 +221,7 @@ def test_each_game_has_its_own_gold(templates):
         ([started(1, 1), color_bid(2, 1)], "town bid is expected"),
         ([started(1, 1), town_bid(2, 1, town="castle")], "one of the pair"),
         ([started(1, 1), town_bid(2, 1, winner=333)], "two players"),
-        ([started(1, 1), town_bid(2, 1, amount=10100)], "10100 gold is more than"),
+        ([started(1, 1), town_bid(2, 1, amount=10100)], "10 100 gold is more than"),
         ([started(1, 1), town_bid(2, 1), color_bid(3, 1), color_bid(4, 1)], "finished"),
     ],
 )
@@ -315,9 +315,9 @@ def test_a_finished_game_cannot_be_started_again(log):
 
 def test_a_trade_start_gives_the_template_the_pair_and_the_starting_gold(trade, towns, templates):
     assert opening_line(trade, False, MENTIONS, towns, templates) == (
-        "Game 1 (Jebus Cross): the trade starts.\n"
+        "Game 1 (Jebus Cross)\n"
         "Pair: `Necropolis` vs `Tower`\n"
-        "Starting gold: <@111> 10000, <@222> 10000"
+        "Starting gold: 10 000"
     )
 
 
@@ -329,17 +329,17 @@ def test_the_opening_line_reads_back_as_the_record_it_came_from(trade, towns, te
 def test_a_reopened_trade_says_it_continues_and_shows_the_difference_so_far(templates, towns):
     reopened = replay(started(1, 1), town_bid(2, 1), templates=templates).open
     text = opening_line(reopened, True, MENTIONS, towns, templates)
-    assert text.startswith("Game 1 (Jebus Cross): the trade continues.")
-    assert text.endswith("Gold difference: <@111> -2100, <@222> +2100")
+    assert text.startswith("Game 1 (Jebus Cross): the trade continues\n")
+    assert text.endswith("Gold difference: <@111> -2 100, <@222> +2 100")
 
 
 def test_the_prompt_names_the_section_and_who_bids_first(trade, towns):
     assert prompt(trade, MENTIONS, towns) == (
-        "Game 1 town bid: Necropolis vs Tower\n<@111> bids first, raising by at least 100.\n"
-        "Report the result with /trade report."
+        "Next step: town bid: Necropolis vs Tower\n<@111> bids first, raising by at least 100\n"
+        "Report the result with /trade report"
     )
     after_town = trade.with_report(Report("town_bid", A, A, 2100, "necropolis"))
-    assert prompt(after_town, MENTIONS, towns).startswith("Game 1 color bid\n")
+    assert prompt(after_town, MENTIONS, towns).startswith("Next step: color bid\n")
 
 
 def test_an_unfinished_trade_is_followed_by_its_prompt_and_a_finished_one_by_the_lobby_settings(templates, towns):
@@ -353,8 +353,8 @@ def test_the_lobby_settings_give_each_players_town_color_and_gold_difference(tem
     done = replay(started(1, 1), town_bid(2, 1), color_bid(3, 1), templates=templates).open
     assert summary(done, MENTIONS, towns, templates).splitlines() == [
         "Game 1 lobby settings - Jebus Cross",
-        "<@111>: Necropolis, blue, gold +900",
         "<@222>: Tower, red, gold -900",
+        "<@111>: Necropolis, blue, gold +900",
     ]
 
 
@@ -365,8 +365,8 @@ def test_the_lobby_settings_when_the_same_player_wins_both_bids(templates, towns
     ).open
     assert summary(done, MENTIONS, towns, templates).splitlines() == [
         "Game 1 lobby settings - Jebus Cross",
-        "<@111>: Tower, red, gold -1500",
-        "<@222>: Necropolis, blue, gold +1500",
+        "<@111>: Tower, red, gold -1 500",
+        "<@222>: Necropolis, blue, gold +1 500",
     ]
 
 
@@ -380,15 +380,15 @@ def test_a_difference_of_nothing_is_written_as_zero(templates, towns):
 def test_a_town_bid_line_gives_the_result_and_the_gold_difference(templates, towns):
     trade = replay(started(1, 1), town_bid(2, 1), templates=templates).open
     assert report_line(trade, trade.reports[0], MENTIONS, towns) == (
-        "Game 1 - Town bid, reported by <@111>\n<@111> won at `2100` gold and plays `Necropolis`\n"
-        "<@222> plays Tower\nGold difference: <@111> -2100, <@222> +2100"
+        "Game 1 - Town bid, reported by <@111>\n<@111> won at `2 100` gold and plays `Necropolis`\n"
+        "<@222> plays Tower\nGold difference: <@111> -2 100, <@222> +2 100"
     )
 
 
 def test_a_color_bid_line_gives_the_result_and_the_gold_difference(templates, towns):
     trade = replay(started(1, 1), town_bid(2, 1), color_bid(3, 1), templates=templates).open
     assert report_line(trade, trade.reports[1], MENTIONS, towns) == (
-        "Game 1 - Color bid, reported by <@222>\n<@222> won at `3000` gold and plays `red`\n<@111> plays blue\n"
+        "Game 1 - Color bid, reported by <@222>\n<@222> won at `3 000` gold and plays `red`\n<@111> plays blue\n"
         "Gold difference: <@111> +900, <@222> -900"
     )
 
@@ -431,8 +431,8 @@ def test_a_trade_nobody_can_roll_in_starts_at_the_town_bid(trade):
 
 def test_the_roll_section_announces_the_cost_and_who_may_roll(rolling, towns):
     assert prompt(rolling, MENTIONS, towns) == (
-        "Game 1 town roll: Necropolis vs Tower\nA roll costs 500 gold. Both players may roll.\n"
-        "Roll with /trade roll (banning up to 2 towns of the pair), or skip with /trade skip-roll."
+        "Next step: town roll\nPair: Necropolis vs Tower\nCost: 500 gold\n<@111>: 1 roll left\n<@222>: 1 roll left\n"
+        "Roll with /trade roll (banning up to 2 towns of the pair); skip with /trade skip-roll"
     )
 
 
@@ -456,7 +456,8 @@ def test_a_town_named_twice_is_banned_once(rolling, towns):
 def test_after_a_roll_the_other_player_may_still_roll_and_the_roller_may_not(rolling, towns):
     after = rolling.with_roll(roll(rolling, towns, player=A))
     assert after.rollers == (B,) and after.section == "town_roll"
-    assert "A roll costs 500 gold. <@222> may roll." in prompt(after, MENTIONS, towns)
+    text = prompt(after, MENTIONS, towns)
+    assert "<@111>: 0 rolls left" in text and "<@222>: 1 roll left" in text
 
 
 def test_only_the_player_who_can_pay_may_roll(templates, towns):
@@ -470,7 +471,7 @@ def test_a_player_who_cannot_pay_is_refused_and_told_why(templates, towns):
     expensive = RollRules(roll_cost=9800, rolls_per_player=2, max_roll_bans=2)
     trade = new_trade(1, GAMES, Draw(PAIR), PLAYERS, templates, expensive)
     after = trade.with_roll(roll(trade, towns, player=A))
-    with pytest.raises(TradeError, match="A roll costs 9800 gold and you have 200"):
+    with pytest.raises(TradeError, match="A roll costs 9 800 gold and you have 200"):
         roll(after, towns, player=A)
 
 
@@ -481,7 +482,7 @@ def test_a_player_without_a_roll_left_is_refused(rolling, towns):
 
 
 def test_a_player_who_skipped_is_refused(rolling, towns):
-    with pytest.raises(TradeError, match="passed on these towns"):
+    with pytest.raises(TradeError, match="already skipped"):
         roll(rolling.with_skip(A), towns, player=A)
 
 
@@ -574,7 +575,7 @@ def test_reporting_the_town_bid_while_rolls_are_open_skips_them(rolling, towns):
 
 def test_the_cost_of_a_roll_lowers_what_can_be_bid(rolling, towns):
     after = rolling.with_roll(roll(rolling, towns, player=A))  # A paid 500 and has 9500
-    with pytest.raises(LedgerError, match="9600 gold is more than the 9500"):
+    with pytest.raises(LedgerError, match="9 600 gold is more than the 9 500"):
         make_report(after, towns, ALLOWED, A, A, 9600, after.towns[0])
 
 
@@ -620,14 +621,14 @@ def test_a_trade_reopened_after_a_roll_keeps_the_new_pair_and_the_gold(templates
     [
         ([started(1, 1), roll_record(2, player=333)], "one of the two players"),
         ([started(1, 1), roll_record(2), roll_record(3)], "no roll left"),
-        ([started(1, 1), skip_record(2), roll_record(3)], "passed on these towns"),
+        ([started(1, 1), skip_record(2), roll_record(3)], "already skipped"),
         ([started(1, 1), roll_record(2, bans=("castle",))], "Only towns of the current pair"),
         ([started(1, 1), roll_record(2, bans=("necropolis", "tower", "castle"))], "At most 2 towns"),
         ([started(1, 1), roll_record(2, bans=("necropolis",), towns=("necropolis", "cove"))], "must be two different allowed towns"),
         ([started(1, 1), roll_record(2, towns=("cove", "cove"))], "must be two different allowed towns"),
         ([started(1, 1), roll_record(2, towns=("cove", "atlantis"))], "must be two different allowed towns"),
         ([started(1, 1), town_bid(2, 1), roll_record(3)], "roll section is over"),
-        ([started(1, 1), skip_record(2), skip_record(3)], "passed on these towns"),
+        ([started(1, 1), skip_record(2), skip_record(3)], "already skipped"),
         ([roll_record(1)], "never started"),
         ([started(1, 1), started(2, 2), roll_record(3, game=1)], "was not open"),
     ],
@@ -679,8 +680,8 @@ def test_a_reopened_trade_names_the_pair_that_stands(templates, towns):
 
 def test_the_roll_prompt_names_the_pair_that_stands_now(rolling, towns):
     made = Roll(A, ("necropolis",), Draw(("castle", "cove")))
-    assert prompt(rolling, MENTIONS, towns).startswith("Game 1 town roll: Necropolis vs Tower\n")
-    assert prompt(rolling.with_roll(made), MENTIONS, towns).startswith("Game 1 town roll: Castle vs Cove\n")
+    assert prompt(rolling, MENTIONS, towns).startswith("Next step: town roll\nPair: Necropolis vs Tower\n")
+    assert prompt(rolling.with_roll(made), MENTIONS, towns).startswith("Next step: town roll\nPair: Castle vs Cove\n")
 
 
 # --- a skip passes on the towns that stand, and lasts until they change -----------------------------------------------
@@ -724,5 +725,12 @@ def test_a_skip_made_before_a_roll_is_not_counted_after_it(templates):
 
 
 def test_a_player_who_skipped_cannot_skip_again_before_the_towns_change(rolling):
-    with pytest.raises(TradeError, match="passed on these towns"):
+    with pytest.raises(TradeError, match="already skipped"):
         make_skip(rolling.with_skip(A), A)
+
+
+def test_the_lobby_settings_list_the_red_player_first_whoever_won_the_bid(templates, towns):
+    for winner, color, first in ((A, "red", "<@111>"), (A, "blue", "<@222>"), (B, "red", "<@222>")):
+        done = replay(started(1, 1), town_bid(2, 1), color_bid(3, 1, winner=winner, color=color, reporter=winner), templates=templates).open
+        lines = summary(done, MENTIONS, towns, templates).splitlines()[1:]
+        assert lines[0].startswith(first) and ", red," in lines[0] and ", blue," in lines[1]

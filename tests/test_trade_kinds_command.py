@@ -44,7 +44,7 @@ def registry(good_format, towns):
 def fixed_draws(monkeypatch):
     """Anna wins the coinflip and is A; the bot draws the same towns every time, and rolls from a seeded source."""
 
-    def draw(kind, mirror, allowed, source=None, banned=()):
+    def draw(kind, mirror, allowed, source=None, banned=(), **_):
         if kind.name == "standard_with_ai_packs":
             return Draw(("castle", "tower"), PACKS)
         return Draw(("necropolis",) if mirror else ("castle", "tower"))
@@ -80,11 +80,13 @@ def choices(registry, thread, command_option, current=""):
 def test_a_mirror_match_opens_with_the_one_town_and_the_roll(registry):
     thread = started(registry, "h3dm1")
     trade_start = next(t for t in texts(thread) if " tr g1]" in t[:10])
-    assert "mirror: both players play the same town" in trade_start and "Town: `Necropolis`" in trade_start
-    assert "Pair:" not in trade_start
+    assert "Town: `Necropolis`" in trade_start and "Pair:" not in trade_start
     assert texts(thread)[-1].splitlines() == [  # what was drawn is in the message above, so it is not said again
-        "A roll costs 500 gold. Both players may roll.",
-        "Roll with /trade roll (it bans this town), or skip with /trade skip-roll.",
+        "Next step: town roll",
+        "Cost: 500 gold",
+        "<@1>: 1 roll left",
+        "<@2>: 1 roll left",
+        "Roll with /trade roll (it bans this town); skip with /trade skip-roll",
     ]
 
 
@@ -119,8 +121,8 @@ def test_the_color_bid_finishes_a_mirror_and_the_lobby_settings_give_the_town(re
         "Game 1 lobby settings - h3dm1",
         "Map: L+U",
         "Town (both players): Necropolis",
-        "<@1>: blue, gold +3000",
-        "<@2>: red, gold -3000",
+        "<@2>: red, gold -3 000",
+        "<@1>: blue, gold +3 000",
     ]
 
 
@@ -142,7 +144,7 @@ def test_a_mirror_roll_can_be_undone(registry):
     roll_number = records_of(thread)[-1].n
     run(match.undo, registry, thread, ANNA, roll_number)
     run(match.undo, registry, thread, BORIS, roll_number)
-    assert "Town: `Necropolis`" in " ".join(texts(thread)) and "Necropolis, played by both" in texts(thread)[-1]
+    assert "Town: `Necropolis`" in " ".join(texts(thread)) and "Town: Necropolis" in texts(thread)[-1]
 
 
 # --- the trade with computer-player packs ------------------------------------------------------------------------------
@@ -151,14 +153,14 @@ def test_a_mirror_roll_can_be_undone(registry):
 def test_a_packs_match_announces_the_pair_and_the_packs(registry):
     thread = started(registry, "Sapphire")
     opening = next(t for t in texts(thread) if " tr g1]" in t[:10])
-    assert "with computer-player packs" in opening
+    assert opening.splitlines()[0].endswith("(Sapphire)")
     assert opening.splitlines()[1:6] == [
         "Pair: `Castle` vs `Tower`",
         "Pack1: `Rampart`, `Inferno`, `Dungeon`",
         "Pack2: `Stronghold`, `Fortress`, `Cove`",
-        "Starting gold: <@1> 10000, <@2> 10000",
+        "Starting gold: 10 000",
     ]
-    assert texts(thread)[-1].startswith("A roll costs 500 gold.") and "Pack" not in texts(thread)[-1]
+    assert texts(thread)[-1].startswith("Next step: town roll") and "Pack" not in texts(thread)[-1]
 
 
 def test_a_packs_roll_redraws_everything_and_bans_only_the_pair(registry):
@@ -184,8 +186,8 @@ def test_the_bids_of_a_packs_match_go_town_pack_color(registry):
     report(registry, thread, BORIS, 3000, "red")
     assert texts(thread)[-2].splitlines() == [
         "Game 1 lobby settings - Sapphire",
-        "<@1>: Castle, pack2 (Stronghold, Fortress, Cove), blue, gold -300",
         "<@2>: Tower, pack1 (Rampart, Inferno, Dungeon), red, gold +300",
+        "<@1>: Castle, pack2 (Stronghold, Fortress, Cove), blue, gold -300",
     ]
 
 
@@ -232,7 +234,7 @@ def test_the_ask_to_undo_the_pack_bid_names_it(registry):
     report(registry, thread, ANNA, 1200, "pack2")
     pack_bid = next(r for r in records_of(thread) if r.type == "pack_bid")
     run(match.undo, registry, thread, ANNA, pack_bid.n)
-    assert "pack bid, <@1> won at 1200 and chose pack2" in texts(thread)[-1]
+    assert "pack bid, <@1> won at 1 200 and chose pack2" in texts(thread)[-1]
 
 
 # --- a standard template in the same tournament is not touched ------------------------------------------------------
@@ -252,7 +254,7 @@ def test_the_prompt_after_a_roll_does_not_repeat_the_new_draw(registry):
     run(trade_commands.roll, registry, thread, ANNA, "Castle")
     prompt = texts(thread)[-1]
     assert "\nPack1: " in texts(thread)[-2] and "Pack" not in prompt and "Pair" not in prompt
-    assert "<@2> may roll" in prompt
+    assert "<@2>: 1 roll left" in prompt
 
 
 def test_after_an_undo_the_roll_prompt_says_what_stands(registry):
@@ -262,8 +264,7 @@ def test_after_an_undo_the_roll_prompt_says_what_stands(registry):
     run(match.undo, registry, thread, ANNA, roll_number)
     run(match.undo, registry, thread, BORIS, roll_number)
     prompt = texts(thread)[-1].splitlines()
-    assert prompt[:4] == ["Game 1 town roll", "Pair: Castle vs Tower", "Pack1: Rampart, Inferno, Dungeon", "Pack2: Stronghold, Fortress, Cove"]
-    assert prompt[4] == "A roll costs 500 gold. Both players may roll."
+    assert prompt[:5] == ["Next step: town roll", "Pair: Castle vs Tower", "Pack1: Rampart, Inferno, Dungeon", "Pack2: Stronghold, Fortress, Cove", "Cost: 500 gold"]
 
 
 def test_after_an_undo_the_mirror_prompt_says_the_town_that_stands(registry):
@@ -272,13 +273,36 @@ def test_after_an_undo_the_mirror_prompt_says_the_town_that_stands(registry):
     roll_number = records_of(thread)[-1].n
     run(match.undo, registry, thread, ANNA, roll_number)
     run(match.undo, registry, thread, BORIS, roll_number)
-    assert texts(thread)[-1].splitlines()[0] == "Game 1 town roll: Necropolis, played by both"
+    assert texts(thread)[-1].splitlines()[:2] == ["Next step: town roll", "Town: Necropolis"]
 
 
 def test_in_a_mirror_a_skip_does_not_stop_a_player_banning_the_next_town(registry):
     thread = started(registry, "h3dm1")
     run(trade_commands.skip_roll, registry, thread, BORIS)
     run(trade_commands.roll, registry, thread, ANNA)  # a new town is drawn
-    assert texts(thread)[-1].startswith("A roll costs 500 gold. <@2> may roll.")
+    assert "<@1>: 0 rolls left" in texts(thread)[-1] and "<@2>: 1 roll left" in texts(thread)[-1]
     it = run(trade_commands.roll, registry, thread, BORIS)  # Boris may ban the new town after all
     assert told(it) == "Rolled." and [r.type for r in records_of(thread)].count("roll") == 2
+
+
+def test_the_status_of_a_packs_match_lists_the_packs_under_the_game(registry):
+    thread = started(registry, "Sapphire")
+    lines = told(run(match.status, registry, thread, ANNA)).splitlines()
+    game = next(i for i, line in enumerate(lines) if line.startswith("Game 1:"))
+    assert lines[game + 1 : game + 3] == ["Pack1: Rampart, Inferno, Dungeon", "Pack2: Stronghold, Fortress, Cove"]
+
+
+def test_the_status_of_a_game_without_packs_has_no_pack_lines(registry):
+    thread = started(registry, "JC")
+    assert "Pack" not in told(run(match.status, registry, thread, ANNA))
+
+
+def test_the_list_of_records_and_the_ask_to_undo_give_the_computer_player_packs(registry):
+    from state import describe
+
+    thread = started(registry, "Sapphire")
+    opening = next(r for r in records_of(thread) if r.type == "trade_started")
+    ai = "AI: Rampart, Inferno, Dungeon vs Stronghold, Fortress, Cove"
+    assert describe(opening) == f"game 1: trade started, Castle vs Tower, {ai}"
+    run(match.undo, registry, thread, ANNA, opening.n)
+    assert f"the trade started (Castle vs Tower, {ai})" in texts(thread)[-1]

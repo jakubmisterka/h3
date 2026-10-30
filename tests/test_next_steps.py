@@ -37,7 +37,7 @@ def test_after_a_ban_it_is_the_next_step_of_the_selection(registry, thread):
 
 def test_after_a_pick_the_game_it_decided_can_be_traded(registry, thread):
     select(registry, thread, *FIRST_PICK)
-    assert next_after(registry, thread)[-1] == "Game 1 is Jebus Cross. Start its trade with /trade start."
+    assert next_after(registry, thread)[-1].splitlines()[0] == "Game 1 is Jebus Cross. Start its trade with /trade start."
     assert "Step 4 of 4: <@2> picks a template with /pick" in next_after(registry, thread)
 
 
@@ -45,7 +45,7 @@ def test_after_a_trade_step_it_is_only_the_trade_even_if_the_selection_is_not_fi
     select(registry, thread, *FIRST_PICK)
     start(registry, thread)
     assert next_after(registry, thread) == [
-        "Game 1 town bid: Necropolis vs Tower\n<@1> bids first, raising by at least 100.\nReport the result with /trade report."
+        "Next step: town bid: Necropolis vs Tower\n<@1> bids first, raising by at least 100\nReport the result with /trade report"
     ]
 
 
@@ -55,7 +55,7 @@ def test_a_selection_step_taken_while_a_trade_is_open_brings_the_selection_back(
     run(selection.pick, registry, thread, BORIS, "Diamond")  # the latest step is a pick again
     messages = next_after(registry, thread)
     assert messages[0].startswith("Remaining (")
-    assert messages[-2:] == [
+    assert [message.splitlines()[0] for message in messages[-2:]] == [
         "Game 2 is Diamond. Start its trade with /trade start.",
         "Game 3 is h3dm1. Start its trade with /trade start.",
     ]
@@ -69,7 +69,7 @@ def test_after_the_last_report_it_is_the_lobby_settings(registry, thread):
     run(trade_commands.report, registry, thread, BORIS, BORIS, 3000, "red")
     summary, *after = next_after(registry, thread)
     assert summary.startswith("Game 1 lobby settings - Jebus Cross")
-    assert after == ["Game 2 is Diamond. Start its trade with /trade start."]  # and what comes after it
+    assert [message.splitlines()[0] for message in after] == ["Game 2 is Diamond. Start its trade with /trade start."]  # and then what comes after it
 
 
 # --- after the trade of a game ------------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ def test_after_the_last_trade_the_thread_says_every_game_is_traded(registry, thr
     select(registry, thread, *WHOLE_SELECTION)
     for game in (1, 2):
         trade_game(registry, thread, game)
-    assert next_after(registry, thread)[-1].startswith("Game 3 is h3dm1")  # the decider is still to be traded
+    assert next_after(registry, thread)[-1].splitlines()[0].startswith("Game 3 is h3dm1")  # the decider is still to be traded
     trade_game(registry, thread, 3)
     assert texts(thread)[-1] == "Every game of this match is traded."
 
@@ -119,4 +119,4 @@ def test_the_next_step_comes_first_and_the_trade_to_start_last(good_format, temp
     select(registry, thread, ("ban", "6lm10a", ANNA), ("ban", "Sapphire", BORIS), ("pick", "JC", ANNA), ("pick", "h3dm1", BORIS))
     trade_game(registry, thread, 1)
     assert texts(thread)[-2] == "Step 5 of 6: <@1> bans a template with /ban"
-    assert texts(thread)[-1] == "Game 2 is h3dm1. Start its trade with /trade start."
+    assert texts(thread)[-1].splitlines()[0] == "Game 2 is h3dm1. Start its trade with /trade start."

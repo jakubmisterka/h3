@@ -18,16 +18,29 @@ import random
 from dataclasses import dataclass, replace
 from typing import Callable
 
-from rules.catalogue import Catalogue
+from rules.catalogue import Catalogue, heroes_offered
 from rules.difficulty import ALL_RANDOM_DIFFICULTY, starting_gold
-from rules.ledger import GOLD_STEP, Payment, gold_after
+from rules.ledger import GOLD_STEP, Payment, gold_after, spaced
 from rules.roll_rules import DEFAULT_ROLL_RULES, RollRules
-from rules.trade_draw import PACK_SIZE, Draw, TradeError, check_draw, check_start, draw_pair, draw_start
-from rules.trade_kinds import PACKS_KIND, SECTION_TABLE, TradeKind, bid_sections
+from rules.trade_draw import (
+    PACK_SIZE,
+    Draw,
+    HeroDrawError,
+    TradeError,
+    check_draw,
+    check_heroes_fit,
+    check_start,
+    draw_pair,
+    draw_start,
+    hero_pool_of,
+    pick_heroes,
+)
+from rules.trade_kinds import SECTION_TABLE, TradeKind, bid_sections
 from state import Record
 
 COLORS = ("red", "blue")  # red moves first
 PACKS = ("pack1", "pack2")  # the two packs of computer-player towns, which a bid chooses between
+FIRST_CHOICES = ("hero", "color")  # what the winner of a mirror roulette's bid chooses first
 
 
 ###### Wording: short replies and notes ########################################################################
@@ -36,6 +49,8 @@ PACKS = ("pack1", "pack2")  # the two packs of computer-player towns, which a bi
 REPORTED_REPLY = "Reported."
 ROLLED_REPLY = "Rolled."
 SKIPPED_REPLY = "You skip the roll."
+BANNED_REPLY = "Banned."
+NOBODY_BANNED_REPLY = "You ban nobody."
 
 
 def opened_reply(game: int) -> str:
@@ -80,6 +95,14 @@ class Roll:
 
 
 @dataclass(frozen=True)
+class HeroBan:
+    """The heroes a player banned before the draw (hero ids). Banning nobody is a ban of no heroes."""
+
+    player: int
+    heroes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Trade:
     game: int  # 1, 2, 3...
     template: str  # template id of the game
@@ -92,6 +115,8 @@ class Trade:
     reports: tuple[Report, ...] = ()
     kind: TradeKind = TradeKind()  # how this trade is run
     mirror: bool = False  # both players play the same town
+    hero_bans: tuple[HeroBan, ...] = ()  # roulette: the players' bans, the first player (A) first
+    drawn_heroes: tuple[str, ...] = ()  # roulette: the heroes the bot drew after the rolls and the bans (hero ids)
 
     @property
     def draw(self) -> Draw:
@@ -111,6 +136,29 @@ class Trade:
     def pack(self, name: str) -> tuple[str, ...]:
         """The three towns of "pack1" or "pack2"."""
         return self.draw.pack(PACKS.index(name))
+
+    @property
+    def heroes_after_rolls(self) -> bool:
+        """A roulette whose heroes are banned and drawn once the roll section is over."""
+        return self.kind.draws_heroes and self.kind.roll_before_heroes
+
+    @property
+    def banned_heroes(self) -> tuple[str, ...]:
+        """Every hero the players banned so far."""
+        return tuple(hero for ban in self.hero_bans for hero in ban.heroes)
+
+    @property
+    def heroes(self) -> tuple[str, ...]:
+        """The heroes of the game as they stand: drawn with the towns, or after the rolls and the bans (hero ids)."""
+        with_the_towns = self.kind.draws_heroes and not self.kind.roll_before_heroes
+        return self.draw.heroes if with_the_towns else self.drawn_heroes
+
+    @property
+    def ban_turn(self) -> int | None:
+        """The player who must ban heroes now (A, then B), or None when it is nobody's turn."""
+        if self.section != "hero_bans":
+            return None
+        return self.players[len(self.hero_bans)]
 
     @property
     def bids(self) -> tuple[str, ...]:
@@ -136,12 +184,12 @@ class Trade:
     def why_cannot_roll(self, player: int) -> str | None:
         """Why this player may not roll now, or None if they may."""
         if player in self.skipped:
-            return "You have already passed on these towns. You can roll again if your opponent rolls."
+            return "You have already skipped. You can roll again if your opponent rolls."
         if self.rolls_used(player) >= self.rules.rolls_per_player:
             return f"You have no roll left ({self.rules.rolls_per_player} per player)."
         have = self.gold[player]
         if have < self.rules.roll_cost:
-            return f"A roll costs {self.rules.roll_cost} gold and you have {have}."
+            return f"A roll costs {spaced(self.rules.roll_cost)} gold and you have {spaced(have)}."
         return None
 
     @property
@@ -151,9 +199,15 @@ class Trade:
 
     @property
     def section(self) -> str | None:
-        """The section expected next ("town_roll", or one of the bids), or None when the trade is finished."""
+        """The section expected next ("town_roll", "hero_bans", "hero_draw" (the bot is to draw the heroes), or one of
+        the bids), or None when the trade is finished."""
         if not self.reports and self.rollers:
             return "town_roll"
+        if self.heroes_after_rolls and not self.reports:
+            if self.kind.hero_bans and len(self.hero_bans) < len(self.players):
+                return "hero_bans"
+            if not self.drawn_heroes:
+                return "hero_draw"
         return self.bids[len(self.reports)] if len(self.reports) < len(self.bids) else None
 
     @property
@@ -171,6 +225,14 @@ class Trade:
         """This trade after one more roll (not checked here: see `check_roll`). The towns changed, so every skip made
         for the old ones is over: whoever skipped may roll again."""
         return replace(self, rolls=self.rolls + (roll,), skipped=())
+
+    def with_hero_ban(self, ban: HeroBan) -> "Trade":
+        """This trade after one more hero ban (not checked here: see `check_hero_ban`)."""
+        return replace(self, hero_bans=self.hero_bans + (ban,))
+
+    def with_heroes(self, heroes: tuple[str, ...]) -> "Trade":
+        """This trade after the heroes were drawn (not checked here: see `check_heroes_drawn`)."""
+        return replace(self, drawn_heroes=heroes)
 
     def with_skip(self, player: int) -> "Trade":
         return replace(self, skipped=self.skipped + (player,))
@@ -210,9 +272,12 @@ def _roll_section_over(trade: Trade) -> TradeError:
     return TradeError(f"The roll section is over. The {trade.section.replace('_', ' ')} is expected now.")
 
 
-def check_roll(trade: Trade, roll: Roll, allowed_towns: tuple[str, ...]) -> None:
+def check_roll(
+    trade: Trade, roll: Roll, allowed_towns: tuple[str, ...], heroes: Catalogue | None = None, templates: Catalogue | None = None
+) -> None:
     """Raise TradeError unless `roll` fits the trade: the roll section is open, the player may roll, the bans are
-    towns of the current pair within the limit, and the new pair is two different allowed towns that are not banned."""
+    towns of the current pair within the limit, and the new pair is two different allowed towns that are not banned.
+    With the hero catalogue and the templates, the heroes a roll draws with the towns are checked as well."""
     if trade.section != "town_roll":
         raise _roll_section_over(trade)
     if roll.player not in trade.players:
@@ -230,7 +295,8 @@ def check_roll(trade: Trade, roll: Roll, allowed_towns: tuple[str, ...]) -> None
             raise TradeError(f"At most {_count_towns(trade.rules.max_roll_bans)} may be banned in a roll.")
         if not set(roll.bans) <= set(trade.towns):
             raise TradeError("Only towns of the current pair can be banned.")
-    check_draw(roll.draw, trade.kind, trade.mirror, allowed_towns, trade.banned + roll.bans)
+    template = templates.find(trade.template) if templates is not None else None
+    check_draw(roll.draw, trade.kind, trade.mirror, allowed_towns, trade.banned + roll.bans, heroes, template)
 
 
 def make_roll(
@@ -240,6 +306,8 @@ def make_roll(
     player: int,
     ban_texts: list[str],
     random_source: random.Random | None = None,
+    heroes: Catalogue | None = None,
+    templates: Catalogue | None = None,
 ) -> Roll:
     """A player's roll with the towns they name to ban, checked, with the new pair drawn. Nobody pays on a refusal."""
     if trade.section != "town_roll":
@@ -271,12 +339,15 @@ def make_roll(
         if len(bans) > trade.rules.max_roll_bans:
             raise TradeError(f"At most {_count_towns(trade.rules.max_roll_bans)} may be banned in a roll.")
     try:
-        draw = draw_start(trade.kind, trade.mirror, allowed_towns, random_source, trade.banned + bans)
+        template = templates.find(trade.template) if templates is not None else None
+        draw = draw_start(trade.kind, trade.mirror, allowed_towns, random_source, trade.banned + bans, heroes, template)
+    except HeroDrawError as e:
+        raise TradeError(f"{e} Nobody rolled and nobody paid.") from None
     except TradeError:
         left = "No allowed town" if trade.mirror else "Fewer than two allowed towns"
         raise TradeError(f"{left} would be left to play after those bans, so nobody rolled and nobody paid.") from None
     roll = Roll(player, bans, draw)
-    check_roll(trade, roll, allowed_towns)
+    check_roll(trade, roll, allowed_towns, heroes, templates)
     return roll
 
 
@@ -299,11 +370,25 @@ def expected_report_section(trade: Trade) -> str | None:
     return trade.bids[0] if trade.section == "town_roll" else trade.section
 
 
+def _heroes_first(trade: Trade) -> None:
+    """In a roulette the bid comes after the heroes are banned and drawn, so a report before that is refused."""
+    if trade.heroes_after_rolls and trade.section in ("town_roll", "hero_bans", "hero_draw"):
+        raise TradeError(
+            "In a roulette the heroes are banned and drawn before the bid. "
+            + {
+                "town_roll": "Finish the roll section first: roll, or skip the roll.",
+                "hero_bans": "The heroes are banned now: ban them with /trade ban-heroes.",
+                "hero_draw": "The heroes are being drawn.",
+            }[trade.section]
+        )
+
+
 def check_report(trade: Trade, report: Report) -> None:
     """Raise TradeError (or LedgerError) unless `report` fits the trade: the expected section, a player who wins,
     a possible choice and an amount the winner can pay. Rules that depend on the format are checked before this."""
     if trade.finished:
         raise TradeError(f"The trade of game {trade.game} is finished.")
+    _heroes_first(trade)
     expected = expected_report_section(trade)
     if report.section != expected:
         raise TradeError(f"The {expected.replace('_', ' ')} is expected now.")
@@ -313,6 +398,8 @@ def check_report(trade: Trade, report: Report) -> None:
         raise TradeError("The town chosen must be one of the pair.")
     if report.section == "pack_bid" and report.choice not in PACKS:
         raise TradeError("The pack chosen must be pack1 or pack2.")
+    if report.section == "first_choice_bid" and report.choice not in FIRST_CHOICES:
+        raise TradeError("The first choice is the hero or the color.")
     if report.section == "color_bid" and report.choice not in COLORS:
         raise TradeError("The color must be red or blue.")
     payments = [Payment(roll.player, trade.rules.roll_cost) for roll in trade.rolls]
@@ -332,6 +419,7 @@ def make_report(
     """A player's report, checked, with a message that says what to do when it does not fit."""
     if trade.finished:
         raise TradeError(f"The trade of game {trade.game} is finished.")
+    _heroes_first(trade)
     expected = expected_report_section(trade)
     typed = choice_text.strip().lower()
     is_color = typed in COLORS
@@ -348,6 +436,10 @@ def make_report(
         if typed not in PACKS:
             raise TradeError("The pack bid is next. Choose pack1 or pack2.")
         choice = typed
+    elif expected == "first_choice_bid":
+        if typed not in FIRST_CHOICES:
+            raise TradeError("This bid is for who chooses first. Choose hero or color.")
+        choice = typed
     else:
         if not is_color:
             if trade.mirror:
@@ -359,6 +451,91 @@ def make_report(
     report = Report(expected, reporter, winner, amount, choice)
     check_report(trade, report)
     return report
+
+
+# --- heroes: the bans and the draw --------------------------------------------------------------------------------
+
+
+def hero_pool(trade: Trade, heroes: Catalogue, templates: Catalogue) -> dict[str, tuple[str, ...]]:
+    """The heroes that can still be drawn in each town of the game, as ids: the heroes the template's map offers, less
+    the ones the players banned."""
+    return hero_pool_of(heroes, templates.find(trade.template), trade.towns, set(trade.banned_heroes))
+
+
+def _heroes_needed(trade: Trade, town: str) -> int:
+    """How many heroes of a town the draw needs: two for a mirror, one for each town of a pair."""
+    return 2 if trade.mirror else 1
+
+
+def _hero_names(heroes: Catalogue, ids) -> str:
+    return ", ".join(heroes.find(hero).name for hero in ids)
+
+
+def check_hero_ban(trade: Trade, ban: HeroBan, heroes: Catalogue, templates: Catalogue) -> None:
+    """Raise TradeError unless `ban` fits the trade: the ban section is open, it is this player's turn, no more heroes
+    than allowed, each of them one that can be drawn, and enough heroes left for the draw."""
+    if trade.section != "hero_bans":
+        raise TradeError("Heroes cannot be banned now.")
+    if ban.player not in trade.players:
+        raise TradeError("Only one of the two players of this game can ban heroes.")
+    if ban.player != trade.ban_turn:
+        raise TradeError("It is the other player's turn to ban heroes.")
+    limit = trade.kind.hero_bans
+    if len(ban.heroes) > limit:
+        raise TradeError(f"At most {limit} hero{'' if limit == 1 else 'es'} may be banned.")
+    if len(set(ban.heroes)) != len(ban.heroes):
+        raise TradeError("A hero can only be banned once.")
+    pool = hero_pool(trade, heroes, templates)
+    can_be_banned = {hero for ids in pool.values() for hero in ids}
+    for hero in ban.heroes:
+        if hero not in can_be_banned:
+            raise TradeError(
+                f"{heroes.find(hero).name if heroes.find(hero) else hero} cannot be banned: only heroes that can be drawn "
+                "for this game can be, that is the heroes of the drawn town(s) that the template's map offers."
+            )
+    for town, ids in pool.items():
+        left = len([hero for hero in ids if hero not in ban.heroes])
+        if left < _heroes_needed(trade, town):
+            raise TradeError("Too few heroes would be left to draw from, so nobody banned anyone.")
+
+
+def make_hero_ban(trade: Trade, heroes: Catalogue, templates: Catalogue, player: int, hero_texts: list[str]) -> HeroBan:
+    """A player's hero ban from the heroes they named, checked, with a message that says what is wrong."""
+    ids = []
+    for text in hero_texts:
+        hero = heroes.find(text)
+        if hero is None:
+            raise TradeError(f"{text!r} is not a hero. Heroes are named as in data/heroes.json, for example Orrin.")
+        if hero.id not in ids:  # naming a hero twice bans it once
+            ids.append(hero.id)
+    ban = HeroBan(player, tuple(ids))
+    check_hero_ban(trade, ban, heroes, templates)
+    return ban
+
+
+def draw_heroes(trade: Trade, heroes: Catalogue, templates: Catalogue, random_source: random.Random | None = None) -> tuple[str, ...]:
+    """The heroes of the game: two different heroes of the town for a mirror, one hero of each town of the pair
+    otherwise (in the order of the towns), from the heroes that can be drawn. Raises TradeError when there are too few."""
+    return pick_heroes(trade.towns, trade.mirror, hero_pool(trade, heroes, templates), random_source)
+
+
+def check_heroes_drawn(trade: Trade, drawn: tuple[str, ...], heroes: Catalogue, templates: Catalogue) -> None:
+    """Raise TradeError unless `drawn` is what the bot may draw now: right after the bans (or the rolls), and heroes
+    that can be drawn, one of each town of a pair or two different ones of the town of a mirror."""
+    if trade.section != "hero_draw":
+        raise TradeError("The heroes cannot be drawn now.")
+    check_heroes_fit(trade.towns, trade.mirror, drawn, hero_pool(trade, heroes, templates))
+
+
+def make_heroes_drawn(
+    trade: Trade, heroes: Catalogue, templates: Catalogue, random_source: random.Random | None = None
+) -> tuple[str, ...]:
+    """Draw the heroes of a game that is due for the draw, and check the draw."""
+    if trade.section != "hero_draw":
+        raise TradeError("The heroes cannot be drawn now.")
+    drawn = draw_heroes(trade, heroes, templates, random_source)
+    check_heroes_drawn(trade, drawn, heroes, templates)
+    return drawn
 
 
 # --- the trades of a match, from its records ------------------------------------------------------------
@@ -395,6 +572,7 @@ def replay_trades(
     rules_of: Callable[[str], RollRules],
     kind_of: Callable[[str], TradeKind] = lambda template: TradeKind(),
     towns: Catalogue | None = None,
+    heroes: Catalogue | None = None,
 ) -> TradeLog:
     """The trades recorded in a thread, checked one record at a time. `games` are the templates known so far,
     `allowed_towns` the towns of the phase, `rules_of` gives the roll rules of a template and `kind_of` how it is traded.
@@ -408,6 +586,11 @@ def replay_trades(
     def ids(words) -> tuple[str, ...]:
         return tuple(towns.find(w).id if towns is not None and towns.find(w) else w for w in words)
 
+    hero_catalogue = heroes if heroes is not None else Catalogue([])
+
+    def hero_ids(words) -> tuple[str, ...]:
+        return tuple(hero_catalogue.find(w).id if hero_catalogue.find(w) else w for w in words)
+
     trades: dict[int, Trade] = {}
     open_game = None
     for record in records:
@@ -420,8 +603,8 @@ def replay_trades(
                     raise TradeError(f"the trade of game {game} was started twice")
                 template = games[game - 1]
                 kind, mirror = kind_of(template), bool(templates.find(template).details.get("mirror"))
-                draw = Draw(ids(record.data["towns"]), ids(record.data.get("packs", ())))
-                check_start(draw, kind, mirror, allowed_towns)
+                draw = Draw(ids(record.data["towns"]), ids(record.data.get("packs", ())), hero_ids(record.data.get("heroes", ())))
+                check_start(draw, kind, mirror, allowed_towns, hero_catalogue, templates.find(template))
                 trades[game] = new_trade(game, games, draw, players, templates, rules_of(template), kind, mirror)
                 open_game = game
             elif game not in trades:
@@ -433,13 +616,21 @@ def replay_trades(
                     raise TradeError(f"the trade of game {game} was not open")
                 trade = trades[game]
                 if record.type == "roll":
-                    draw = Draw(ids(record.data["towns"]), ids(record.data.get("packs", ())))
+                    draw = Draw(ids(record.data["towns"]), ids(record.data.get("packs", ())), hero_ids(record.data.get("heroes", ())))
                     roll = Roll(record.data["player"], ids(record.data["bans"]), draw)
-                    check_roll(trade, roll, allowed_towns)
+                    check_roll(trade, roll, allowed_towns, hero_catalogue, templates)
                     trades[game] = trade.with_roll(roll)
                 elif record.type == "roll_skipped":
                     make_skip(trade, record.data["player"])
                     trades[game] = trade.with_skip(record.data["player"])
+                elif record.type == "hero_bans":
+                    ban = HeroBan(record.data["player"], hero_ids(record.data["heroes"]))
+                    check_hero_ban(trade, ban, hero_catalogue, templates)
+                    trades[game] = trade.with_hero_ban(ban)
+                elif record.type == "heroes_drawn":
+                    drawn = hero_ids(record.data["heroes"])
+                    check_heroes_drawn(trade, drawn, hero_catalogue, templates)
+                    trades[game] = trade.with_heroes(drawn)
                 else:
                     section = record.type
                     choice = record.data[SECTION_TABLE[section].choice_field]
@@ -502,12 +693,11 @@ def check_startable(log: TradeLog, game: int) -> str:
 
 
 def signed(amount: int) -> str:
-    return f"{amount:+d}" if amount else "0"
+    return f"{'+' if amount > 0 else '-'}{spaced(abs(amount))}" if amount else "0"
 
 
-def _starting_gold_line(trade: Trade, mentions: dict[int, str]) -> str:
-    a, b = trade.players
-    return f"Starting gold: {mentions[a]} {trade.start_gold}, {mentions[b]} {trade.start_gold}"
+def _starting_gold_line(trade: Trade) -> str:
+    return f"Starting gold: {spaced(trade.start_gold)}"
 
 
 def _difference_line(trade: Trade, mentions: dict[int, str]) -> str:
@@ -521,7 +711,7 @@ def _pair_words(towns: Catalogue, played: tuple[str, ...]) -> str:
     return " vs ".join(f"`{towns.find(town).name}`" for town in played)
 
 
-def _pack_lines(towns: Catalogue, packs: tuple[str, ...]) -> list[str]:
+def pack_lines(towns: Catalogue, packs: tuple[str, ...]) -> list[str]:
     """The two packs, one line each, for prompts: "Pack1: Castle, Tower, Cove"."""
     draw = Draw((), packs)
     return [
@@ -529,19 +719,32 @@ def _pack_lines(towns: Catalogue, packs: tuple[str, ...]) -> list[str]:
     ]
 
 
-def _draw_lines(trade: Trade, towns: Catalogue, draw: Draw) -> list[str]:
+def _hero_line(mirror: bool, towns: Catalogue, heroes: Catalogue, hero_id: str, town: str) -> str:
+    """One hero with a link to the page of the hero. In a game with two towns the town of the hero is said too. The name
+    is in `quotes`, which is how it is read back; the link is not, and has no preview."""
+    hero = heroes.find(hero_id)
+    place = "" if mirror else f" ({towns.find(town).name})"
+    return f"`{hero.name}`{place} <{hero.details['link']}>"
+
+
+def _draw_lines(trade: Trade, towns: Catalogue, draw: Draw, heroes: Catalogue | None = None) -> list[str]:
     """What was drawn, one line each, for the record of a trade starting (and of a roll that draws packs). The marker
     words ("Pair:", "Town:", "Pack1:") are how `state.py` finds the towns again; the layout is only for the eyes:
 
         Pair: `Castle` vs `Tower`
         Pack1: `Rampart`, `Inferno`, `Dungeon`
         Pack2: ...
+        Hero1: `Orrin` (Castle) <https://heroes.thelazy.net/index.php/Orrin>
+        Hero2: ...
     """
     lines = [f"{'Town' if trade.mirror else 'Pair'}: {_pair_words(towns, draw.towns)}"]
     if draw.packs:
         for number, name in enumerate(PACKS):
             members = ", ".join(f"`{towns.find(t).name}`" for t in draw.pack(number))
             lines.append(f"{name.capitalize()}: {members}")
+    if draw.heroes and heroes is not None:  # a roulette that draws its heroes together with the towns
+        for number, hero_id in enumerate(draw.heroes):
+            lines.append(f"Hero{number + 1}: {_hero_line(trade.mirror, towns, heroes, hero_id, draw.towns[number % len(draw.towns)])}")
     return lines
 
 
@@ -550,16 +753,23 @@ def _named(towns: Catalogue, ids: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(towns.find(town).name for town in ids)
 
 
-def start_data(trade: Trade, towns: Catalogue) -> dict:
+def _draw_data(towns: Catalogue, draw: Draw, heroes: Catalogue | None) -> dict:
+    """The towns, packs and heroes of a draw as the thread quotes them: by name."""
+    return {
+        "towns": _named(towns, draw.towns),
+        **({"packs": _named(towns, draw.packs)} if draw.packs else {}),
+        **({"heroes": tuple(heroes.find(hero).name for hero in draw.heroes)} if draw.heroes and heroes is not None else {}),
+    }
+
+
+def start_data(trade: Trade, towns: Catalogue, heroes: Catalogue | None = None) -> dict:
     """The data of the record posted when a trade starts: the words `opening_line` quotes."""
-    draw = trade.first_draw
-    return {"towns": _named(towns, draw.towns), **({"packs": _named(towns, draw.packs)} if draw.packs else {})}
+    return _draw_data(towns, trade.first_draw, heroes)
 
 
-def roll_data(roll: Roll, towns: Catalogue) -> dict:
+def roll_data(roll: Roll, towns: Catalogue, heroes: Catalogue | None = None) -> dict:
     """The data of the record posted for a roll: the words `roll_line` quotes."""
-    packs = {"packs": _named(towns, roll.packs)} if roll.packs else {}
-    return {"player": roll.player, "bans": _named(towns, roll.bans), "towns": _named(towns, roll.towns), **packs}
+    return {"player": roll.player, "bans": _named(towns, roll.bans), **_draw_data(towns, roll.draw, heroes)}
 
 
 def report_data(report: Report, towns: Catalogue) -> dict:
@@ -573,70 +783,112 @@ def report_data(report: Report, towns: Catalogue) -> dict:
     }
 
 
-def opening_line(trade: Trade, resumed: bool, mentions: dict[int, str], towns: Catalogue, templates: Catalogue) -> str:
-    """The text of the record posted when a trade is opened for the first time or reopened.
+def hero_bans_data(ban: HeroBan, heroes: Catalogue) -> dict:
+    """The data of the record posted for a hero ban: the words `hero_bans_line` quotes."""
+    return {"player": ban.player, "heroes": tuple(heroes.find(hero).name for hero in ban.heroes)}
+
+
+def heroes_drawn_data(drawn: tuple[str, ...], heroes: Catalogue) -> dict:
+    """The data of the record posted for the draw: the words `heroes_drawn_line` quotes."""
+    return {"heroes": tuple(heroes.find(hero).name for hero in drawn)}
+
+
+def opening_line(
+    trade: Trade, resumed: bool, mentions: dict[int, str], towns: Catalogue, templates: Catalogue, heroes: Catalogue | None = None
+) -> str:
+    """The text of the record posted when a trade is opened for the first time or reopened: the game, what was drawn,
+    and the starting gold (or, when reopened, the difference so far). How the trade is run was said when the match started.
 
     The first two `quoted` words are the town ids of the pair, which is how the pair is read back
     (when reopened, it is the pair that stands now).
     """
     name = templates.find(trade.template).name
-    what = "the trade continues" if resumed else "the trade starts"
-    gold = _difference_line(trade, mentions) if resumed else _starting_gold_line(trade, mentions)
+    gold = _difference_line(trade, mentions) if resumed else _starting_gold_line(trade)
     draw = trade.draw if resumed else trade.first_draw
-    kind = " (mirror: both players play the same town)" if trade.mirror else ""
-    kind += " (with computer-player packs)" if trade.kind.name == PACKS_KIND else ""
-    return "\n".join([f"Game {trade.game} ({name}): {what}{kind}.", *_draw_lines(trade, towns, draw), gold])
+    lines = [f"Game {trade.game} ({name})" + (": the trade continues" if resumed else ""), *_draw_lines(trade, towns, draw, heroes)]
+    if resumed and trade.heroes_after_rolls and trade.drawn_heroes and heroes is not None:
+        lines += _hero_lines(trade, towns, heroes, trade.drawn_heroes)
+    return "\n".join([*lines, gold])
 
 
-def _who_may_roll(trade: Trade, mentions: dict[int, str]) -> str:
-    rollers = trade.rollers
-    if len(rollers) == 2:
-        return "Both players may roll."
-    return f"{mentions[rollers[0]]} may roll."
+def _rolls_left_line(trade: Trade, mentions: dict[int, str], player: int) -> str:
+    """How many rolls a player has left, and why they cannot use one now, if they cannot."""
+    left = max(0, trade.rules.rolls_per_player - trade.rolls_used(player))
+    notes = []
+    if left and player in trade.skipped:
+        notes.append("skipped")
+    elif left and trade.gold[player] < trade.rules.roll_cost:
+        notes.append("not enough gold")
+    return f"{mentions[player]}: {left} roll{'' if left == 1 else 's'} left" + (f" ({', '.join(notes)})" if notes else "")
 
 
-def prompt(trade: Trade, mentions: dict[int, str], towns: Catalogue, show_draw: bool = True) -> str:
-    """What to do next in an unfinished trade, a few short lines. The first player (A) bids first in every game; this
-    is a provisional rule.
+def _standing_lines(trade: Trade, towns: Catalogue, heroes: Catalogue | None) -> list[str]:
+    """What stands, in plain words, for a prompt after an undo: the town(s), the packs and the heroes drawn with them."""
+    lines = [f"{'Town' if trade.mirror else 'Pair'}: {pair_names(towns, trade.towns)}"]
+    if trade.packs:
+        lines += pack_lines(towns, trade.packs)
+    if heroes is not None:
+        for number, hero_id in enumerate(trade.draw.heroes):
+            place = "" if trade.mirror else f" ({towns.find(trade.towns[number]).name})"
+            lines.append(f"Hero{number + 1}: {heroes.find(hero_id).name}{place}")
+    return lines
 
-    The roll section says what was drawn only when `show_draw` is true. The message that drew it (the start of the
-    trade, a roll) is right above the prompt, so repeating it would only say it twice; after an undo it is not.
+
+def prompt(
+    trade: Trade, mentions: dict[int, str], towns: Catalogue, show_draw: bool = True, heroes: Catalogue | None = None
+) -> str:
+    """What to do next in an unfinished trade: "Next step: ..." and a few short lines. The first player (A) bids first
+    in every game; this is a provisional rule.
+
+    The roll section says what stands only when `show_draw` is true. The message that drew it (the start of the trade,
+    a roll) is right above the prompt, so repeating it would only say it twice; after an undo it is not.
     """
-    game = f"Game {trade.game}"
     if trade.section == "town_roll":
         rules = trade.rules
-        if not show_draw:
-            head = []  # what was drawn is said right above, and the roll is the only question
-        elif trade.packs:
-            head = [f"{game} town roll", f"Pair: {pair_names(towns, trade.towns)}", *_pack_lines(towns, trade.packs)]
-        elif trade.mirror:
-            head = [f"{game} town roll: {pair_names(towns, trade.towns)}, played by both"]
-        else:
-            head = [f"{game} town roll: {pair_names(towns, trade.towns)}"]
         bans = "it bans this town" if trade.mirror else f"banning up to {_count_towns(rules.max_roll_bans)} of the pair"
         return "\n".join(
             [
-                *head,
-                f"A roll costs {rules.roll_cost} gold. {_who_may_roll(trade, mentions)}",
-                f"Roll with /trade roll ({bans}), or skip with /trade skip-roll.",
+                "Next step: town roll",
+                *(_standing_lines(trade, towns, heroes) if show_draw else []),
+                f"Cost: {spaced(rules.roll_cost)} gold",
+                *(_rolls_left_line(trade, mentions, player) for player in trade.players),
+                f"Roll with /trade roll ({bans}); skip with /trade skip-roll",
             ]
         )
-    raise_by = f"{mentions[trade.players[0]]} bids first, raising by at least {GOLD_STEP}."
+    if trade.section == "hero_bans":
+        limit = trade.kind.hero_bans
+        return "\n".join(
+            [
+                "Next step: hero bans",
+                f"{mentions[trade.ban_turn]} may ban up to {limit} hero{'' if limit == 1 else 'es'} of {pair_names(towns, trade.towns)}",
+                "Ban with /trade ban-heroes; ban nobody by sending it without a hero",
+            ]
+        )
+    if trade.section == "hero_draw":
+        return "The heroes are being drawn."
+    raise_by = f"{mentions[trade.players[0]]} bids first, raising by at least {GOLD_STEP}"
     if trade.section == "town_bid":
-        lines = [f"{game} town bid: {pair_names(towns, trade.towns)}", raise_by, "Report the result with /trade report."]
+        lines = [f"Next step: town bid: {pair_names(towns, trade.towns)}", raise_by, "Report the result with /trade report"]
+    elif trade.section == "first_choice_bid":
+        lines = [
+            "Next step: bid for the first choice",
+            raise_by,
+            "Its winner chooses first either the hero or the color, and the other player chooses the other",
+            "Report the result with /trade report, choosing hero or color",
+        ]
     elif trade.section == "pack_bid":
         lines = [
-            f"{game} pack bid",
-            *_pack_lines(towns, trade.packs),
+            "Next step: pack bid",
+            *pack_lines(towns, trade.packs),
             raise_by,
-            "Report the result with /trade report, choosing pack1 or pack2.",
+            "Report the result with /trade report, choosing pack1 or pack2",
         ]
     else:
-        lines = [f"{game} color bid", raise_by, "Report the result with /trade report, choosing red or blue."]
+        lines = ["Next step: color bid", raise_by, "Report the result with /trade report, choosing red or blue"]
     return "\n".join(lines)
 
 
-def roll_line(trade: Trade, roll: Roll, mentions: dict[int, str], towns: Catalogue) -> str:
+def roll_line(trade: Trade, roll: Roll, mentions: dict[int, str], towns: Catalogue, heroes: Catalogue | None = None) -> str:
     """The text of the record posted for a roll; `trade` is the trade including the roll.
 
     The first mention is the roller; the `quoted` words before "New pair:" (or "New town:") are the banned towns, the
@@ -645,10 +897,31 @@ def roll_line(trade: Trade, roll: Roll, mentions: dict[int, str], towns: Catalog
     roller, other = mentions[roll.player], mentions[trade.other(roll.player)]
     bans = ", ".join(f"`{towns.find(t).name}`" for t in roll.bans)
     banning = f"rolled, banning {bans}," if roll.bans else "rolled without banning a town,"
-    paid = f"Game {trade.game} - {roller} {banning} and paid {trade.rules.roll_cost} gold to {other}."
-    drawn = _draw_lines(trade, towns, roll.draw)
+    paid = f"Game {trade.game} - {roller} {banning} and paid {spaced(trade.rules.roll_cost)} gold to {other}."
+    drawn = _draw_lines(trade, towns, roll.draw, heroes)
     drawn[0] = ("New town:" if trade.mirror else "New pair:") + drawn[0].split(":", 1)[1]
     return "\n".join([paid, *drawn, _difference_line(trade, mentions)])
+
+
+def hero_bans_line(trade: Trade, ban: HeroBan, mentions: dict[int, str], heroes: Catalogue) -> str:
+    """The text of the record posted for a player's hero bans. The first mention is the player, the `quoted` words the
+    banned heroes."""
+    banned = ", ".join(f"`{heroes.find(hero).name}`" for hero in ban.heroes)
+    return f"Game {trade.game} - {mentions[ban.player]} bans {banned if ban.heroes else 'no hero'}."
+
+
+def _hero_lines(trade: Trade, towns: Catalogue, heroes: Catalogue, drawn: tuple[str, ...]) -> list[str]:
+    """The drawn heroes, a line each, with a link to the page of the hero. In a game with two towns the town of each
+    hero is said too. The name is in `quotes`, which is how it is read back; the link is not, and has no preview."""
+    lines = []
+    for number, hero_id in enumerate(drawn):
+        lines.append(_hero_line(trade.mirror, towns, heroes, hero_id, trade.towns[number % len(trade.towns)]))
+    return lines
+
+
+def heroes_drawn_line(trade: Trade, drawn: tuple[str, ...], towns: Catalogue, heroes: Catalogue) -> str:
+    """The text of the record posted when the heroes are drawn: the `quoted` words are the heroes, in order."""
+    return "\n".join([f"Game {trade.game} - The heroes are drawn:", *_hero_lines(trade, towns, heroes, drawn)])
 
 
 def skip_line(trade: Trade, player: int, mentions: dict[int, str], by_report: bool = False) -> str:
@@ -664,7 +937,7 @@ def report_line(trade: Trade, report: Report, mentions: dict[int, str], towns: C
     The first two mentions are the reporter and the winner, the first two `quoted` words the amount and the choice.
     """
     reporter, winner, loser = mentions[report.reporter], mentions[report.winner], mentions[trade.other(report.winner)]
-    won = f"{winner} won at `{report.amount}` gold and"
+    won = f"{winner} won at `{spaced(report.amount)}` gold and"
     if report.section == "town_bid":
         town = towns.find(report.choice)
         other = towns.find(next(t for t in trade.towns if t != report.choice)).name
@@ -672,18 +945,51 @@ def report_line(trade: Trade, report: Report, mentions: dict[int, str], towns: C
     elif report.section == "pack_bid":
         other = PACKS[1 - PACKS.index(report.choice)]
         what, lines = "Pack bid", [f"{won} takes `{report.choice}`", f"{loser} gets {other}"]
+    elif report.section == "first_choice_bid":
+        if report.choice == "hero":
+            lines = [f"{winner} won at `{spaced(report.amount)}` gold and chooses the `hero` first", f"{loser} then chooses the color and plays the other hero"]
+        else:
+            lines = [f"{winner} won at `{spaced(report.amount)}` gold and chooses the `color` first", f"{loser} then chooses a hero and plays the other color"]
+        what = "Bid for the first choice"
     else:
         other = "blue" if report.choice == "red" else "red"
         what, lines = "Color bid", [f"{won} plays `{report.choice}`", f"{loser} plays {other}"]
     return "\n".join([f"Game {trade.game} - {what}, reported by {reporter}", *lines, _difference_line(trade, mentions)])
 
 
+def _first_choice_summary(
+    trade: Trade, report: Report, mentions: dict[int, str], towns: Catalogue, templates: Catalogue, lobby, heroes: Catalogue | None
+) -> str:
+    """The lobby settings of a mirror roulette: the town, the two heroes, and who chooses what. The bot does not track
+    which hero or color is taken, so there are no colors, only who chooses what and the gold difference."""
+    gold = trade.gold
+    winner, loser = report.winner, trade.other(report.winner)
+    if report.choice == "hero":
+        says = {winner: "chooses the hero first (one of the two), gets the other color", loser: "chooses the color, plays the other hero"}
+    else:
+        says = {winner: "chooses the color, plays the other hero", loser: "chooses the hero first (one of the two), plays the other color"}
+    lines = [f"Game {trade.game} lobby settings - {templates.find(trade.template).name}", *lobby]
+    lines.append(f"Town (both players): {towns.find(trade.towns[0]).name}")
+    if trade.heroes and heroes is not None:
+        lines.append(f"Heroes: {' and '.join(heroes.find(hero).name for hero in trade.heroes)}")
+    for player in trade.players:
+        lines.append(f"{mentions[player]}: {says[player]}, gold {signed(gold[player] - trade.start_gold)}")
+    return "\n".join(lines)
+
+
 def summary(
-    trade: Trade, mentions: dict[int, str], towns: Catalogue, templates: Catalogue, lobby: list[str] | tuple = ()
+    trade: Trade,
+    mentions: dict[int, str],
+    towns: Catalogue,
+    templates: Catalogue,
+    lobby: list[str] | tuple = (),
+    heroes: Catalogue | None = None,
 ) -> str:
     """The lobby settings of a finished trade: the settings typed into the lobby (`lobby`, one line each, when they are
-    stated), then each player's town, color and gold difference."""
+    stated), then each player's town (and, in a roulette, hero), color and gold difference, the red player first."""
     reports = {report.section: report for report in trade.reports}
+    if "first_choice_bid" in reports:
+        return _first_choice_summary(trade, reports["first_choice_bid"], mentions, towns, templates, lobby, heroes)
     color_report = reports["color_bid"]
     plays_color = {color_report.winner: color_report.choice, trade.other(color_report.winner): "blue" if color_report.choice == "red" else "red"}
     plays_town, plays_pack = {}, {}
@@ -697,10 +1003,13 @@ def summary(
     lines = [f"Game {trade.game} lobby settings - {templates.find(trade.template).name}", *lobby]
     if trade.mirror:
         lines.append(f"Town (both players): {towns.find(trade.towns[0]).name}")
-    for player in trade.players:
+    for player in sorted(trade.players, key=lambda p: plays_color[p] != "red"):  # red is listed first
         parts = []
         if player in plays_town:
-            parts.append(towns.find(plays_town[player]).name)
+            town = towns.find(plays_town[player]).name
+            if trade.heroes and heroes is not None and not trade.mirror:  # the hero drawn for the town they play
+                town += f" ({heroes.find(trade.heroes[trade.towns.index(plays_town[player])]).name})"
+            parts.append(town)
         if player in plays_pack:
             pack = plays_pack[player]
             parts.append(f"{pack} ({', '.join(towns.find(t).name for t in trade.pack(pack))})")
@@ -714,11 +1023,14 @@ def next_words(trade: Trade, towns: Catalogue) -> str:
     The roll is a side option until the first bid is reported, so the first bid is what comes next."""
     if trade.finished:
         return ""
+    if trade.section in ("hero_bans", "hero_draw"):
+        return f", next: {trade.section.replace('_', ' ')}"
     bid = trade.bids[len(trade.reports)]
     rolls = " (rolls still open)" if trade.section == "town_roll" else ""
     if bid == "town_bid":
         return f", next: town bid {pair_names(towns, trade.towns)}{rolls}"
-    return f", next: {bid.replace('_', ' ')}{rolls}"
+    words = {"first_choice_bid": "bid for the first choice"}.get(bid, bid.replace("_", " "))
+    return f", next: {words}{rolls}"
 
 
 def next_message(
@@ -728,8 +1040,9 @@ def next_message(
     templates: Catalogue,
     lobby: list[str] | tuple = (),
     show_draw: bool = True,
+    heroes: Catalogue | None = None,
 ) -> str:
     """What the thread says after the trade moved on: what to do next, or the lobby settings when it is done."""
     if trade.finished:
-        return summary(trade, mentions, towns, templates, lobby)
-    return prompt(trade, mentions, towns, show_draw)
+        return summary(trade, mentions, towns, templates, lobby, heroes)
+    return prompt(trade, mentions, towns, show_draw, heroes)

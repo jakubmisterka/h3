@@ -228,16 +228,20 @@ def test_the_mirror_summary_gives_the_one_town_and_the_colors(catalogue, towns):
     assert lines == [
         "Game 1 lobby settings - h3dm1",
         "Town (both players): Necropolis",
-        "<@111>: blue, gold +3000",
-        "<@222>: red, gold -3000",
+        "<@222>: red, gold -3 000",
+        "<@111>: blue, gold +3 000",
     ]
 
 
 def test_the_mirror_wording_says_one_town_and_how_to_roll(catalogue, towns):
     trade = mirror_trade(catalogue)
     text = prompt(trade, MENTIONS, towns)
-    assert "Necropolis, played by both" in text and "it bans this town" in text
-    assert "mirror: both players play the same town" in opening_line(trade, False, MENTIONS, towns, catalogue)
+    assert "Town: Necropolis" in text and "it bans this town" in text
+    assert opening_line(trade, False, MENTIONS, towns, catalogue).splitlines() == [
+        "Game 1 (h3dm1)",
+        "Town: `Necropolis`",
+        "Starting gold: 10 000",
+    ]
 
 
 def test_the_status_of_a_mirror_names_the_color_bid(catalogue, towns):
@@ -368,8 +372,8 @@ def test_the_summary_of_a_packs_trade_gives_each_players_pack(catalogue, towns, 
     assert trade.finished
     lines = summary(trade, MENTIONS, towns, catalogue).splitlines()
     assert lines[1:] == [
-        "<@111>: Castle, pack2 (Stronghold, Fortress, Cove), blue, gold -300",
         "<@222>: Tower, pack1 (Rampart, Inferno, Dungeon), red, gold +300",
+        "<@111>: Castle, pack2 (Stronghold, Fortress, Cove), blue, gold -300",
     ]
 
 
@@ -397,7 +401,7 @@ def test_the_prompts_of_a_packs_trade_name_the_packs(catalogue, towns, allowed):
     done = packs_trade(catalogue, NO_ROLLS)
     done = done.with_report(make_report(done, towns, allowed, A, A, 0, "castle"))
     assert "pack bid" in prompt(done, MENTIONS, towns) and "choosing pack1 or pack2" in prompt(done, MENTIONS, towns)
-    assert "with computer-player packs" in opening_line(trade, False, MENTIONS, towns, catalogue)
+    assert "\nPack1: " in opening_line(trade, False, MENTIONS, towns, catalogue)
 
 
 def test_a_packs_trade_is_replayed_from_its_records(catalogue, towns):
@@ -479,7 +483,7 @@ def test_the_longest_messages_of_a_packs_trade_fit_in_a_discord_message(catalogu
 
 
 def test_the_old_standard_wording_is_still_read():
-    start = "[#3 tr g1] Game 1 (Jebus Cross): the trade starts. Pair: Necropolis (`necropolis`) vs Tower (`tower`). Starting gold: <@1> 10000, <@2> 10000"
+    start = "[#3 tr g1] Game 1 (Jebus Cross) Pair: Necropolis (`necropolis`) vs Tower (`tower`). Starting gold: 10 000"
     roll = (
         "[#4 rl g1] Game 1 - <@1> rolled, banning Necropolis (`necropolis`), and paid 500 gold to <@2>. "
         "New pair: Cove (`cove`) vs Castle (`castle`).\nGold difference: <@1> -500, <@2> +500"
@@ -548,12 +552,13 @@ def test_a_quoted_name_that_is_no_town_fails_the_checks(catalogue, towns):
 def test_a_roll_prompt_without_the_draw_has_only_the_roll_and_the_next_step(catalogue, towns):
     for trade in (mirror_trade(catalogue), packs_trade(catalogue)):
         lines = prompt(trade, MENTIONS, towns, show_draw=False).splitlines()
-        assert lines[0] == "A roll costs 500 gold. Both players may roll." and lines[1].startswith("Roll with /trade roll (")
-        assert len(lines) == 2
+        assert lines[0] == "Next step: town roll" and lines[1] == "Cost: 500 gold"
+        assert lines[2:4] == ["<@111>: 1 roll left", "<@222>: 1 roll left"] and lines[4].startswith("Roll with /trade roll (")
+        assert len(lines) == 5
 
 
 def test_the_packs_are_read_from_the_pack1_line_and_from_an_older_packs_line():
-    new = "[#3 tr g2] Game 2 (Sapphire): the trade starts.\nPair: `Castle` vs `Tower`\nPack1: `A`, `B`, `C`\nPack2: `D`, `E`, `F`\nStarting gold: <@1> 1, <@2> 1"
+    new = "[#3 tr g2] Game 2 (Sapphire)\nPair: `Castle` vs `Tower`\nPack1: `A`, `B`, `C`\nPack2: `D`, `E`, `F`\nStarting gold: <@1> 1, <@2> 1"
     old = new.replace("\nPack1:", "\nPacks:\n  Pack1:")
     expected = make_record(3, "trade_started", 2, towns=("Castle", "Tower"), packs=("A", "B", "C", "D", "E", "F"))
     assert parse(new) == expected and parse(old) == expected

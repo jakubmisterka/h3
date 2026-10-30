@@ -13,9 +13,9 @@ from rules.info import find_phase
 from rules.registry import Registry
 from rules.roll_rules import RollRules, effective_roll_rules
 from rules.selection import Action, after_a_step, known_games, next_step, player_steps, replay, step_prompt
-from rules.template_facts import fact_lines, lobby_lines
+from rules.template_facts import info_hint, lobby_lines
 from rules.template_settings import Settings, effective_settings
-from rules.trade import TradeLog, next_message, next_words, replay_trades, signed
+from rules.trade import TradeLog, next_message, next_words, pack_lines, replay_trades, signed
 from state import TRADE_TYPES, Match, MatchError, Record, rebuild, steps_that_count
 
 
@@ -46,6 +46,7 @@ class Situation:
     last_step: Record | None  # the latest step that counts (None: nothing but the start and the coinflip yet)
     templates: Catalogue  # the template catalogue, for the settings of a template
     latest: Record | None = None  # the last record of the thread, whether or not it counts (an undo, for example)
+    heroes: Catalogue = Catalogue([])  # the hero catalogue, for the heroes of a roulette
 
     def roll_rules(self, template: str) -> RollRules:
         """The roll rules of a template in this match's phase."""
@@ -90,10 +91,10 @@ def situation_of(registry: Registry, records: list[Record]) -> Situation:
     kind_of = lambda template: effective_settings(fmt, phase, template, registry.templates).trade  # noqa: E731
     log = replay_trades(
         match.trade_records, games, (match.a, match.b), registry.templates, phase.allowed_towns, rules_of, kind_of,
-        registry.towns,
+        registry.towns, registry.heroes,
     )
     steps = steps_that_count(records)
-    return Situation(match, fmt, phase, actions, games, log, steps[-1] if steps else None, registry.templates, records[-1] if records else None)
+    return Situation(match, fmt, phase, actions, games, log, steps[-1] if steps else None, registry.templates, records[-1] if records else None, registry.heroes)
 
 
 def _selection_line(s: Situation) -> str:
@@ -118,7 +119,8 @@ def _game_line(s: Situation, number: int, templates: Catalogue, towns: Catalogue
     state = "trade done" if trade.finished else ("trade open" if s.log.open_game == number else "trade closed, not finished")
     next_section = next_words(trade, towns)
     difference = f"gold difference {s.mentions[a]} {signed(gold[a] - trade.start_gold)} / {s.mentions[b]} {signed(gold[b] - trade.start_gold)}"
-    return f"Game {number}: {name}, {state}{next_section}, {difference}"
+    line = f"Game {number}: {name}, {state}{next_section}, {difference}"
+    return "\n".join([line, *pack_lines(towns, trade.packs)]) if trade.packs else line  # and the computer-player packs
 
 
 def overview(s: Situation, templates: Catalogue, towns: Catalogue) -> str:
@@ -135,11 +137,11 @@ def overview(s: Situation, templates: Catalogue, towns: Catalogue) -> str:
     return "\n".join(lines)
 
 
-def _start_hint(number: int, template: str, templates: Catalogue, facts: list[str]) -> str:
-    """The announcement of a game whose template is settled: what is stated about the template, then, last, how to
-    start its trade."""
+def _start_hint(number: int, template: str, templates: Catalogue, info: str) -> str:
+    """The announcement of a game whose template is settled: the game and how to start its trade, then how to find out
+    more about the template (the trade then says what is stated about it)."""
     hint = f"Game {number} is {templates.find(template).name}. Start its trade with /trade start."
-    return "\n".join([*facts, hint])
+    return "\n".join([hint, info])
 
 
 def _after_a_finished_trade(s: Situation, templates: Catalogue) -> list[str]:
@@ -152,7 +154,7 @@ def _after_a_finished_trade(s: Situation, templates: Catalogue) -> list[str]:
     messages = [prompt] if prompt is not None else []
     for number, template in enumerate(s.games, start=1):
         if number not in s.log.trades or not s.log.trades[number].finished:
-            messages.append(_start_hint(number, template, templates, fact_lines(s.settings(template))))
+            messages.append(_start_hint(number, template, templates, info_hint(s.fmt.id, template)))
             return messages
     if prompt is None:
         messages.append(ALL_TRADED_NOTE)
@@ -171,7 +173,7 @@ def next_steps(s: Situation, templates: Catalogue, towns: Catalogue) -> list[str
     if s.last_step is not None and s.last_step.type in TRADE_TYPES and trade is not None:
         # What was drawn is repeated only after an undo: otherwise the message that drew it is right above.
         show_draw = s.latest is not None and s.latest.type == "undone"
-        messages = [next_message(trade, s.mentions, towns, templates, lobby_lines(s.settings(trade.template)), show_draw)]
+        messages = [next_message(trade, s.mentions, towns, templates, lobby_lines(s.settings(trade.template)), show_draw, s.heroes)]
         if trade.finished:
             messages += _after_a_finished_trade(s, templates)
         return messages
@@ -180,7 +182,7 @@ def next_steps(s: Situation, templates: Catalogue, towns: Catalogue) -> list[str
     if not s.has_selection:
         for number, template in enumerate(s.games, start=1):
             if number not in s.log.trades or not s.log.trades[number].finished:
-                messages.append(_start_hint(number, template, templates, fact_lines(s.settings(template))))
+                messages.append(_start_hint(number, template, templates, info_hint(s.fmt.id, template)))
                 break
         return messages
 
@@ -189,5 +191,5 @@ def next_steps(s: Situation, templates: Catalogue, towns: Catalogue) -> list[str
     known_before = known_games(s.phase.steps, s.phase.pool_ids, s.actions[:-1]) if s.actions else ()
     for number in range(len(known_before) + 1, len(s.games) + 1):  # the games the last step decided
         template = s.games[number - 1]
-        messages.append(_start_hint(number, template, templates, fact_lines(s.settings(template))))
+        messages.append(_start_hint(number, template, templates, info_hint(s.fmt.id, template)))
     return messages
