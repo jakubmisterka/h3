@@ -2,6 +2,8 @@
 
 Features for h3 community: a Discord bot that moves the pre-game of a Heroes of Might and Magic III (Horn of the Abyss) tournament match out of the game lobby and into Discord. Work in progress: today `/match start` opens a thread for a match. The plan is in `CLAUDE.md` and `openspec/`.
 
+**Using the bot?** The user guide (in Polish) is in [docs/instrukcja.md](docs/instrukcja.md).
+
 ## One-time Discord setup (do twice: `h3-trade-DEV` and `h3-trade`)
 
 1. https://discord.com/developers/applications -> New Application.
