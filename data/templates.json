@@ -103,5 +103,78 @@
     "roads": { "default": "mid", "allowed": ["mid"] },
     "ai": { "default": 6, "allowed": [6] },
     "sim_turns": "123"
+  },
+  {
+    "id": "2sm2c2",
+    "name": "2sm2c(2)",
+    "difficulty": 200,
+    "map_size": { "default": "M", "allowed": ["M"] },
+    "roads": { "default": "slow+mid+fast", "allowed": ["slow+mid+fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "NineDayWonder",
+    "name": "Nine-Day Wonder",
+    "difficulty": 200,
+    "map_size": { "default": "M", "allowed": ["M"] },
+    "roads": { "default": "slow+mid+fast", "allowed": ["slow+mid+fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "114"
+  },
+  {
+    "id": "PapichBishopCup10",
+    "name": "Papich Bishop Cup 10 Edition",
+    "difficulty": 200,
+    "map_size": { "default": "M", "allowed": ["M"] },
+    "roads": { "default": "slow+mid+fast", "allowed": ["slow+mid+fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "121"
+  },
+  {
+    "id": "Boomerang",
+    "name": "Boomerang",
+    "difficulty": 160,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "ClashOfDragons",
+    "name": "Clash of Dragons",
+    "difficulty": 200,
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "117"
+  },
+  {
+    "id": "mt_JOTurbo",
+    "name": "mt_JOTurbo",
+    "difficulty": 160,
+    "mirror": true,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "133"
+  },
+  {
+    "id": "1deaL",
+    "name": "1deaL",
+    "difficulty": 160,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "115"
+  },
+  {
+    "id": "OMM3",
+    "name": "One Minute Madness 3.0",
+    "difficulty": 160,
+    "download": "https://h3szablony.heroes.net.pl/templates/12",
+    "map_size": { "default": "L", "allowed": ["L"] },
+    "roads": { "default": "slow", "allowed": ["slow"] },
+    "ai": { "default": 0, "allowed": [0] }
   }
 ]
