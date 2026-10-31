@@ -12,4 +12,4 @@
 ## 3. Check
 
 - [x] 3.1 For the maintainers: add the alternative templates to `data/templates.json` and state them in the formats that allow them
-- [ ] 3.2 Milestone check in the dev guild: start a trade on a template with an alternative (by `/trade start` and by a named template) and look up the template with `/info`
+- [x] 3.2 Milestone check in the dev guild: start a trade on a template with an alternative (by `/trade start` and by a named template) and look up the template with `/info`
