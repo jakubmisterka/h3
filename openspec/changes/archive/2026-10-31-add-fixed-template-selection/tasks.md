@@ -17,4 +17,4 @@
 
 ## 4. Check
 
-- [ ] 4.1 Milestone check in the dev guild: add a one-template BO3 test format, play the three trades, ask for `/match status`, try `/ban`, and undo from the second game
+- [x] 4.1 Milestone check in the dev guild: add a one-template BO3 test format, play the three trades, ask for `/match status`, try `/ban`, and undo from the second game

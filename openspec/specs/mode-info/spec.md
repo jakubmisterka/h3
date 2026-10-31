@@ -202,3 +202,10 @@ The reply about a template in a mode SHALL say how its trade is run when it is n
 #### Scenario: A standard trade
 - **WHEN** a player asks about a template with a standard trade in every phase
 - **THEN** the reply has no line about the trade
+
+### Requirement: Mode info says when every game is on one template
+For a fixed phase the reply SHALL say that every game of the match is played on the phase's template, and name it, in place of the Template Selection line.
+
+#### Scenario: A fixed phase
+- **WHEN** a player asks about a mode with a fixed best-of-3 phase on Nostalgia
+- **THEN** the reply says all 3 games are played on Nostalgia, and has no Template Selection line
