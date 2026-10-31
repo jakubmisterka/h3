@@ -68,6 +68,7 @@ class Phase:
     agreed: bool  # True: the players agree on the template, there are no bans or picks
     steps: tuple[Step, ...]  # the games are played in the order of the picks, then the decider
     allowed_towns: tuple[str, ...]  # town ids players can get in this phase: its own list, else the tournament's
+    fixed: bool = False  # True: the phase has one template and every game is played on it, there are no bans or picks
 
     @property
     def pool_ids(self) -> tuple[str, ...]:
@@ -156,8 +157,11 @@ def _phase_problems(phase: dict, listed: list[str], towns: Catalogue) -> list[st
             )
     problems += _town_problems(label, phase.get("allowed_towns", []), towns)
 
-    if phase["template_selection"]["type"] == "sequence":
+    kind = phase["template_selection"]["type"]
+    if kind == "sequence":
         problems += _sequence_problems(phase, label, len(pool))
+    if kind == "fixed" and len(set(pool)) != 1:
+        problems.append(f"{label}: a fixed phase needs exactly one template, but it has {len(set(pool))} ({', '.join(pool)})")
     return problems
 
 
@@ -395,6 +399,7 @@ def parse_format(data, templates: Catalogue, towns: Catalogue, heroes: Catalogue
     phases = []
     for raw in data["phases"]:
         agreed = raw["template_selection"]["type"] == "agreed"
+        fixed = raw["template_selection"]["type"] == "fixed"
         if "pool" in raw:
             pool = tuple(_entry(e) for e in raw["pool"])
         else:  # no pool written: the phase uses every template of the tournament
@@ -405,8 +410,9 @@ def parse_format(data, templates: Catalogue, towns: Catalogue, heroes: Catalogue
                 best_of=raw["best_of"],
                 pool=pool,
                 agreed=agreed,
-                steps=() if agreed else tuple(Step(s.get("who"), s["do"]) for s in raw["template_selection"]["steps"]),
+                steps=() if agreed or fixed else tuple(Step(s.get("who"), s["do"]) for s in raw["template_selection"]["steps"]),
                 allowed_towns=tuple(raw["allowed_towns"]) if "allowed_towns" in raw else tournament_towns,
+                fixed=fixed,
             )
         )
     return Format(

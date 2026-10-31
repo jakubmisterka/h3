@@ -174,7 +174,7 @@ def test_a_problem_inside_a_phase_names_the_phase_and_the_field(good_format, tem
 def test_a_wrong_selection_type_gets_a_clear_message(good_format, templates, towns):
     phase_of(good_format)["template_selection"] = {"type": "random"}
     [message] = problems(good_format, templates, towns)
-    assert 'phase "Main", template_selection.type' in message and "'random' is not one of ['sequence', 'agreed']" in message
+    assert 'phase "Main", template_selection.type' in message and "'random' is not one of ['sequence', 'agreed', 'fixed']" in message
 
 
 def test_a_ban_without_a_player_says_who_is_missing(good_format, templates, towns):
@@ -406,3 +406,43 @@ def test_a_folder_is_loaded_by_id_and_skips_the_schema(tmp_path, good_format, te
     write(tmp_path, f"{good_format['id']}.json", good_format)
     (tmp_path / "schema.json").write_text("{}", encoding="utf-8")
     assert list(load_formats(tmp_path, templates, towns)) == [good_format["id"]]
+
+
+# --- a phase where every game is played on one template -----------------------------------------------------------
+
+
+def fixed_phase(data, best_of=3, templates=("JC",)):
+    data["templates"] = list(templates)
+    phase_of(data).pop("pool", None)
+    phase_of(data)["best_of"] = best_of
+    phase_of(data)["template_selection"] = {"type": "fixed"}
+
+
+def test_a_fixed_phase_with_one_template_is_valid_and_has_no_steps(good_format, templates, towns):
+    fixed_phase(good_format)
+    assert problems(good_format, templates, towns) == []
+    phase = parse_format(good_format, templates, towns).phases[0]
+    assert phase.fixed and phase.steps == () and not phase.agreed and phase.best_of == 3 and phase.pool_ids == ("JC",)
+
+
+def test_a_fixed_phase_can_take_its_one_template_from_a_pool(good_format, templates, towns):
+    fixed_phase(good_format, templates=("JC", "6lm10a", "h3dm1"))
+    phase_of(good_format)["pool"] = ["6lm10a"]
+    assert problems(good_format, templates, towns) == []
+    assert parse_format(good_format, templates, towns).phases[0].pool_ids == ("6lm10a",)
+
+
+def test_a_fixed_phase_with_several_templates_is_refused(good_format, templates, towns):
+    fixed_phase(good_format, templates=("JC", "6lm10a"))
+    [message] = problems(good_format, templates, towns)
+    assert message.startswith('phase "Main"') and "a fixed phase needs exactly one template" in message and "JC, 6lm10a" in message
+
+
+def test_a_fixed_phase_with_steps_is_refused(good_format, templates, towns):
+    fixed_phase(good_format)
+    phase_of(good_format)["template_selection"]["steps"] = [{"do": "decider"}]
+    assert any("steps" in message for message in problems(good_format, templates, towns))
+
+
+def test_the_other_phases_are_not_fixed(good_format, templates, towns):
+    assert not parse_format(good_format, templates, towns).phases[0].fixed

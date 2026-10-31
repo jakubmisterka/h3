@@ -135,8 +135,8 @@
           "required": ["type"],
           "properties": {
             "type": {
-              "enum": ["sequence", "agreed"],
-              "description": "sequence: bans and picks in a fixed order. agreed: the players agree on the template."
+              "enum": ["sequence", "agreed", "fixed"],
+              "description": "sequence: bans and picks in a fixed order. agreed: the players agree on the template. fixed: the phase has one template and every game is played on it."
             }
           },
           "allOf": [
@@ -171,6 +171,10 @@
             },
             {
               "if": { "properties": { "type": { "const": "agreed" } }, "required": ["type"] },
+              "then": { "additionalProperties": false, "properties": { "type": {} } }
+            },
+            {
+              "if": { "properties": { "type": { "const": "fixed" } }, "required": ["type"] },
               "then": { "additionalProperties": false, "properties": { "type": {} } }
             }
           ]

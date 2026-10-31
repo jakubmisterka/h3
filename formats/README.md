@@ -247,6 +247,7 @@ By default players can get any town in [`../data/towns.json`](../data/towns.json
 
 `template_selection` says how a phase chooses its templates.
 
+- **`"type": "fixed"`**: the phase has one template and every game of the match is played on it, as in a tournament played on a single template with best-of-3 matches. Nothing else is written. The phase must have exactly one template: the tournament's list, or the phase's `pool`. Players start the match without naming a template, and the bot opens each game's trade in turn.
 - **`"type": "agreed"`**: the players agree on the template themselves (ranked games). Nothing else is written, and `best_of` must be 1 in practice.
 - **`"type": "sequence"`**: bans and picks in a fixed order. **A** is the coinflip winner and **B** the other player. Each step is `{ "who": "A", "do": "ban" }`, `{ "who": "B", "do": "pick" }`, or `{ "do": "decider" }`: the template that is left, which nobody chooses.
 

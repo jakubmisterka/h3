@@ -12,7 +12,7 @@ from rules.formats import Format, Phase
 from rules.info import find_phase
 from rules.registry import Registry
 from rules.roll_rules import RollRules, effective_roll_rules
-from rules.selection import Action, after_a_step, known_games, next_step, player_steps, replay, step_prompt
+from rules.selection import NOT_A_STEP, NOT_A_STEP_FIXED, Action, after_a_step, known_games, next_step, player_steps, replay, step_prompt
 from rules.template_facts import info_hint, lobby_lines
 from rules.template_settings import Settings, effective_settings
 from rules.trade import TradeLog, next_message, next_words, pack_lines, replay_trades, signed
@@ -58,12 +58,23 @@ class Situation:
 
     @property
     def has_selection(self) -> bool:
-        """False when the match started with a named template: one game, and no bans or picks."""
-        return self.match.template is None
+        """False when there are no bans or picks: the match started with a named template (one game), or the phase is
+        fixed (every game on its one template)."""
+        return self.match.template is None and not self.phase.fixed
+
+    @property
+    def single_game(self) -> bool:
+        """True when the match started with a named template: its one game is all there is."""
+        return self.match.template is not None
+
+    @property
+    def no_selection_note(self) -> str:
+        """Why `/ban` and `/pick` do not apply to this match."""
+        return NOT_A_STEP if self.single_game else NOT_A_STEP_FIXED
 
     @property
     def total_games(self) -> int:
-        return self.phase.best_of if self.has_selection else 1
+        return 1 if self.single_game else self.phase.best_of
 
     @property
     def players(self) -> tuple[int, int]:
@@ -84,6 +95,9 @@ def situation_of(registry: Registry, records: list[Record]) -> Situation:
     if match.template is not None:
         actions: list[Action] = []
         games = (match.template,)
+    elif phase.fixed:
+        actions = []
+        games = phase.pool_ids * phase.best_of  # every game on the phase's one template
     else:
         actions = replay(phase.steps, phase.pool_ids, match.a, match.b, match.taken)
         games = known_games(phase.steps, phase.pool_ids, actions)
@@ -98,6 +112,8 @@ def situation_of(registry: Registry, records: list[Record]) -> Situation:
 
 
 def _selection_line(s: Situation) -> str:
+    if s.phase.fixed and not s.single_game:
+        return "Template Selection: none, every game is played on the phase's one template"
     if not s.has_selection:
         return "Template Selection: none, the template was named when the match started"
     step = next_step(s.phase.steps, s.actions)
@@ -147,7 +163,7 @@ def _start_hint(number: int, template: str, templates: Catalogue, info: str) -> 
 def _after_a_finished_trade(s: Situation, templates: Catalogue) -> list[str]:
     """What comes after the lobby settings of a game: for a match of one game, that it is over; otherwise the next ban
     or pick, then how to trade the first decided game that is not traded, or that every game is."""
-    if not s.has_selection:
+    if s.single_game:
         return [ONLY_GAME_NOTE]
     mentions = {"A": s.mentions[s.match.a], "B": s.mentions[s.match.b]}
     prompt = step_prompt(s.phase.steps, s.actions, mentions)

@@ -62,23 +62,22 @@ async def begin_match(
         template=template_id,
     )
     names = [registry.templates.find(template).name for template in phase.pool_ids]
-    template_name = registry.templates.find(template_id).name if template_id else None
+    played = template_id or (phase.pool_ids[0] if phase.fixed else None)  # the template of every game, when it is known
+    template_name = registry.templates.find(played).name if played else None
     facts = (
-        announcement_lines(effective_settings(fmt, phase, template_id, registry.templates), info_hint(fmt.id, template_id))
-        if template_id
-        else []
+        announcement_lines(effective_settings(fmt, phase, played, registry.templates), info_hint(fmt.id, played)) if played else []
     )
     for rule in rules_announcement(phase, template_name, names, facts):
         await thread.send(rule)
     winner, loser = (starter, opponent) if coinflip(starter.id, opponent.id) == starter.id else (opponent, starter)
     flip = await log.post(
         "coinflip",
-        coinflip_announcement(winner.mention, loser.mention, phase, template_named=template_id is not None),
+        coinflip_announcement(winner.mention, loser.mention, phase, template_named=played is not None),
         winner=winner.id,
     )
-    if template_id is None:
+    if played is None:
         await post_next_steps(thread, registry, [started, flip])
-    else:  # one game and no selection: open its trade, so the players need no command
+    else:  # no selection: open the trade of the first game, so the players need no command
         await open_only_game(thread, bot_id, registry, [started, flip])
 
 

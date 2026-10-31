@@ -29,6 +29,7 @@ class Action:
 # The sentences the bot says. To change a wording, change it here; the logic that decides when is further down.
 
 NOT_A_STEP = "This match has no bans or picks: its template was named when it started."
+NOT_A_STEP_FIXED = "This phase has no bans or picks: every game is played on its one template."
 _PAST = {"ban": "banned", "pick": "picked"}
 
 

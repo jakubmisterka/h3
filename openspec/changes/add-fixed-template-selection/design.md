@@ -34,3 +34,5 @@ A fixed phase has neither: no template is named, no steps run, yet there are `be
 
 - `has_selection` has several readers; changing its meaning would silently change refusals. Keeping it and adding `total_games` from the games keeps the existing behaviour and makes the new case explicit. Tests for each reader (`/ban`, `/pick`, next steps, status, undo) cover it.
 - A fixed phase of one game (BO1) behaves like a named template. That is fine and needs no special case.
+
+Open question: how many games a match of the Swiss phase of Sapphire Battlegrounds 3 has; its rules give BO3 only for the knockout. Provisional default: `formats/sapphire-battlegrounds-3.json` has best-of 1 for the Swiss phase, until the organisers say.

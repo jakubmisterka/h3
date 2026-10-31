@@ -93,13 +93,18 @@ def _phase_lines(fmt: Format, phase: Phase, templates: Catalogue) -> list[str]:
     lines = [f'**Phase "{phase.name}"** - best of {phase.best_of}'] if several else [f"Best of {phase.best_of}"]
 
     label = "Templates allowed" if phase.agreed else ("Templates" if several else "Pool")
-    if several and uses_all:
+    if phase.fixed:
+        pass  # the line below names the one template
+    elif several and uses_all:
         lines.append(f"{label}: all")
     elif not uses_all:
         lines.append(f"{label}: {_names(templates, phase.pool_ids)}")
     # a single phase that uses every template needs no line: the mode's own list says it
 
-    if phase.agreed:
+    if phase.fixed:
+        only = templates.find(phase.pool_ids[0]).name
+        lines.append(f"All {phase.best_of} games are played on {only}." if phase.best_of > 1 else f"The game is played on {only}.")
+    elif phase.agreed:
         lines.append("The players agree on the template.")
     else:
         lines.append(f"Template Selection: {template_selection_line(phase.steps)}")

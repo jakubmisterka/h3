@@ -31,7 +31,10 @@ def rules_announcement(
     `facts` are the lines about the named template (see `template_facts.announcement_lines`), one message each after its name.
     """
     if template_name is not None:  # no bans or picks: one game, straight to the trade
-        messages = [f"Format: BO{phase.best_of}" if phase.agreed else "Format: BO1"]  # the template is in the record above
+        # the template is in the record above, or is the phase's own
+        messages = [f"Format: BO{phase.best_of}" if phase.agreed or phase.fixed else "Format: BO1"]
+        if phase.fixed:  # nobody named it, and the record above has no template
+            messages.append(f"Template: `{template_name}`")
         messages += facts
     else:
         messages = [f"Format: BO{phase.best_of}"]
@@ -103,9 +106,15 @@ def choose_template(phase: Phase, text: str | None, templates: Catalogue) -> str
     """The template id named for the match, or None when none was named (the phase then chooses by bans and picks).
 
     Any phase accepts a template from its pool, which makes the match one game with no selection. Where the players
-    agree on the template, naming one is required."""
+    agree on the template, naming one is required. A fixed phase has one template and no one needs to name it: naming
+    it is accepted and changes nothing, so every game is still played."""
     allowed = [templates.find(template_id) for template_id in phase.pool_ids]
     allowed_names = ", ".join(entry.name for entry in allowed)
+    if phase.fixed:
+        only = allowed[0]
+        if text and templates.find(text) is not only:
+            raise StartError(f"{text!r} is not played in this phase. Every game is played on {only.name}.")
+        return None
     if not text:
         if phase.agreed:
             raise StartError(f"In this phase the players agree on the template, so name one. Allowed: {allowed_names}.")

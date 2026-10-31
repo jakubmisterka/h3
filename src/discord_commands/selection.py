@@ -8,7 +8,7 @@ from discord_commands.next_steps import post_next_steps
 from discord_commands.thread_log import ThreadLog, logger, records_for_autocomplete
 from locks import thread_lock
 from rules.info import AUTOCOMPLETE_LIMIT
-from rules.selection import NOT_A_STEP, SelectionError, check_action, choose_available, remaining, step_reply, step_text
+from rules.selection import SelectionError, check_action, choose_available, remaining, step_reply, step_text
 from rules.situation import situation_of
 from rules.trade import TradeError
 from state import MatchError, RecordError
@@ -29,7 +29,7 @@ async def take_step(interaction: discord.Interaction, do: str, template_text: st
         try:
             s = situation_of(registry, records)
             if not s.has_selection:
-                raise MatchError(NOT_A_STEP)
+                raise MatchError(s.no_selection_note)
             who = "A" if interaction.user.id == s.match.a else "B"
             check_action(s.phase.steps, s.actions, who, do)
             template_id = choose_available(template_text, remaining(s.phase.pool_ids, s.actions), registry.templates)
