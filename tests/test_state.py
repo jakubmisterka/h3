@@ -384,6 +384,9 @@ def test_roll_records_are_described():
     assert describe(make_record(6, "roll", game=1, player=1, bans=(), towns=("cove", "tower"))) == (
         "game 1: <@1> rolled, new pair cove vs tower"
     )
+    assert describe(make_record(6, "roll", game=1, player=1, bans=("castle",), towns=("cove",))) == (
+        "game 1: <@1> rolled, banning castle, new town cove"  # a mirror has one town, not a pair
+    )
     assert describe(make_record(7, "roll_skipped", game=1, player=2)) == "game 1: <@2> skipped the roll"
 
 

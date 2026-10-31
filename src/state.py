@@ -317,7 +317,7 @@ def describe(record: Record) -> str:
     if record.type == "roll":
         data = record.data
         bans = f", banning {', '.join(data['bans'])}" if data["bans"] else ""
-        return f"game {record.game}: <@{data['player']}> rolled{bans}, new pair {' vs '.join(data['towns'])}{_ai_words(data.get('packs', ()))}"
+        return f"game {record.game}: <@{data['player']}> rolled{bans}, new {'pair' if len(data['towns']) > 1 else 'town'} {' vs '.join(data['towns'])}{_ai_words(data.get('packs', ()))}"
     if record.type in ("undo_requested", "undone"):
         verb = "asks to undo" if record.type == "undo_requested" else "agreed to undo"
         return f"<@{record.data['player']}> {verb} everything from record {record.data['start']}"
