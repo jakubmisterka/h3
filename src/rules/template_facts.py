@@ -5,6 +5,7 @@ Plain functions from `Settings` (see `template_settings.py`) to text. A fact tha
 and nothing is guessed in its place. The timer is shown only in its compact form, the way it is typed into the lobby.
 """
 
+from rules.catalogue import Catalogue
 from rules.template_settings import Settings
 from rules.trade_kinds import trade_rule
 
@@ -51,9 +52,26 @@ def fixed_lines(settings: Settings) -> list[str]:
     return lines
 
 
-def announcement_lines(settings: Settings, info_hint: str | None = None) -> list[str]:
+ALTERNATIVES_START = "By agreement the template can be changed to "
+
+
+def alternatives_line(settings: Settings, templates: Catalogue | None) -> str | None:
+    """"By agreement the template can be changed to `h3dm1` ([download](<link>))": each alternative by its name, with
+    a link where it is not built into HotA. None when there are none."""
+    if not settings.alternatives or templates is None:
+        return None
+    named = []
+    for alternative in settings.alternatives:
+        entry = templates.find(alternative)
+        link = entry.details.get("download")
+        named.append(f"`{entry.name}`" + (f" ([download](<{link}>))" if link and not entry.details.get("built_in") else ""))
+    return ALTERNATIVES_START + " or ".join(named)
+
+
+def announcement_lines(settings: Settings, info_hint: str | None = None, templates: Catalogue | None = None) -> list[str]:
     """What players need when a template is announced, one short message each: where to get it if it is not built into
-    HotA, the timer, the recommended simultaneous turns, how its trade is run, and how to find out more (`info_hint`).
+    HotA, the timer, the recommended simultaneous turns, how its trade is run, the alternatives players may agree on
+    (which needs the `templates` catalogue to name them), and how to find out more (`info_hint`).
     The map size, roads and computer players are left out: `/info` and the lobby settings give them."""
     lines = []
     if settings.download and not settings.built_in:
@@ -63,6 +81,8 @@ def announcement_lines(settings: Settings, info_hint: str | None = None) -> list
     if settings.sim_turns:
         lines.append(f"Sim turns: `{settings.sim_turns}`")
     lines.append(trade_rule(settings.trade, settings.mirror))
+    if alternatives := alternatives_line(settings, templates):
+        lines.append(alternatives)
     if info_hint:
         lines.append(info_hint)
     return lines

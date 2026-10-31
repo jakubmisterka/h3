@@ -25,6 +25,7 @@ from jsonschema import Draft202012Validator
 from rules.catalogue import Catalogue, heroes_offered
 from rules.trade_kinds import TradeKind, check_trade
 from rules.lobby_values import (
+    check_alternatives,
     check_computer_players,
     check_download,
     check_game_date,
@@ -218,6 +219,7 @@ _SETTING_CHECKS = {
     "additional_rules": check_text,
     "download": check_download,
     "trade": check_trade,
+    "alternatives": check_alternatives,
 }
 _CHOSEN_FROM_ALLOWED = ("roads", "map_size", "ai")
 
@@ -235,6 +237,8 @@ def _settings_problems(where: str, settings: dict, template: str | None, templat
         entry = templates.find(template) if template else None
         if name == "trade" and entry is not None and check_trade(value).has_packs and entry.details.get("mirror"):
             problems.append(f"{where}: trade: a mirror template cannot have computer-player packs ({template!r} is a mirror)")
+        if name == "alternatives" and entry is not None:
+            problems += _alternative_problems(where, template, value, templates)
         if name in _CHOSEN_FROM_ALLOWED and entry is not None:  # an unknown template is reported elsewhere
             choice = entry.details.get(name)
             if choice is None:
@@ -247,6 +251,23 @@ def _settings_problems(where: str, settings: dict, template: str | None, templat
                     f"{where}: {name}: {value!r} is not allowed for {template!r}. "
                     f"Allowed: {', '.join(str(v) for v in choice.allowed)}"
                 )
+    return problems
+
+
+def _alternative_problems(where: str, template: str, alternatives: list[str], templates: Catalogue) -> list[str]:
+    """An alternative is another template of the catalogue that players can get: built into HotA or with a download link."""
+    problems = []
+    for alternative in alternatives:
+        entry = templates.find(alternative)
+        if entry is None:
+            problems.append(f"{where}: alternatives: {alternative!r} is not a template of the catalogue")
+        elif entry.id == template:
+            problems.append(f"{where}: alternatives: {template!r} cannot be its own alternative")
+        elif not (entry.details.get("built_in") or entry.details.get("download")):
+            problems.append(
+                f"{where}: alternatives: {alternative!r} is neither built into HotA nor has a download link in the "
+                f"catalogue, so players could not get it"
+            )
     return problems
 
 

@@ -19,7 +19,7 @@ A template's settings (timer, roads, sim turns, trade and the like) are stacked 
 
 **Alternatives are catalogue templates.** They are checked against `data/templates.json`, so a typo fails loading and the alternative's download link or `built_in` comes from its own entry, where the maintainers keep it. Requiring "built in or a link" is what makes the line useful. An alternative does not have to be in the tournament's template list: it is not played through the bans and picks.
 
-**One line, after the facts.** `announcement_lines` adds the line after the trade rule (and before the hint to `/info`, which stays last when it is asked for). It names each alternative in code with its link: ``By agreement the template can be changed to `h3dm1_nc` ([download](<url>)). To learn more use /info``. An alternative built into HotA has no link.
+**One line, after the facts.** `announcement_lines` adds the line after the trade rule (and before the hint to `/info`, which stays last when it is asked for). It names each alternative by its display name in code, with its link: ``By agreement the template can be changed to `h3dm1_nc` ([download](<url>))``; several are joined by "or". An alternative built into HotA has no link. The hint to `/info`, which closes the lines, already says how to learn more.
 
 **`/info`.** The template reply shows the alternatives with the usual "differs by phase" treatment of the other settings.
 

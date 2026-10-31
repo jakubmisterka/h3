@@ -13,7 +13,7 @@ from rules.formats import Format, Phase, Step
 from rules.ledger import spaced
 from rules.registry import Registry
 from rules.roll_rules import RollRules, effective_roll_rules
-from rules.template_facts import SETTINGS, fixed_lines, setting_line, setting_value
+from rules.template_facts import ALTERNATIVES_START, SETTINGS, alternatives_line, fixed_lines, setting_line, setting_value
 from rules.template_settings import Settings, effective_settings
 from rules.trade_kinds import kind_words
 
@@ -172,6 +172,25 @@ def _setting_lines(per_phase: list[tuple[Phase, Settings]]) -> list[str]:
     return lines
 
 
+def _alternative_lines(per_phase: list[tuple[Phase, Settings]], templates: Catalogue) -> list[str]:
+    """The templates players may agree to play instead, as in the announcement of the game: the ones most phases state,
+    and the phases that state others."""
+    base = _most_common([settings.alternatives for _, settings in per_phase])
+    base_line = alternatives_line(Settings(alternatives=base), templates)
+    lines = [base_line] if base_line else []
+    for phase, settings in per_phase:
+        if settings.alternatives == base:
+            continue
+        line = alternatives_line(settings, templates)
+        if line is None:
+            lines.append(f"  {phase.name}: no alternative")
+        elif base_line:
+            lines.append(f"  {phase.name}: {line.removeprefix(ALTERNATIVES_START)}")
+        else:
+            lines.append(f"{line} ({phase.name})")
+    return lines
+
+
 def _trade_lines(per_phase: list[tuple[Phase, Settings]]) -> list[str]:
     """How the trade is run, when it is not the standard one: the kind most phases use, and the phases that differ."""
     base = _most_common([settings.trade for _, settings in per_phase])
@@ -216,6 +235,42 @@ def template_info(fmt: Format, template_id: str, templates: Catalogue, phase: Ph
     settings = [(p, effective_settings(fmt, p, template_id, templates)) for p in using]
     lines += _trade_lines(settings)
     lines += _setting_lines(settings)
+    lines += _alternative_lines(settings, templates)
+    return _fit("\n".join(lines))
+
+
+def alternatives_of(fmt: Format, templates: Catalogue) -> dict[str, list[str]]:
+    """The alternatives a mode states, by alternative id: the ids of the templates (in the order the mode lists them)
+    that players may replace by it, in any phase."""
+    found: dict[str, list[str]] = {}
+    for entry in fmt.templates:
+        for phase in fmt.phases:
+            if entry.template not in phase.pool_ids:
+                continue
+            for alternative in effective_settings(fmt, phase, entry.template, templates).alternatives:
+                if entry.template not in found.setdefault(alternative, []):
+                    found[alternative].append(entry.template)
+    return found
+
+
+def alternative_info(fmt: Format, template_id: str, instead_of: list[str], templates: Catalogue) -> str:
+    """A template that is not played in a mode but may replace one that is, by agreement: what it replaces and what the
+    catalogue states about it."""
+    entry = templates.find(template_id)
+    facts = entry.details
+    lines = [
+        f"**{entry.name}** in {fmt.name}" + ("" if fmt.active else " (archived)"),
+        f"An alternative to {_names(templates, instead_of)}: the players may play it instead, if they agree. "
+        f"The match keeps the settings of the template it was started with.",
+    ]
+    if facts.get("description"):
+        lines.append(f"Description: {facts['description']}")
+    lines += fixed_lines(Settings(mirror=bool(facts.get("mirror")), built_in=bool(facts.get("built_in")), download=facts.get("download")))
+    for name, fact in (("map_size", "map_size"), ("roads", "roads"), ("ai", "ai")):
+        if fact in facts and (line := setting_line(name, Settings(**{name: facts[fact].default}))):
+            lines.append(line)
+    if facts.get("sim_turns"):
+        lines.append(setting_line("sim_turns", Settings(sim_turns=facts["sim_turns"])))
     return _fit("\n".join(lines))
 
 
@@ -246,6 +301,9 @@ def info_reply(registry: Registry, mode_text: str, template_text: str | None = N
 
     found = registry.templates.find(template_text)
     listed = [entry.template for entry in fmt.templates]
+    alternatives = alternatives_of(fmt, registry.templates)
+    if found is not None and found.id not in listed and found.id in alternatives:
+        return alternative_info(fmt, found.id, alternatives[found.id], registry.templates)
     if found is None or found.id not in listed:
         return f"{template_text!r} is not in {fmt.name}. Its templates: {_names(registry.templates, listed)}."
     return template_info(fmt, found.id, registry.templates, phase)
@@ -275,6 +333,10 @@ def template_choices(registry: Registry, mode_text: str, typed: str) -> list[tup
         template = registry.templates.find(entry.template)
         if wanted in template.name.lower() or wanted in template.id.lower():
             choices.append((template.name, template.id))
+    for alternative in alternatives_of(fmt, registry.templates):
+        template = registry.templates.find(alternative)
+        if alternative not in [entry.template for entry in fmt.templates] and (wanted in template.name.lower() or wanted in template.id.lower()):
+            choices.append((f"{template.name} (alternative)", template.id))
     return choices[:AUTOCOMPLETE_LIMIT]
 
 

@@ -97,7 +97,13 @@
             "roll_before_heroes": { "type": "boolean", "description": "true (default): the heroes are drawn after the rolls. false: together with the towns, and then no hero can be banned (roulette only)." }
           }
         },
-        "download": { "type": "string", "description": "A link starting with https:// where the version of the template this tournament plays can be downloaded. Use it when it is not the version built into HotA." }
+        "download": { "type": "string", "description": "A link starting with https:// where the version of the template this tournament plays can be downloaded. Use it when it is not the version built into HotA." },
+        "alternatives": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ids of other templates of data/templates.json that the players may play instead of this one, if they agree. Each must be built into HotA or have a download link in the catalogue."
+        }
       }
     },
     "templateEntry": {

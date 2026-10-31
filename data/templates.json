@@ -42,6 +42,17 @@
     "sim_turns": "122"
   },
   {
+    "id": "h3dm_nc",
+    "name": "h3dm_nc",
+    "difficulty": 160,
+    "download": "https://h3szablony.heroes.net.pl/templates/5",
+    "mirror": true,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "115"
+  },
+  {
     "id": "mt_Nebula",
     "name": "mt_Nebula",
     "difficulty": 160,

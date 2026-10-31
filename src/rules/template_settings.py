@@ -34,6 +34,7 @@ class Settings:
     description: str | None = None  # what the template is, as its catalogue entry says
     additional_rules: str | None = None  # additional rules for this template: the template's own, or what the tournament wrote instead
     trade: TradeKind = TradeKind()  # how the trade of a game on this template is run
+    alternatives: tuple[str, ...] = ()  # templates the players may play instead, by agreement (catalogue ids)
 
 
 def effective_settings(fmt: Format, phase: Phase, template: str, catalogue: Catalogue) -> Settings:
@@ -59,8 +60,10 @@ def effective_settings(fmt: Format, phase: Phase, template: str, catalogue: Cata
     chosen_download = values.pop("download", None)
     trade = values.pop("trade", None)  # a kind from the catalogue, or what a format wrote (checked when it was loaded)
     trade = trade if isinstance(trade, TradeKind) or trade is None else check_trade(trade)
+    alternatives = tuple(values.pop("alternatives", ()))
     return Settings(
         **values,
+        alternatives=alternatives,
         mirror=bool(facts.get("mirror")),
         built_in=bool(facts.get("built_in")) and chosen_download is None,
         download=chosen_download or facts.get("download"),

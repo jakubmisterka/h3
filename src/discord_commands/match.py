@@ -65,7 +65,9 @@ async def begin_match(
     played = template_id or (phase.pool_ids[0] if phase.fixed else None)  # the template of every game, when it is known
     template_name = registry.templates.find(played).name if played else None
     facts = (
-        announcement_lines(effective_settings(fmt, phase, played, registry.templates), info_hint(fmt.id, played)) if played else []
+        announcement_lines(effective_settings(fmt, phase, played, registry.templates), info_hint(fmt.id, played), registry.templates)
+        if played
+        else []
     )
     for rule in rules_announcement(phase, template_name, names, facts):
         await thread.send(rule)

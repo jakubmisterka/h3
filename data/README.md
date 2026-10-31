@@ -46,7 +46,7 @@ All of these are optional. **A fact that is not stated is unknown, and the bot s
 | `sim_turns` | How long simultaneous turns are recommended to last: the last day, as month, week and day in digits. `117` is month 1, week 1, day 7, and `121` is month 1, week 2, day 1. The day is the last digit (1 to 7), the week the digit before it (1 to 4), and the month the digits before that (`1214` is month 12, week 1, day 4). A tournament may choose another date. |
 | `mirror` | `true` when both players play the same town. A mirror template is always played with underground, so every map size it states ends in `+U`. |
 | `built_in` | `true` when the template comes with HotA. |
-| `download` | A link starting with `https://` where the template can be downloaded. State `built_in` or `download`, never both. |
+| `download` | A link starting with `https://` where the template can be downloaded. State `built_in` or `download`, never both. A template needs one of them to be named as an alternative of another (see `alternatives` in [`../formats/README.md`](../formats/README.md)). |
 | `trade` | How a game on this template is traded by default: `standard`, `standard_with_ai_packs`, a roulette or `roulette_with_ai_packs`. A tournament can choose another for a template, see [`../formats/README.md`](../formats/README.md#how-a-game-is-traded). The kinds with packs cannot be used on a mirror template. |
 | `banned_heroes` | The heroes the template's map does not offer, as a list of ids or names from `heroes.json`. A roulette never draws them. |
 | `allowed_heroes` | The heroes banned by default (see [Heroes](#heroes)) that the template's map enables, for example the campaign heroes a map turns on. A hero cannot be both banned and allowed. |

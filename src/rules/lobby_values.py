@@ -84,6 +84,17 @@ def check_download(value: object) -> str:
     return value
 
 
+def check_alternatives(value: object) -> tuple[str, ...]:
+    """The alternatives of a template: a list of template ids, not empty, each once. What the ids are is checked
+    against the catalogue when a format is loaded."""
+    if not isinstance(value, (list, tuple)) or not value or not all(isinstance(item, str) and item for item in value):
+        raise ValueError(f"alternatives must be a list of template ids, not {value!r}")
+    repeated = sorted({item for item in value if list(value).count(item) > 1})
+    if repeated:
+        raise ValueError(f"the alternative {repeated[0]!r} is listed more than once")
+    return tuple(value)
+
+
 def check_text(text: object) -> str:
     """A free text for players to read (a description, additional rules): not empty, at most `MAX_TEXT` characters."""
     if not isinstance(text, str):

@@ -99,7 +99,7 @@ async def post_opening(
     log = ThreadLog(thread, bot_id)
     log.last_n = records[-1].n
     text = opening_line(trade, kind == "resume", s.mentions, registry.towns, registry.templates, registry.heroes)
-    if kind == "start" and facts and (lines := announcement_lines(s.settings(trade.template))):
+    if kind == "start" and facts and (lines := announcement_lines(s.settings(trade.template), None, registry.templates)):
         await thread.send("\n".join(lines))
     if kind == "start":
         posted = await log.post("trade_started", text, game=number, **start_data(trade, registry.towns, registry.heroes))
