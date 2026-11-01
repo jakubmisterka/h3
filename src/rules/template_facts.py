@@ -52,6 +52,11 @@ def fixed_lines(settings: Settings) -> list[str]:
     return lines
 
 
+def rules_link_line(link: str) -> str:
+    """The line that links to the tournament's full rules; the angle brackets keep Discord from unfolding a preview."""
+    return f"Rules: [full tournament rules](<{link}>)"
+
+
 ALTERNATIVES_START = "By agreement the template can be changed to "
 
 

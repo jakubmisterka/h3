@@ -59,13 +59,14 @@ Przykład: faza grupowa Mistrzostw Polski, jedna gra, szablon wybierany przez dw
 
 ### 1. Start
 
-Anna wpisuje `/match start` i wybiera przeciwnika oraz tryb. Bot tworzy wątek i pisze zasady fazy, a potem losuje, kto jest A:
+Anna wpisuje `/match start` i wybiera przeciwnika oraz tryb. Bot tworzy wątek i pisze zasady fazy (razem z **linkiem do pełnego regulaminu turnieju**), a potem losuje, kto jest A:
 
 ```
 [#1 ms] Match started: <@1> vs <@2>
 Mode: Mistrzostwa Polski 2026 (`mp2026`)
 Phase: `Group phase`
 Format: BO1
+Rules: [full tournament rules](<https://docs.google.com/...>)
 Template Selection: AB
 A bans, B bans, then decider
 Templates: Jebus Cross, 6lm10a, h3dm1
@@ -291,7 +292,7 @@ Start meczu i rzut monetą nie mogą być cofnięte. W ruletce nie da się cofn�
 
 `/info` pokazuje opis trybu lub szablonu w nim. Odpowiedź widzisz tylko Ty i możesz jej użyć w dowolnym kanale.
 
-- `/info mode:mp2026` – fazy, ich format (BO), sposób wyboru szablonów i dodatkowe zasady.
+- `/info mode:mp2026` – link do regulaminu turnieju, fazy, ich format (BO), sposób wyboru szablonów i dodatkowe zasady.
 - `/info mode:mp2026 template:Jebus Cross` – trudność, koszt losowania, timer, mapa, drogi, tury symultaniczne i dodatkowe zasady szablonu. Opcja `phase` zawęża odpowiedź do jednej fazy.
 
 ```

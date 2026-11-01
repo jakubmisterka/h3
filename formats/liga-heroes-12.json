@@ -1,6 +1,7 @@
 {
   "id": "liga-heroes-12",
   "name": "Liga Heroes season 12",
+  "rules_link": "https://docs.google.com/document/d/1XItXdTs3HQNhH46505S6-JUBhSUUY04gQwEatGYFkmo/edit?tab=t.0",
   "description": "Classic divisions 1 to 6 and the Blitz divisions play round-robin matches of two games. Ties are broken by one game on h3dm1, and the best players meet in the Champions League (best-of-3 knockout), which plays the league-wide templates.",
   "additional_rules": "The classic clock is 18:00+07:30+01:30, the Blitz divisions play 10:00+05:00+01:00. The starting hero and bonus cannot be changed by a restart. On a mirror template the winner of the color bid bans 0 to 3 heroes of the drawn town, then the other player picks a hero first, then the winner picks one of the others.",
   "settings": {"timer": "18:00+07:30+01:30"},

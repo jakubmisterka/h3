@@ -13,7 +13,15 @@ from rules.formats import Format, Phase, Step
 from rules.ledger import spaced
 from rules.registry import Registry
 from rules.roll_rules import RollRules, effective_roll_rules
-from rules.template_facts import ALTERNATIVES_START, SETTINGS, alternatives_line, fixed_lines, setting_line, setting_value
+from rules.template_facts import (
+    ALTERNATIVES_START,
+    SETTINGS,
+    alternatives_line,
+    fixed_lines,
+    rules_link_line,
+    setting_line,
+    setting_value,
+)
 from rules.template_settings import Settings, effective_settings
 from rules.trade_kinds import kind_words
 
@@ -117,6 +125,8 @@ def mode_info(fmt: Format, templates: Catalogue, phase: Phase | None = None) -> 
     lines = [title]
     if fmt.description:
         lines.append(f"Description: {fmt.description}")
+    if fmt.rules_link:
+        lines.append(rules_link_line(fmt.rules_link))
     lines.append(f"Templates: {_names(templates, (entry.template for entry in fmt.templates))}")
     for shown in [phase] if phase else fmt.phases:
         if len(fmt.phases) > 1:

@@ -13,6 +13,7 @@
     },
     "name": { "type": "string", "minLength": 1, "description": "The name players see, for example Sample Cup." },
     "description": { "type": "string", "description": "What the tournament is, shown by /info. At most 1000 characters." },
+    "rules_link": { "type": "string", "description": "A link starting with https:// to the tournament's full rules, shown at the start of a match and by /info." },
     "additional_rules": { "type": "string", "description": "Additional rules of the tournament as a whole, shown by /info. At most 1000 characters. Rules for one template go in its settings." },
     "status": {
       "enum": ["active", "archived"],

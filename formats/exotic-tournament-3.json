@@ -1,6 +1,7 @@
 {
   "id": "exotic-tournament-3",
   "name": "Exotic Tournament III",
+  "rules_link": "https://docs.google.com/document/d/17McorhL7nNx18Q0eeug3K4EBCJEPDMkY6xaEdkK4WtQ/edit?tab=t.0",
   "description": "Nine unusual templates. Best-of-3 matches in a round-robin group phase and a knockout, a best-of-5 final, and a best-of-1 tiebreak for the group phase.",
   "additional_rules": "Each player has two subjective restarts on turn 111 or one on turn 112 (mt_JOTurbo: one on turn 111). The VCMI add-on may be used if both players agree, but the organisers are not responsible for a template generated wrongly there. By explicit agreement of both players the timer and the length of simultaneous turns can be adjusted. At 200% the starting towns are random, the players cannot choose a starting bonus, and do not swap colors during the restarts; identical starting towns give a technical restart",
   "templates": [

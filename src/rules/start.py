@@ -6,6 +6,7 @@ from rules.catalogue import Catalogue
 from rules.formats import Format, Phase
 from rules.info import AUTOCOMPLETE_LIMIT, find_phase, template_selection_line
 from rules.registry import Registry
+from rules.template_facts import rules_link_line
 
 
 ###### Wording: what the bot says when a match starts ##########################################################
@@ -23,21 +24,28 @@ def coinflip_announcement(winner: str, loser: str, phase: Phase, template_named:
     return f"Coinflip: {winner} wins and is A, so {winner} {first} first. {loser} is B."
 
 
+def _rules_link_line(link: str | None) -> list[str]:
+    return [rules_link_line(link)] if link else []
+
+
 def rules_announcement(
-    phase: Phase, template_name: str | None, pool_names: list[str], facts: list[str] | tuple = ()
+    phase: Phase, template_name: str | None, pool_names: list[str], facts: list[str] | tuple = (), rules_link: str | None = None
 ) -> list[str]:
     """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes.
 
     `facts` are the lines about the named template (see `template_facts.announcement_lines`), one message each after its name.
+    `rules_link` is where the tournament's full rules are, said right after the number of games.
     """
     if template_name is not None:  # no bans or picks: one game, straight to the trade
         # the template is in the record above, or is the phase's own
         messages = [f"Format: BO{phase.best_of}" if phase.agreed or phase.fixed else "Format: BO1"]
+        messages += _rules_link_line(rules_link)
         if phase.fixed:  # nobody named it, and the record above has no template
             messages.append(f"Template: `{template_name}`")
         messages += facts
     else:
         messages = [f"Format: BO{phase.best_of}"]
+        messages += _rules_link_line(rules_link)
         # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own
         notation, _, meaning = template_selection_line(phase.steps).partition(": ")
         messages.append(f"Template Selection: {notation}" if meaning else notation)

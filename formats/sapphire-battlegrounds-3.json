@@ -1,6 +1,7 @@
 {
   "id": "sapphire-battlegrounds-3",
   "name": "Sapphire Battlegrounds 3",
+  "rules_link": "https://docs.google.com/document/d/197m7HJxL3tEb2w0pj-HJh3P7SFoSsMkMtryC_Qd23sQ/edit?usp=sharing",
   "description": "A tournament played only on Sapphire: a Swiss phase, then a knockout of 16 players with best-of-3 matches.",
   "additional_rules": "By explicit agreement of both players the timer and the length of simultaneous turns can be adjusted",
   "templates": [

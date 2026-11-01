@@ -89,6 +89,7 @@ class Format:
     settings: dict = field(default_factory=dict)  # timer and sim turns written for the whole tournament
     description: str | None = None  # what the tournament is, for /info
     additional_rules: str | None = None  # additional rules of the tournament as a whole, for /info
+    rules_link: str | None = None  # where the tournament's full rules are published
 
 
 # --- stage 1: the shape ---------------------------------------------------------------------
@@ -389,6 +390,11 @@ def rule_problems(data: dict, templates: Catalogue, towns: Catalogue, heroes: Ca
     problems += _packs_problems(data, templates, towns)
     if heroes is not None:
         problems += _roulette_problems(data, templates, towns, heroes)
+    if "rules_link" in data:
+        try:
+            check_download(data["rules_link"])
+        except ValueError:
+            problems.append(f"rules_link: must be a link starting with https://, not {data['rules_link']!r}")
     for name in ("description", "additional_rules"):
         if name in data:
             try:
@@ -454,6 +460,7 @@ def parse_format(data, templates: Catalogue, towns: Catalogue, heroes: Catalogue
         settings=data.get("settings", {}),
         description=data.get("description"),
         additional_rules=data.get("additional_rules"),
+        rules_link=data.get("rules_link"),
     )
 
 

@@ -69,7 +69,7 @@ async def begin_match(
         if played
         else []
     )
-    for rule in rules_announcement(phase, template_name, names, facts):
+    for rule in rules_announcement(phase, template_name, names, facts, fmt.rules_link):
         await thread.send(rule)
     winner, loser = (starter, opponent) if coinflip(starter.id, opponent.id) == starter.id else (opponent, starter)
     flip = await log.post(

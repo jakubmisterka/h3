@@ -84,6 +84,7 @@ Two phases, with a setting at each level. Everything below explains it piece by 
 | `roll_rules`, `allowed_towns` | Optional settings for the whole tournament, see below. |
 | `settings` | Optional: the timer and the recommended simultaneous turns for the whole tournament, see below. |
 | `description`, `additional_rules` | Optional free text (1 to 1000 characters each) about the tournament as a whole, shown by `/info <mode>`. Rules for one template are written as that template's `additional_rules` setting instead. |
+| `rules_link` | Optional link starting with `https://` to the tournament's full rules (a document of the organisers). The bot posts it right after the number of games when a match starts, and `/info <mode>` shows it. |
 
 ## Templates, and which phase uses which
 
