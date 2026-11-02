@@ -29,6 +29,7 @@ class Action:
 # The sentences the bot says. To change a wording, change it here; the logic that decides when is further down.
 
 NOT_A_STEP = "This match has no bans or picks: its template was named when it started."
+NOT_A_STEP_FIXED = "This phase has no bans or picks: every game is played on its one template."
 _PAST = {"ban": "banned", "pick": "picked"}
 
 
@@ -58,15 +59,21 @@ def after_a_step(
         lines.append(f"Banned: {_names(templates, banned)}. Picked: {_names(templates, picked)}.")
     messages = ["\n".join(lines)]
 
-    step = next_step(steps, actions)
-    if step is not None:
-        number = len(actions) + 1
-        total = len(player_steps(steps))
-        command = "/ban" if step.do == "ban" else "/pick"
-        messages.append(f"Step {number} of {total}: {mentions[step.who]} {step.do}s a template with {command}")
+    prompt = step_prompt(steps, actions, mentions)
+    if prompt is not None:
+        messages.append(prompt)
     else:
         messages.append("The bans and picks are done. The games:\n" + games_message(games(steps, pool, actions), templates))
     return messages
+
+
+def step_prompt(steps: tuple[Step, ...], actions: list[Action], mentions: dict[str, str]) -> str | None:
+    """The line that says whose ban or pick is next, or None when the bans and picks are done."""
+    step = next_step(steps, actions)
+    if step is None:
+        return None
+    command = "/ban" if step.do == "ban" else "/pick"
+    return f"Step {len(actions) + 1} of {len(player_steps(steps))}: {mentions[step.who]} {step.do}s a template with {command}"
 
 
 def step_text(mention: str, do: str, template_name: str, template_id: str) -> str:

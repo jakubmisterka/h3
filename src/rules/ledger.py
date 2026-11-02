@@ -12,6 +12,11 @@ from dataclasses import dataclass
 GOLD_STEP = 100  # gold in a trade moves in steps of 100: bids are raised by at least 100, a roll costs whole hundreds
 
 
+def spaced(amount: int) -> str:
+    """A number of gold with a space between the thousands: 10 000."""
+    return f"{amount:,}".replace(",", " ")
+
+
 class LedgerError(ValueError):
     """A payment is not possible. The message is shown to the player."""
 
@@ -30,9 +35,9 @@ def check_payment(gold: dict[int, int], payment: Payment) -> None:
     if not isinstance(payment.amount, int) or isinstance(payment.amount, bool) or payment.amount < 0:
         raise LedgerError("An amount of gold must be a whole number, 0 or more.")
     if payment.amount % GOLD_STEP != 0:
-        raise LedgerError(f"Gold moves in steps of {GOLD_STEP}, so {payment.amount} is not possible.")
+        raise LedgerError(f"Gold moves in steps of {GOLD_STEP}, so {spaced(payment.amount)} is not possible.")
     if payment.amount > gold[payment.payer]:
-        raise LedgerError(f"{payment.amount} gold is more than the {gold[payment.payer]} the payer has.")
+        raise LedgerError(f"{spaced(payment.amount)} gold is more than the {spaced(gold[payment.payer])} the payer has.")
 
 
 def pay(gold: dict[int, int], payment: Payment) -> dict[int, int]:

@@ -46,8 +46,8 @@ A format SHALL list every template used in the tournament, each once. Each phase
 - **WHEN** a template is listed twice, or twice in one pool
 - **THEN** validation fails and names it
 
-### Requirement: Template choice is either a sequence or agreed
-A phase SHALL choose templates either by an ordered sequence of steps, or by agreement, where the players name the template themselves. A step is a ban or a pick by a named player (A or B), or the decider: the template that is left, which no player chooses. A is the coinflip winner and B is the other player.
+### Requirement: Template choice is a sequence, agreed, or fixed
+A phase SHALL choose templates in one of three ways: by an ordered sequence of steps; by agreement, where the players name the template themselves; or as fixed, where the phase has one template and every game of the match is played on it. A step is a ban or a pick by a named player (A or B), or the decider: the template that is left, which no player chooses. A is the coinflip winner and B is the other player.
 
 #### Scenario: Sequence format
 - **WHEN** a phase has the sequence A ban, B ban, A pick, B pick, A ban, B ban, B ban, A ban, decider
@@ -57,16 +57,28 @@ A phase SHALL choose templates either by an ordered sequence of steps, or by agr
 - **WHEN** a phase is marked as agreed, as in ranked mode
 - **THEN** no bans or picks happen and the players supply the template when starting the match
 
+#### Scenario: Fixed format
+- **WHEN** a best-of-3 phase is marked as fixed and its only template is Nostalgia
+- **THEN** no bans or picks happen, the players name no template, and all three games are played on Nostalgia
+
 ### Requirement: Format files are validated
-A format file SHALL be rejected, with a message naming the problem, unless: for a sequence phase the pool holds exactly as many templates as the sequence has steps, because each template is banned, picked or the decider; the decider, if there is one, is the last step and names no player; the picks plus the decider, if there is one, make as many games as the best-of; every template is known; and the file has all required fields.
+A format file SHALL be rejected, with a message naming the problem, unless: for a sequence phase the pool holds exactly as many templates as the sequence has steps, because each template is banned, picked or the decider, or, when the sequence has no decider, at least as many, because the templates that are neither banned nor picked are not played; the decider, if there is one, is the last step and names no player; the picks plus the decider, if there is one, make as many games as the best-of; every template is known; and the file has all required fields.
 
 #### Scenario: Pool does not fit the sequence
-- **WHEN** a phase has a pool of 9 templates and a sequence of 7 steps
+- **WHEN** a phase has a pool of 9 templates and a sequence of 7 steps that ends with a decider
 - **THEN** validation fails and says the pool must have as many templates as the sequence has steps
 
 #### Scenario: Valid BO1 group stage
 - **WHEN** a phase has best-of 1, a pool of 3 templates and the sequence A ban, B ban, decider
 - **THEN** validation passes and the decider takes the remaining template, which is the only game
+
+#### Scenario: A league phase with templates left over
+- **WHEN** a best-of-2 phase has a pool of 7 templates and the sequence A ban, B ban, A pick, B pick with no decider
+- **THEN** validation passes, the games are A's pick and B's pick, and the other three templates are not played
+
+#### Scenario: A pool smaller than the sequence
+- **WHEN** a phase with no decider has a pool of 3 templates and a sequence of 4 steps
+- **THEN** validation fails and says the pool needs at least as many templates as the sequence has steps
 
 #### Scenario: Wrong number of games
 - **WHEN** a phase has best-of 3 and the sequence A ban, B ban, decider
@@ -74,7 +86,15 @@ A format file SHALL be rejected, with a message naming the problem, unless: for 
 
 #### Scenario: Decider in the wrong place
 - **WHEN** the decider is not the last step, or it names a player
-- **THEN** validation fails and says where the decider must be
+- **THEN** validation fails with a message naming the problem
+
+#### Scenario: Unknown template
+- **WHEN** a phase's pool names a template that is not in the catalogue
+- **THEN** validation fails and names the template
+
+#### Scenario: Missing required field
+- **WHEN** a format file has no phases
+- **THEN** validation fails and names the missing field
 
 ### Requirement: The games follow from the sequence
 The games of a sequence phase SHALL be played in the order of its picks as they appear in the sequence, followed by the decider if the sequence has one. A format SHALL NOT state the order of the games separately.
@@ -404,3 +424,106 @@ A format file SHALL allow the tournament to state a description and additional r
 #### Scenario: A text that is too long
 - **WHEN** a format states a description of 1001 characters
 - **THEN** validation fails and says the limit is 1000 characters
+
+### Requirement: A template and a tournament choose how a game is traded
+The template catalogue and the format file SHALL be able to state a `trade` setting for a template, which chooses the kind of the game's trade: `standard`, `standard_with_ai_packs`, or a roulette written as an object with `kind` `roulette`, `hero_bans` (0 to 3 heroes each player may ban, default 0) and `roll_before_heroes` (default true). It SHALL stack like the other settings: the template's own value in the catalogue, then the one written for the template in the tournament's list, then the one written for it in a phase's pool, the most specific replacing the one before. A template that states nothing, in a tournament that states nothing, SHALL be traded as `standard`. The `trade` setting SHALL NOT be written for the whole tournament.
+
+#### Scenario: A template states its kind
+- **WHEN** the catalogue gives Sapphire the trade `standard_with_ai_packs` and no format changes it
+- **THEN** Sapphire is traded with computer-player packs in every phase
+
+#### Scenario: A tournament changes the kind in one phase
+- **WHEN** the tournament's list gives a template no trade and the pool of the final gives it a roulette with 1 hero ban
+- **THEN** the template has a standard trade in the other phases and a roulette in the final
+
+#### Scenario: Defaults of a roulette
+- **WHEN** a format writes the trade of a template as `{ "kind": "roulette" }`
+- **THEN** it has no hero bans and the heroes are drawn after the rolls
+
+#### Scenario: Nothing stated
+- **WHEN** neither the catalogue nor the format states a trade for a template
+- **THEN** the trade is the standard one
+
+#### Scenario: A kind that does not exist
+- **WHEN** a format writes a trade kind that is not one of the kinds
+- **THEN** validation fails and lists the kinds
+
+#### Scenario: For the whole tournament
+- **WHEN** a format writes a trade in the tournament's own settings
+- **THEN** validation fails and says it can only be chosen for a template
+
+### Requirement: A format is refused when its trade cannot work
+Validation SHALL refuse a trade setting that cannot work, and say why: the trade with computer-player packs for a mirror template, or in a phase that allows fewer than eight towns; hero bans together with `roll_before_heroes` false; a roulette in a phase where an allowed town would have too few heroes left for the draw after the template's banned heroes and the most bans players could make; a roulette when the hero catalogue is empty.
+
+#### Scenario: Packs on a mirror
+- **WHEN** a format gives a mirror template the trade `standard_with_ai_packs`
+- **THEN** validation fails and says a mirror template cannot have packs
+
+#### Scenario: Too few towns
+- **WHEN** a phase allows seven towns and a template in its pool has packs
+- **THEN** validation fails and says packs need eight allowed towns
+
+#### Scenario: Hero bans without the rolls first
+- **WHEN** a roulette has `hero_bans` 1 and `roll_before_heroes` false
+- **THEN** validation fails and says the heroes cannot be banned before they are drawn
+
+#### Scenario: Too few heroes
+- **WHEN** a roulette allows a town whose heroes, after the template's banned heroes and the bans players could make, are fewer than the heroes to draw
+- **THEN** validation fails and names the town and the template
+
+### Requirement: A fixed phase has exactly one template
+A format file SHALL be rejected when a fixed phase does not have exactly one template, counting the phase's `pool` when it has one and the tournament's template list otherwise. A fixed phase SHALL have no `steps`.
+
+#### Scenario: One template in the tournament
+- **WHEN** a tournament lists one template and has a fixed best-of-3 phase
+- **THEN** validation passes
+
+#### Scenario: A pool of one
+- **WHEN** a tournament lists four templates and a fixed phase has a `pool` with one of them
+- **THEN** validation passes, and that phase plays all its games on that template
+
+#### Scenario: More than one template
+- **WHEN** a fixed phase has no `pool` and the tournament lists two templates
+- **THEN** validation fails and says a fixed phase needs exactly one template, naming the phase
+
+#### Scenario: Steps in a fixed phase
+- **WHEN** a fixed phase also has `steps`
+- **THEN** validation fails and says a fixed phase has no steps
+
+### Requirement: A tournament can state alternatives for a template
+A tournament SHALL be able to state, for a template, a list of alternatives: other templates of the catalogue that the players may play instead, by agreement. The setting is stacked like the other settings of a template (the tournament's list, then a phase's pool, the most specific winning). Every alternative SHALL be a template of the catalogue, different from the template it is an alternative to, listed once, and either built into HotA or with a download link. A format that breaks this SHALL be rejected, with a message naming the template and the alternative.
+
+#### Scenario: An alternative
+- **WHEN** a tournament lists h3dm1 with the alternative h3dm1_nc, and h3dm1_nc is in the catalogue with a download link
+- **THEN** the format is accepted
+
+#### Scenario: An alternative that is not in the catalogue
+- **WHEN** a tournament names an alternative that the catalogue does not have
+- **THEN** validation fails and names the template and the unknown alternative
+
+#### Scenario: An alternative that cannot be obtained
+- **WHEN** an alternative is neither built into HotA nor has a download link
+- **THEN** validation fails and says the alternative needs a link to download it
+
+#### Scenario: The template itself
+- **WHEN** a template is listed as its own alternative, or an alternative is listed twice
+- **THEN** validation fails and says so
+
+#### Scenario: A phase states its own
+- **WHEN** a template has the alternative h3dm1_nc in the tournament's list and another in the pool of one phase
+- **THEN** the phase's alternatives replace the tournament's for that phase
+
+### Requirement: A tournament can link to its rules
+A format SHALL be able to state `rules_link`, a link to the tournament's full rules, which SHALL start with `https://`. The field is optional. A format with a link that does not start with `https://` SHALL be rejected, with a message naming the field.
+
+#### Scenario: A link
+- **WHEN** a format states `rules_link` as `https://example.com/rules`
+- **THEN** the format is accepted and the bot knows the link
+
+#### Scenario: No link
+- **WHEN** a format states no `rules_link`
+- **THEN** the format is accepted and the bot shows no link
+
+#### Scenario: A bad link
+- **WHEN** a format states `rules_link` as `example.com/rules`
+- **THEN** validation fails and says `rules_link` must be a link starting with https://

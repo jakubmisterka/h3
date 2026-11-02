@@ -183,3 +183,70 @@ The info command SHALL work in any channel and does not need a match. The reply 
 - **THEN** the bot offers Jebus Cross, 6lm10a and h3dm1 (choosing one fills in its id)
 
 Follow-up, not part of this change: more facts about a template, such as its timer and a link to download it when it is not available in the game.
+
+### Requirement: The template reply says how its trade is run
+The reply about a template in a mode SHALL say how its trade is run when it is not the standard trade: with computer-player packs, or a roulette with the number of hero bans each player may make and whether the heroes are drawn after the rolls. A mirror trade is said by the line that already says the template is a mirror. When the kind differs between phases, the reply SHALL give the kind most phases use and name the phases that differ, as it does for the other settings. A standard trade SHALL get no line.
+
+#### Scenario: Packs
+- **WHEN** a player asks about a template whose trade has computer-player packs
+- **THEN** the reply says "Trade: computer-player packs"
+
+#### Scenario: A roulette
+- **WHEN** a player asks about a template traded as a roulette with 1 hero ban
+- **THEN** the reply says "Trade: roulette, 1 hero ban each, heroes drawn after the rolls"
+
+#### Scenario: Different in one phase
+- **WHEN** the final trades the template as a roulette and the groups trade it as a standard trade
+- **THEN** the reply gives the roulette line for the final only, naming the phase
+
+#### Scenario: A standard trade
+- **WHEN** a player asks about a template with a standard trade in every phase
+- **THEN** the reply has no line about the trade
+
+### Requirement: Mode info says when every game is on one template
+For a fixed phase the reply SHALL say that every game of the match is played on the phase's template, and name it, in place of the Template Selection line.
+
+#### Scenario: A fixed phase
+- **WHEN** a player asks about a mode with a fixed best-of-3 phase on Nostalgia
+- **THEN** the reply says all 3 games are played on Nostalgia, and has no Template Selection line
+
+### Requirement: The template reply names its alternatives
+The reply for a template in a mode SHALL name the alternatives the tournament states for it in each phase (as the other settings are), each with its download link where it is not built into HotA, and say they can be played instead by agreement. A template without alternatives gets no such line.
+
+#### Scenario: An alternative
+- **WHEN** a player asks about h3dm1 in a mode that states the alternative h3dm1_nc
+- **THEN** the reply says that by agreement `h3dm1_nc` can be played instead, with its download link
+
+#### Scenario: Alternatives that differ by phase
+- **WHEN** the alternatives of a template differ between phases
+- **THEN** the reply names the usual ones once and the phase with different ones on its own line, as for the other settings
+
+#### Scenario: No alternatives
+- **WHEN** a template has none
+- **THEN** the reply has no line about alternatives
+
+### Requirement: A player can look up an alternative of a mode
+An alternative a mode states for one of its templates SHALL be accepted as the template of `/info`, and offered while the template is typed, marked as an alternative. The reply SHALL say which template or templates it can replace, by agreement, that the match keeps the settings of the template it was started with, and what the catalogue states about it (that it is a mirror, where to get it, the map size, roads, computer players and the recommended simultaneous turns).
+
+#### Scenario: Looking up an alternative
+- **WHEN** a player asks `/info` for the template h3dm1 in a mode where h3dm_nc has h3dm1 as its alternative
+- **THEN** the reply says h3dm1 is an alternative to h3dm_nc that can be played instead by agreement, and gives what is known about h3dm1
+
+#### Scenario: Offered while typing
+- **WHEN** a player types the template of `/info` for that mode
+- **THEN** h3dm1 is offered, marked as an alternative
+
+#### Scenario: A template that is neither played nor an alternative
+- **WHEN** a player asks about a template that the mode neither lists nor states as an alternative
+- **THEN** the reply says it is not in the mode and lists the mode's templates
+
+### Requirement: Mode info links to the tournament's rules
+When a tournament states a link to its rules, the reply for the mode SHALL give it on a line of its own right after the description, or after the name when there is no description, as a link with no preview.
+
+#### Scenario: A mode with a link
+- **WHEN** a player asks about a mode whose tournament states a link to its rules
+- **THEN** the reply has the line "Rules: [full tournament rules](<link>)" near the top
+
+#### Scenario: A mode without a link
+- **WHEN** the tournament states none
+- **THEN** the reply has no such line

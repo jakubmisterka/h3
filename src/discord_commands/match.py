@@ -14,7 +14,7 @@ from rules.info import phase_choices
 from rules.registry import ModeError, Registry
 from rules.selection import SelectionError
 from rules.situation import overview, situation_of, unreadable
-from rules.template_facts import fact_lines
+from rules.template_facts import announcement_lines, info_hint
 from rules.template_settings import effective_settings
 from rules.start import (
     NOT_IN_A_TEXT_CHANNEL,
@@ -62,33 +62,38 @@ async def begin_match(
         template=template_id,
     )
     names = [registry.templates.find(template).name for template in phase.pool_ids]
-    template_name = registry.templates.find(template_id).name if template_id else None
-    facts = fact_lines(effective_settings(fmt, phase, template_id, registry.templates)) if template_id else []
-    for rule in rules_announcement(phase, template_name, names, facts):
+    played = template_id or (phase.pool_ids[0] if phase.fixed else None)  # the template of every game, when it is known
+    template_name = registry.templates.find(played).name if played else None
+    facts = (
+        announcement_lines(effective_settings(fmt, phase, played, registry.templates), info_hint(fmt.id, played), registry.templates)
+        if played
+        else []
+    )
+    for rule in rules_announcement(phase, template_name, names, facts, fmt.rules_link):
         await thread.send(rule)
     winner, loser = (starter, opponent) if coinflip(starter.id, opponent.id) == starter.id else (opponent, starter)
     flip = await log.post(
         "coinflip",
-        coinflip_announcement(winner.mention, loser.mention, phase, template_named=template_id is not None),
+        coinflip_announcement(winner.mention, loser.mention, phase, template_named=played is not None),
         winner=winner.id,
     )
-    if template_id is None:
+    if played is None:
         await post_next_steps(thread, registry, [started, flip])
-    else:  # one game and no selection: open its trade, so the players need no command
+    else:  # no selection: open the trade of the first game, so the players need no command
         await open_only_game(thread, bot_id, registry, [started, flip])
 
 
 @group.command(name="start", description="Start a match against an opponent")
 @app_commands.describe(
-    mode="The tournament mode",
     opponent="The player you are playing against",
+    mode="The tournament mode",
     phase="The phase of the tournament (only for modes with several phases)",
     template="Play just this template, straight to the trade (one of the phase's templates)",
 )
 async def start(
     interaction: discord.Interaction,
-    mode: str,
     opponent: discord.Member,
+    mode: str,
     phase: str | None = None,
     template: str | None = None,
 ) -> None:

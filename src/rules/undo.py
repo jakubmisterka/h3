@@ -10,6 +10,7 @@ so the first player's request waits, and the other player confirms by running `/
 from dataclasses import dataclass
 
 from rules.catalogue import Catalogue
+from rules.ledger import spaced
 from state import START_TYPES, UNDO_TYPES, Record, effective_records, pending_undo, steps_that_count
 
 
@@ -30,6 +31,17 @@ CHECK_STATUS = "Check /match status to see where the match stands."
 UNDONE_REPLY = "Undone."
 
 
+def _versus(towns: Catalogue, ids) -> str:
+    return " vs ".join(towns.find(town).name for town in ids)
+
+
+def _ai_words(towns: Catalogue, data: dict) -> str:
+    """", AI: A, B, C vs D, E, F" for the packs of computer-player towns a step drew, or nothing."""
+    packs = [towns.find(town).name for town in data.get("packs", ())]
+    half = len(packs) // 2
+    return f", AI: {', '.join(packs[:half])} vs {', '.join(packs[half:])}" if packs else ""
+
+
 def step_words(record: Record, templates: Catalogue, towns: Catalogue) -> str:
     """One step in a few words."""
     data = record.data
@@ -38,20 +50,23 @@ def step_words(record: Record, templates: Catalogue, towns: Catalogue) -> str:
         return f"{who} {'banned' if record.type == 'ban' else 'picked'} {templates.find(data['template']).name}"
     game = f"game {record.game}: "
     if record.type == "trade_started":
-        first, second = (towns.find(town).name for town in data["pair"])
-        return f"{game}the trade started ({first} vs {second})"
+        return f"{game}the trade started ({_versus(towns, data['towns'])}{_ai_words(towns, data)})"
     if record.type == "trade_resumed":
         return f"{game}the trade was reopened"
     if record.type == "roll":
         bans = ", ".join(towns.find(town).name for town in data["bans"])
-        first, second = (towns.find(town).name for town in data["pair"])
-        return f"{game}{who} rolled{', banning ' + bans if bans else ''} (new pair {first} vs {second})"
+        what = "new pair" if len(data["towns"]) == 2 else "new town"
+        return f"{game}{who} rolled{', banning ' + bans if bans else ''} ({what} {_versus(towns, data['towns'])}{_ai_words(towns, data)})"
     if record.type == "roll_skipped":
         return f"{game}{who} skipped the roll"
-    if record.type in ("town_bid", "color_bid"):
-        choice = towns.find(data["town"]).name if record.type == "town_bid" else data["color"]
+    if record.type == "hero_bans":
+        return f"{game}{who} banned {', '.join(data['heroes']) or 'no hero'}"
+    if record.type == "heroes_drawn":
+        return f"{game}the heroes were drawn ({', '.join(data['heroes'])})"
+    if record.type in ("town_bid", "pack_bid", "first_choice_bid", "color_bid"):
+        choice = towns.find(data["town"]).name if record.type == "town_bid" else data.get("pack") or data.get("first") or data["color"]
         what = record.type.replace("_", " ")
-        return f"{game}{what}, <@{data['winner']}> won at {data['amount']} and chose {choice}"
+        return f"{game}{what}, <@{data['winner']}> won at {spaced(data['amount'])} and chose {choice}"
     return record.type  # a kind of step this function does not know yet: its name is better than nothing
 
 
@@ -103,6 +118,13 @@ def plan_undo(records: list[Record], start: int | None) -> UndoPlan:
         if start in [r.n for r in records if r.type not in UNDO_TYPES] and start not in counting:
             raise UndoError(f"Record {start} was already undone. {CHECK_STATUS}")
         raise UndoError(f"Record {start} is not a step of this match. {CHECK_STATUS}")
+    first = next(r for r in steps if r.n == start)
+    if first.type == "heroes_drawn":  # the bot draws them together with the step before, so it cannot start at the draw
+        before = [r.n for r in steps if r.n < start]
+        raise UndoError(
+            "The heroes are drawn together with the step before them, so an undo cannot start at the draw."
+            + (f" Undo from record {before[-1]} instead, which undoes the draw too." if before else "")
+        )
     return UndoPlan(start, tuple(r for r in steps if r.n >= start))
 
 

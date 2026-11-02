@@ -110,7 +110,10 @@ def test_a_full_selection_ends_with_the_games(registry, started):
     command(selection.ban, registry, started, BORIS, "6lm10a")
 
     assert texts(started)[-2] == "The bans and picks are done. The games:\nGame 1: h3dm1"
-    assert texts(started)[-1] == "Game 1 is h3dm1. Start its trade with /trade start."
+    assert texts(started)[-1].splitlines() == [  # the game and how to start its trade, then how to find out more
+        "Game 1 is h3dm1. Start its trade with /trade start.",
+        "More about this template: /info with mode `sample-cup` and template `h3dm1`",
+    ]
     assert "[#3 bn] <@1> banned **Jebus Cross** (`JC`)" in texts(started)
     assert "[#4 bn] <@2> banned **6lm10a** (`6lm10a`)" in texts(started)
 
@@ -189,7 +192,7 @@ def test_a_thread_that_does_not_follow_the_rules_is_not_trusted(registry, starte
     # somebody removed the first ban from the record but the second one is still there
     command(selection.ban, registry, started, ANNA, "JC")
     command(selection.ban, registry, started, BORIS, "6lm10a")
-    del started.messages[6:8]  # Anna's ban and the messages that followed it
+    del started.messages[5:7]  # Anna's ban and the messages that followed it
     it = command(selection.ban, registry, started, ANNA, "h3dm1")
     assert "missing" in told(it) or "does not follow" in told(it)
 

@@ -140,15 +140,13 @@ def test_without_a_random_source_it_still_flips():
 def test_the_rules_of_a_named_template_say_one_game_and_which_template(one_phase):
     phase = one_phase.phases[0]
     assert rules_announcement(phase, "Jebus Cross", ["Jebus Cross", "6lm10a"]) == [
-        "One game",
-        "The template: Jebus Cross",
-        "The winner of the coinflip will be player A, the other player is B",
+        "Format: BO1",
     ]
 
 
 def test_the_rules_without_a_named_template_still_list_the_selection_and_the_templates(one_phase):
     messages = rules_announcement(one_phase.phases[0], None, ["Jebus Cross", "6lm10a"])
-    assert messages[0] == "Best of 1" and messages[1].startswith("Template Selection: ")
+    assert messages[0] == "Format: BO1" and messages[1].startswith("Template Selection: ")
     assert messages[-1] == "Templates: Jebus Cross, 6lm10a"
 
 

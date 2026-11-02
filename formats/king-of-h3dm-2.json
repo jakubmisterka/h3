@@ -1,0 +1,35 @@
+{
+  "id": "king-of-h3dm-2",
+  "name": "King of h3dm2",
+  "rules_link": "https://docs.google.com/document/d/1SKAB3TqmP-lhcCk_nQpzhhJ84Ha0X-dw/edit?usp=sharing&ouid=112599880667253705696&rtpof=true&sd=true",
+  "description": "A single-elimination tournament on h3dm_nc: best-of-1 matches up to the 1/16 finals, then best-of-3 matches. From the 1/16 finals the starting heroes are drawn by a hero roulette.",
+  "additional_rules": "Special victory: a player who captures the opponent's starting town and builds a Capitol wins the game, and in a best-of-3 the whole match. Each player has one subjective restart on turn 111, and there is no early-encounter restart. By explicit agreement of both players the timer can be changed, up to 21:00+08:30+02:00, and so can the length of simultaneous turns. Before the 1/16 finals the winner of the color bid bans 0 to 3 starting heroes of the drawn town, the loser picks a hero first and the winner picks one of the others",
+  "roll_rules": { "max_roll_bans": 1 },
+  "settings": { "timer": "18:00+07:00+01:30" },
+  "templates": [
+    { "template": "h3dm_nc", "settings": { "alternatives": ["h3dm1"] } }
+  ],
+  "phases": [
+    {
+      "name": "Up to 1/32 finals",
+      "best_of": 1,
+      "template_selection": { "type": "fixed" }
+    },
+    {
+      "name": "1/16 finals",
+      "best_of": 1,
+      "pool": [
+        { "template": "h3dm_nc", "settings": { "trade": { "kind": "roulette", "hero_bans": 1 } } }
+      ],
+      "template_selection": { "type": "fixed" }
+    },
+    {
+      "name": "From 1/8 finals",
+      "best_of": 3,
+      "pool": [
+        { "template": "h3dm_nc", "settings": { "trade": { "kind": "roulette", "hero_bans": 1 } } }
+      ],
+      "template_selection": { "type": "fixed" }
+    }
+  ]
+}

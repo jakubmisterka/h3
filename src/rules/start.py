@@ -6,6 +6,7 @@ from rules.catalogue import Catalogue
 from rules.formats import Format, Phase
 from rules.info import AUTOCOMPLETE_LIMIT, find_phase, template_selection_line
 from rules.registry import Registry
+from rules.template_facts import rules_link_line
 
 
 ###### Wording: what the bot says when a match starts ##########################################################
@@ -23,25 +24,33 @@ def coinflip_announcement(winner: str, loser: str, phase: Phase, template_named:
     return f"Coinflip: {winner} wins and is A, so {winner} {first} first. {loser} is B."
 
 
+def _rules_link_line(link: str | None) -> list[str]:
+    return [rules_link_line(link)] if link else []
+
+
 def rules_announcement(
-    phase: Phase, template_name: str | None, pool_names: list[str], facts: list[str] | tuple = ()
+    phase: Phase, template_name: str | None, pool_names: list[str], facts: list[str] | tuple = (), rules_link: str | None = None
 ) -> list[str]:
     """The rules of the phase, one short message per rule, posted before the coinflip so both players know what comes.
 
-    `facts` are the lines about the named template (its timer, map and so on), one message each after its name.
+    `facts` are the lines about the named template (see `template_facts.announcement_lines`), one message each after its name.
+    `rules_link` is where the tournament's full rules are, said right after the number of games.
     """
     if template_name is not None:  # no bans or picks: one game, straight to the trade
-        messages = [f"Best of {phase.best_of}" if phase.agreed else "One game"]
-        messages.append(f"The players agreed on the template: {template_name}" if phase.agreed else f"The template: {template_name}")
+        # the template is in the record above, or is the phase's own
+        messages = [f"Format: BO{phase.best_of}" if phase.agreed or phase.fixed else "Format: BO1"]
+        messages += _rules_link_line(rules_link)
+        if phase.fixed:  # nobody named it, and the record above has no template
+            messages.append(f"Template: `{template_name}`")
         messages += facts
     else:
-        messages = [f"Best of {phase.best_of}"]
+        messages = [f"Format: BO{phase.best_of}"]
+        messages += _rules_link_line(rules_link)
         # "AB: A bans, B bans, then decider" is the short notation, then its meaning, each on its own
         notation, _, meaning = template_selection_line(phase.steps).partition(": ")
         messages.append(f"Template Selection: {notation}" if meaning else notation)
         if meaning:
             messages.append(meaning)
-    messages.append("The winner of the coinflip will be player A, the other player is B")
     if template_name is None:
         messages.append(f"Templates: {', '.join(pool_names)}")
     return messages
@@ -67,10 +76,10 @@ def match_started_text(
 ) -> str:
     """The text of the match started record. The first two mentions are the players and the first `quoted` words the
     mode, the phase and the agreed template, which is how the record is read back."""
-    wording = f"Mode: {mode_name} (`{mode_id}`), phase `{phase_name}`"
+    lines = [f"Match started: {starter} vs {opponent}", f"Mode: {mode_name} (`{mode_id}`)", f"Phase: `{phase_name}`"]
     if template_id:
-        wording += f", template `{template_id}`"
-    return f"Match started: {starter} vs {opponent}. {wording}. This is your match thread."
+        lines.append(f"Template: `{template_id}`")
+    return "\n".join(lines)
 
 
 ################################################################################################################
@@ -105,9 +114,15 @@ def choose_template(phase: Phase, text: str | None, templates: Catalogue) -> str
     """The template id named for the match, or None when none was named (the phase then chooses by bans and picks).
 
     Any phase accepts a template from its pool, which makes the match one game with no selection. Where the players
-    agree on the template, naming one is required."""
+    agree on the template, naming one is required. A fixed phase has one template and no one needs to name it: naming
+    it is accepted and changes nothing, so every game is still played."""
     allowed = [templates.find(template_id) for template_id in phase.pool_ids]
     allowed_names = ", ".join(entry.name for entry in allowed)
+    if phase.fixed:
+        only = allowed[0]
+        if text and templates.find(text) is not only:
+            raise StartError(f"{text!r} is not played in this phase. Every game is played on {only.name}.")
+        return None
     if not text:
         if phase.agreed:
             raise StartError(f"In this phase the players agree on the template, so name one. Allowed: {allowed_names}.")

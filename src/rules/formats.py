@@ -22,8 +22,10 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from rules.catalogue import Catalogue
+from rules.catalogue import Catalogue, heroes_offered
+from rules.trade_kinds import TradeKind, check_trade
 from rules.lobby_values import (
+    check_alternatives,
     check_computer_players,
     check_download,
     check_game_date,
@@ -67,6 +69,7 @@ class Phase:
     agreed: bool  # True: the players agree on the template, there are no bans or picks
     steps: tuple[Step, ...]  # the games are played in the order of the picks, then the decider
     allowed_towns: tuple[str, ...]  # town ids players can get in this phase: its own list, else the tournament's
+    fixed: bool = False  # True: the phase has one template and every game is played on it, there are no bans or picks
 
     @property
     def pool_ids(self) -> tuple[str, ...]:
@@ -86,6 +89,7 @@ class Format:
     settings: dict = field(default_factory=dict)  # timer and sim turns written for the whole tournament
     description: str | None = None  # what the tournament is, for /info
     additional_rules: str | None = None  # additional rules of the tournament as a whole, for /info
+    rules_link: str | None = None  # where the tournament's full rules are published
 
 
 # --- stage 1: the shape ---------------------------------------------------------------------
@@ -155,8 +159,11 @@ def _phase_problems(phase: dict, listed: list[str], towns: Catalogue) -> list[st
             )
     problems += _town_problems(label, phase.get("allowed_towns", []), towns)
 
-    if phase["template_selection"]["type"] == "sequence":
+    kind = phase["template_selection"]["type"]
+    if kind == "sequence":
         problems += _sequence_problems(phase, label, len(pool))
+    if kind == "fixed" and len(set(pool)) != 1:
+        problems.append(f"{label}: a fixed phase needs exactly one template, but it has {len(set(pool))} ({', '.join(pool)})")
     return problems
 
 
@@ -175,14 +182,20 @@ def _sequence_problems(phase: dict, label: str, pool_size: int) -> list[str]:
     steps = phase["template_selection"]["steps"]
     best_of = phase["best_of"]
 
-    # Every template in the pool is used by exactly one step: banned, picked, or taken by the decider.
-    if pool_size != len(steps):
+    deciders = [i for i, step in enumerate(steps) if step["do"] == "decider"]
+
+    # Every template in the pool is used by exactly one step: banned, picked, or taken by the decider. Without a
+    # decider, templates that are neither banned nor picked are simply not played, as in a league match of two games.
+    if deciders and pool_size != len(steps):
         problems.append(
             f"{label}: the pool must have as many templates as the sequence has steps, because each template "
             f"is banned, picked or taken by the decider ({pool_size} templates, {len(steps)} steps)"
         )
-
-    deciders = [i for i, step in enumerate(steps) if step["do"] == "decider"]
+    elif not deciders and pool_size < len(steps):
+        problems.append(
+            f"{label}: the pool needs at least as many templates as the sequence has steps, because each step "
+            f"bans or picks a different template ({pool_size} templates, {len(steps)} steps)"
+        )
     if len(deciders) > 1:
         problems.append(f"{label}: the sequence has {len(deciders)} decider steps, it can have only one")
     elif deciders and deciders[0] != len(steps) - 1:
@@ -212,6 +225,8 @@ _SETTING_CHECKS = {
     "ai": check_computer_players,
     "additional_rules": check_text,
     "download": check_download,
+    "trade": check_trade,
+    "alternatives": check_alternatives,
 }
 _CHOSEN_FROM_ALLOWED = ("roads", "map_size", "ai")
 
@@ -227,6 +242,10 @@ def _settings_problems(where: str, settings: dict, template: str | None, templat
             problems.append(f"{where}: {name}: {e}")
             continue
         entry = templates.find(template) if template else None
+        if name == "trade" and entry is not None and check_trade(value).has_packs and entry.details.get("mirror"):
+            problems.append(f"{where}: trade: a mirror template cannot have computer-player packs ({template!r} is a mirror)")
+        if name == "alternatives" and entry is not None:
+            problems += _alternative_problems(where, template, value, templates)
         if name in _CHOSEN_FROM_ALLOWED and entry is not None:  # an unknown template is reported elsewhere
             choice = entry.details.get(name)
             if choice is None:
@@ -239,6 +258,100 @@ def _settings_problems(where: str, settings: dict, template: str | None, templat
                     f"{where}: {name}: {value!r} is not allowed for {template!r}. "
                     f"Allowed: {', '.join(str(v) for v in choice.allowed)}"
                 )
+    return problems
+
+
+def _alternative_problems(where: str, template: str, alternatives: list[str], templates: Catalogue) -> list[str]:
+    """An alternative is another template of the catalogue that players can get: built into HotA or with a download link."""
+    problems = []
+    for alternative in alternatives:
+        entry = templates.find(alternative)
+        if entry is None:
+            problems.append(f"{where}: alternatives: {alternative!r} is not a template of the catalogue")
+        elif entry.id == template:
+            problems.append(f"{where}: alternatives: {template!r} cannot be its own alternative")
+        elif not (entry.details.get("built_in") or entry.details.get("download")):
+            problems.append(
+                f"{where}: alternatives: {alternative!r} is neither built into HotA nor has a download link in the "
+                f"catalogue, so players could not get it"
+            )
+    return problems
+
+
+def _stacked(name: str, catalogue_value, *written_in):
+    """The value of a setting for a template as it is written, the most specific place winning: the catalogue, then
+    the template's entry in the tournament's list, then its entry in the phase's pool (`written_in`, least specific
+    first). The same order as `effective_settings`, on the raw data a format file is validated from."""
+    value = catalogue_value
+    for raw in written_in:
+        if isinstance(raw, dict) and name in raw.get("settings", {}):
+            value = raw["settings"][name]
+    return value
+
+
+def _trade_kind(template: str, listed_entry, pool_entry, templates: Catalogue) -> TradeKind | None:
+    """The kind of trade a template has in a phase, as written, or None if none is stated (or it is not a kind,
+    which is reported with the setting itself)."""
+    entry = templates.find(template)
+    stated = _stacked("trade", entry.details.get("trade") if entry else None, listed_entry, pool_entry)
+    if stated is None or isinstance(stated, TradeKind):  # the catalogue's value is already read
+        return stated
+    try:
+        return check_trade(stated)
+    except ValueError:
+        return None
+
+
+def _trade_name(template: str, listed_entry, pool_entry, templates: Catalogue) -> str | None:
+    kind = _trade_kind(template, listed_entry, pool_entry, templates)
+    return kind.name if kind else None
+
+
+def _packs_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[str]:
+    """Computer-player packs need eight different towns to draw from, in every phase that uses the template."""
+    listed = {_template_id(raw): raw for raw in data["templates"]}
+    problems = []
+    for phase in data["phases"]:
+        allowed = phase.get("allowed_towns", data.get("allowed_towns", towns.ids))
+        pool = phase.get("pool") or data["templates"]
+        for raw in pool:
+            template = _template_id(raw)
+            if template not in listed or len(set(allowed)) >= 8:
+                continue
+            kind = _trade_kind(template, listed[template], raw, templates)
+            if kind is not None and kind.has_packs:
+                problems.append(
+                    f'phase "{phase["name"]}", {template}: trade: computer-player packs need at least eight allowed towns '
+                    f"(two for the players and six for the computer players), but this phase allows {len(set(allowed))}"
+                )
+    return problems
+
+
+def _roulette_problems(data: dict, templates: Catalogue, towns: Catalogue, heroes: Catalogue) -> list[str]:
+    """A roulette draws heroes of the towns of the phase, so there must be heroes, and enough of them left in every
+    allowed town after the heroes the template does not offer and the most the players could ban."""
+    listed = {_template_id(raw): raw for raw in data["templates"]}
+    problems = []
+    for phase in data["phases"]:
+        allowed = list(dict.fromkeys(phase.get("allowed_towns", data.get("allowed_towns", towns.ids))))
+        for raw in phase.get("pool") or data["templates"]:
+            template = _template_id(raw)
+            kind = _trade_kind(template, listed.get(template), raw, templates) if template in listed else None
+            if kind is None or not kind.draws_heroes:
+                continue
+            where = f'phase "{phase["name"]}", {template}: trade'
+            if not heroes.entries:
+                problems.append(f"{where}: a roulette draws heroes, but data/heroes.json has none")
+                continue
+            entry = templates.find(template)
+            needed = (2 if entry and entry.details.get("mirror") else 1) + 2 * kind.hero_bans
+            for town in allowed:
+                left = len(heroes_offered(heroes, entry, town))
+                if left < needed:
+                    problems.append(
+                        f"{where}: {towns.find(town).name} has {left} heroes left for {template}, but a roulette with "
+                        f"{kind.hero_bans} hero bans each needs at least {needed}"
+                    )
     return problems
 
 
@@ -255,7 +368,7 @@ def _all_settings_problems(data: dict, templates: Catalogue) -> list[str]:
     return problems
 
 
-def rule_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[str]:
+def rule_problems(data: dict, templates: Catalogue, towns: Catalogue, heroes: Catalogue | None = None) -> list[str]:
     """Problems with the rules of a format whose shape is right, in words."""
     problems = []
 
@@ -274,6 +387,14 @@ def rule_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[st
     for phase in data["phases"]:
         problems += _phase_problems(phase, listed, towns)
     problems += _all_settings_problems(data, templates)
+    problems += _packs_problems(data, templates, towns)
+    if heroes is not None:
+        problems += _roulette_problems(data, templates, towns, heroes)
+    if "rules_link" in data:
+        try:
+            check_download(data["rules_link"])
+        except ValueError:
+            problems.append(f"rules_link: must be a link starting with https://, not {data['rules_link']!r}")
     for name in ("description", "additional_rules"):
         if name in data:
             try:
@@ -283,12 +404,12 @@ def rule_problems(data: dict, templates: Catalogue, towns: Catalogue) -> list[st
     return problems
 
 
-def validate_format(data, templates: Catalogue, towns: Catalogue) -> list[str]:
+def validate_format(data, templates: Catalogue, towns: Catalogue, heroes: Catalogue | None = None) -> list[str]:
     """Every problem found in a parsed format file, in words. An empty list means it is valid."""
     problems = shape_problems(data)
     if problems:
         return problems  # the rules cannot be checked on a file with the wrong shape
-    return rule_problems(data, templates, towns)
+    return rule_problems(data, templates, towns, heroes)
 
 
 # --- loading --------------------------------------------------------------------------------
@@ -300,9 +421,9 @@ def _entry(raw) -> TemplateEntry:
     return TemplateEntry(raw["template"], raw.get("roll_rules", {}), raw.get("settings", {}))
 
 
-def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
+def parse_format(data, templates: Catalogue, towns: Catalogue, heroes: Catalogue | None = None) -> Format:
     """Check a parsed format file and turn it into a Format. Raises FormatError listing every problem."""
-    problems = validate_format(data, templates, towns)
+    problems = validate_format(data, templates, towns, heroes)
     if problems:
         raise FormatError(problems)
 
@@ -311,6 +432,7 @@ def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
     phases = []
     for raw in data["phases"]:
         agreed = raw["template_selection"]["type"] == "agreed"
+        fixed = raw["template_selection"]["type"] == "fixed"
         if "pool" in raw:
             pool = tuple(_entry(e) for e in raw["pool"])
         else:  # no pool written: the phase uses every template of the tournament
@@ -321,8 +443,9 @@ def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
                 best_of=raw["best_of"],
                 pool=pool,
                 agreed=agreed,
-                steps=() if agreed else tuple(Step(s.get("who"), s["do"]) for s in raw["template_selection"]["steps"]),
+                steps=() if agreed or fixed else tuple(Step(s.get("who"), s["do"]) for s in raw["template_selection"]["steps"]),
                 allowed_towns=tuple(raw["allowed_towns"]) if "allowed_towns" in raw else tournament_towns,
+                fixed=fixed,
             )
         )
     return Format(
@@ -337,10 +460,11 @@ def parse_format(data, templates: Catalogue, towns: Catalogue) -> Format:
         settings=data.get("settings", {}),
         description=data.get("description"),
         additional_rules=data.get("additional_rules"),
+        rules_link=data.get("rules_link"),
     )
 
 
-def load_format(path: Path, templates: Catalogue, towns: Catalogue) -> Format:
+def load_format(path: Path, templates: Catalogue, towns: Catalogue, heroes: Catalogue | None = None) -> Format:
     """Read, check and build one format file. Every error message starts with the file name."""
     try:
         with open(path, encoding="utf-8") as f:
@@ -348,7 +472,7 @@ def load_format(path: Path, templates: Catalogue, towns: Catalogue) -> Format:
     except json.JSONDecodeError as e:
         raise FormatError([f"{path.name}: not valid JSON ({e})"]) from e
     try:
-        fmt = parse_format(data, templates, towns)
+        fmt = parse_format(data, templates, towns, heroes)
     except FormatError as e:
         raise FormatError([f"{path.name}: {problem}" for problem in e.errors]) from e
     if path.stem != fmt.id:
@@ -356,7 +480,7 @@ def load_format(path: Path, templates: Catalogue, towns: Catalogue) -> Format:
     return fmt
 
 
-def load_formats(directory: Path, templates: Catalogue, towns: Catalogue) -> dict[str, Format]:
+def load_formats(directory: Path, templates: Catalogue, towns: Catalogue, heroes: Catalogue | None = None) -> dict[str, Format]:
     """Every format file in a folder (`schema.json` excluded), by id.
 
     If some files are not valid, one FormatError lists the problems of all of them.
@@ -367,7 +491,7 @@ def load_formats(directory: Path, templates: Catalogue, towns: Catalogue) -> dic
         if path.name == "schema.json":
             continue
         try:
-            fmt = load_format(path, templates, towns)
+            fmt = load_format(path, templates, towns, heroes)
         except FormatError as e:
             problems += e.errors
         else:

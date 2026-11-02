@@ -7,7 +7,7 @@ problem found in every file, so a contributor can fix them all in one go.
 from dataclasses import dataclass
 from pathlib import Path
 
-from rules.catalogue import Catalogue, CatalogueError, load_templates, load_towns
+from rules.catalogue import Catalogue, CatalogueError, load_heroes, load_templates, load_towns
 from rules.formats import Format, FormatError, load_formats
 
 
@@ -32,6 +32,7 @@ class Registry:
     towns: Catalogue
     templates: Catalogue
     formats: dict[str, Format]  # by format id
+    heroes: Catalogue = Catalogue([])  # the heroes a roulette draws from (none if the repository has no data/heroes.json)
 
     def modes_for_new_matches(self) -> list[Format]:
         """The modes a match can be started in: active formats only. Archived ones stay on record, hidden."""
@@ -56,9 +57,10 @@ class Registry:
     def summary(self) -> str:
         """One line saying what was loaded, for the log: counts, and the formats by id."""
         formats = ", ".join(fmt.id + ("" if fmt.active else " (archived)") for fmt in self.formats.values())
+        heroes = f", {_count(len(self.heroes.entries), 'hero')}" if self.heroes.entries else ""
         return (
             f"{_count(len(self.towns.entries), 'town')}, {_count(len(self.templates.entries), 'template')}, "
-            f"{_count(len(self.formats), 'format')} ({formats or 'none'})"
+            f"{_count(len(self.formats), 'format')} ({formats or 'none'}){heroes}"
         )
 
 
@@ -70,15 +72,21 @@ def load_registry(root: Path) -> Registry:
         towns = load_towns(root / "data" / "towns.json")
     except CatalogueError as e:
         problems.append(str(e))
+    heroes = Catalogue([])
+    if towns is not None:
+        try:
+            heroes = load_heroes(root / "data" / "heroes.json", towns)
+        except CatalogueError as e:
+            problems.append(str(e))
     try:
-        templates = load_templates(root / "data" / "templates.json")
+        templates = load_templates(root / "data" / "templates.json", heroes)
     except CatalogueError as e:
         problems.append(str(e))
     if problems:
         raise RegistryError(problems)  # formats cannot be checked without the lists they refer to
 
     try:
-        formats = load_formats(root / "formats", templates, towns)
+        formats = load_formats(root / "formats", templates, towns, heroes)
     except FormatError as e:
         raise RegistryError(e.errors) from e
-    return Registry(towns, templates, formats)
+    return Registry(towns, templates, formats, heroes)
