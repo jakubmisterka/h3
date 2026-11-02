@@ -1,0 +1,148 @@
+{
+  "id": "exotic-tournament-3",
+  "name": "Exotic Tournament III",
+  "rules_link": "https://docs.google.com/document/d/17McorhL7nNx18Q0eeug3K4EBCJEPDMkY6xaEdkK4WtQ/edit?tab=t.0",
+  "description": "Nine unusual templates. Best-of-3 matches in a round-robin group phase and a knockout, a best-of-5 final, and a best-of-1 tiebreak for the group phase.",
+  "additional_rules": "Each player has two subjective restarts on turn 111 or one on turn 112 (mt_JOTurbo: one on turn 111). The VCMI add-on may be used if both players agree, but the organisers are not responsible for a template generated wrongly there. By explicit agreement of both players the timer and the length of simultaneous turns can be adjusted. At 200% the starting towns are random, the players cannot choose a starting bonus, and do not swap colors during the restarts; identical starting towns give a technical restart",
+  "templates": [
+    {
+      "template": "2sm2c2",
+      "settings": {
+        "timer": "04:00+03:00+01:30",
+        "additional_rules": "Early encounter: if the players meet by turn 117 (slow roads), 116 (medium) or 115 (fast), either may have the map generated again. After such a restart the turn is one lower"
+      }
+    },
+    {
+      "template": "NineDayWonder",
+      "settings": {
+        "timer": "04:00+03:00+01:30",
+        "additional_rules": "Early encounter: if the players meet by turn 117 (slow roads), 116 (medium) or 115 (fast), either may have the map generated again. After such a restart the turn is one lower"
+      }
+    },
+    {
+      "template": "PapichBishopCup10",
+      "settings": {
+        "timer": "04:00+03:00+01:30",
+        "additional_rules": "Early encounter: if the players meet by turn 117 (slow roads), 116 (medium) or 115 (fast), either may have the map generated again. After such a restart the turn is one lower"
+      }
+    },
+    {
+      "template": "Boomerang",
+      "settings": {
+        "timer": "12:00+07:00+01:30",
+        "additional_rules": "Early encounter: if the players meet by turn 116, either may have the map generated again. After such a restart the turn is 115"
+      }
+    },
+    {
+      "template": "ClashOfDragons",
+      "settings": {
+        "timer": "12:00+07:00+01:30",
+        "additional_rules": "Tournament rules are off. By agreement of both players the game can be played at 160% instead of 200%. There is no early encounter and no early encounter restart"
+      }
+    },
+    {
+      "template": "mt_JOTurbo",
+      "roll_rules": { "max_roll_bans": 1 },
+      "settings": {
+        "timer": "03:00+01:30+00:30",
+        "additional_rules": "Play the newest version of the template. The timer can only be shortened by agreement. Guards cannot be skipped. One hero can be hired on turn 111 and must be dismissed after it; playing with more than one hero from turn 112 loses the game. The red player bans 0 to 3 heroes, then the blue player picks a hero first and the red player picks next. A banned hero that shows up means a technical restart. There is no early encounter"
+      }
+    },
+    {
+      "template": "Diamond",
+      "settings": {
+        "timer": "14:00+07:00+01:30",
+        "sim_turns": "116",
+        "additional_rules": "Early encounter: if the players meet by turn 116, either may have the map generated again. After such a restart the turn is 115"
+      }
+    },
+    {
+      "template": "1deaL",
+      "settings": {
+        "timer": "10:00+07:00+01:30",
+        "additional_rules": "Early encounter: if the players meet by turn 115, either may have the map generated again. After such a restart the turn is 114"
+      }
+    },
+    {
+      "template": "OMM3",
+      "settings": {
+        "timer": "01:00+01:00+02:00",
+        "additional_rules": "Play the newest version of the template. Early encounter: if the players meet by turn 115, either may have the map generated again, and after such a restart the turn stays 115"
+      }
+    }
+  ],
+  "phases": [
+    {
+      "name": "Group phase",
+      "best_of": 3,
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "pick" },
+          { "who": "B", "do": "pick" },
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    },
+    {
+      "name": "Group tiebreak",
+      "best_of": 1,
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "ban" },
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    },
+    {
+      "name": "Knockout phase",
+      "best_of": 3,
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "pick" },
+          { "who": "B", "do": "pick" },
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    },
+    {
+      "name": "Final",
+      "best_of": 5,
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          { "who": "A", "do": "pick" },
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "pick" },
+          { "who": "B", "do": "ban" },
+          { "who": "A", "do": "pick" },
+          { "who": "A", "do": "ban" },
+          { "who": "B", "do": "pick" },
+          { "who": "A", "do": "ban" },
+          { "do": "decider" }
+        ]
+      }
+    }
+  ]
+}

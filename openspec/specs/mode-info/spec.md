@@ -1,0 +1,252 @@
+# mode-info Specification
+
+## Purpose
+Lets players look up how a tournament mode works and how a template is played in it, without starting a match. It also gives contributors a quick way to check that a new format file says what they meant.
+
+## Requirements
+
+### Requirement: A player can look up a mode
+A player SHALL be able to ask for the information about a mode by naming it. The reply SHALL give the mode's name, the templates of the tournament, and for each phase its name, its best-of and the templates in its pool. The mode SHALL be found by its id or its name, ignoring case. Templates SHALL be shown by the name players read (for example Jebus Cross), never by their short id. A reply SHALL NOT repeat itself: a mode with only one phase SHALL NOT mention the phase by name, and a phase that uses all the templates of the tournament SHALL say so instead of listing them again. When the tournament states a description or additional rules, the reply SHALL give them too.
+
+#### Scenario: Single-phase mode
+- **WHEN** a player asks about Sample Cup, which has one phase
+- **THEN** the reply names Sample Cup, says best of 1, and lists the templates Jebus Cross, 6lm10a and h3dm1 once, without naming the phase
+
+#### Scenario: A phase that uses every template
+- **WHEN** one phase of a mode with several phases uses all the templates of the tournament
+- **THEN** its part of the reply says "Templates: all" instead of listing them again
+
+#### Scenario: Multi-phase mode
+- **WHEN** a player asks about a mode with three phases
+- **THEN** the reply lists every template of the tournament once, and every phase with its own best-of and its own pool
+
+#### Scenario: A tournament with a description and additional rules
+- **WHEN** a player asks about a mode that states a description and additional rules
+- **THEN** the reply gives the description and the additional rules, each on its own line
+
+#### Scenario: A tournament with neither
+- **WHEN** a player asks about a mode that states no description and no additional rules
+- **THEN** the reply is the same as before this change
+
+### Requirement: Mode info says how templates are chosen
+For each phase, the reply SHALL say how the template is chosen on one line labelled Template Selection: first the order in which the players act, written the way players write it, one letter per step (A for the coinflip winner, B for the other player) without the decider, such as AB or ABABABBA; then a colon; then the steps in words, naming the player and the action ("A bans", "B picks"), and ending with "then decider" when the sequence has one. For a phase where players agree on the template, it SHALL say so.
+
+#### Scenario: Ban, ban
+- **WHEN** a phase has the sequence A ban, B ban, decider
+- **THEN** the reply says "AB: A bans, B bans, then decider"
+
+#### Scenario: Bans and picks
+- **WHEN** a phase has the sequence A ban, B ban, A pick, B pick, A ban, B ban, B ban, A ban, decider
+- **THEN** the reply says "ABABABBA: A bans, B bans, A picks, B picks, A bans, B bans, B bans, A bans, then decider"
+
+#### Scenario: Players acting twice in a row
+- **WHEN** a phase has the sequence A ban, B ban, B ban, A ban, A pick, B pick, decider
+- **THEN** the reply says "ABBAAB: A bans, B bans, B bans, A bans, A picks, B picks, then decider"
+
+#### Scenario: Both games picked, no decider
+- **WHEN** a best-of-2 phase has the sequence A ban, B ban, A pick, B pick and no decider
+- **THEN** the reply says "ABAB: A bans, B bans, A picks, B picks"
+
+#### Scenario: Agreed template
+- **WHEN** a player asks about a mode where players agree on the template
+- **THEN** the reply says the players agree on the template, and lists the templates allowed
+
+### Requirement: A player can look up a template in a mode
+A player SHALL be able to ask about one template in a mode. The reply SHALL give the template's difficulty and the roll rules that apply to it (the cost of a roll, the rolls each player has, and the most towns banned per roll), each said once. Where the roll rules differ between the phases that use the template, the reply SHALL give the value most phases use, and then name each phase that differs with only the rules that differ there. A mode with one phase SHALL NOT be mentioned by phase. If the template is played in only some of the phases, the reply SHALL say which. The reply SHALL also give, each on a short line, what is played on the template in that mode, as far as it is stated: that it is a mirror template, where to get it, the timer, the map size, the roads, the computer players and the recommended length of simultaneous turns. These follow the same rule as the roll rules where phases differ. A fact that is not stated SHALL NOT appear, and nothing SHALL be guessed in its place. The reply SHALL also give the template's description and its additional rules (the rules that apply in that mode, after the tournament's choices) when they are stated.
+
+#### Scenario: Template with the defaults
+- **WHEN** a player asks about JC (or Jebus Cross) in Sample Cup
+- **THEN** the reply says 160% difficulty and the roll as "500 gold, 1 per player, up to 2 towns banned", with no phase named
+
+#### Scenario: Same in every phase
+- **WHEN** a template has the same roll rules in all three phases of a mode
+- **THEN** the reply says the difficulty and the roll rules once, and names no phase
+
+#### Scenario: Template with an override for the whole tournament
+- **WHEN** the tournament sets a roll cost of 500 and one template is listed with a roll cost of 0
+- **THEN** the reply for that template says the roll is free, and the reply for the others says the roll costs 500 gold
+
+#### Scenario: Only the differing rule is listed
+- **WHEN** a template has two rolls per player in the final and the usual one in the other phases
+- **THEN** the reply gives the usual roll rules once, and one more line "Final: 2 per player"
+
+#### Scenario: Several rules differ in one phase
+- **WHEN** in one phase a template has free rolls and no bans
+- **THEN** that phase's line lists both, for example "Final: free, no bans"
+
+#### Scenario: The base is the value most phases use
+- **WHEN** a template has two rolls per player in two phases and one in the third
+- **THEN** the reply gives two rolls as the usual rule and lists only the third phase as different
+
+#### Scenario: Template played in only some phases
+- **WHEN** a template is in the pool of the final only
+- **THEN** the reply says it is played in the final
+
+#### Scenario: 200% difficulty
+- **WHEN** a template is played at 200% difficulty
+- **THEN** the reply says there is no roll, and that the trade is only a toss for color
+
+#### Scenario: What is played, from the template's defaults
+- **WHEN** a player asks about a template whose defaults are map size `L+U`, roads `mid` and 3 computer players, in a mode that chooses nothing for it
+- **THEN** the reply has the lines "Map: L+U", "Roads: mid" and "AI players: 3"
+
+#### Scenario: What the tournament chose
+- **WHEN** the mode chooses the map size `XL+U` for the template
+- **THEN** the reply says "Map: XL+U" and not the template's default
+
+#### Scenario: The timer
+- **WHEN** a player asks about a template in a mode whose timer is `12:00+06:00+02:00`
+- **THEN** the reply has the line "Timer: 12:00+06:00+02:00" and does not spell the timer out
+
+#### Scenario: A setting that differs between phases
+- **WHEN** a template is played on `L+U` in the groups and on `XL+U` in the final
+- **THEN** the reply gives "Map: L+U" and one more line "Final: XL+U"
+
+#### Scenario: Where to get it
+- **WHEN** a player asks about a template that states a download link, and about one that is built into HotA
+- **THEN** the first reply says "Download:" with the link and the second says it is built into HotA
+
+#### Scenario: Roads and computer players
+- **WHEN** a player asks about templates with roads `slow+mid`, with roads `none`, with 6 computer players and with 0
+- **THEN** the replies say "Roads: slow+mid", "No roads", "AI players: 6" and "No AI players"
+
+#### Scenario: Simultaneous turns
+- **WHEN** a player asks about a template whose recommended simultaneous turns are `117`
+- **THEN** the reply says "Sim turns until 117"
+
+#### Scenario: A mirror template
+- **WHEN** a player asks about a mirror template
+- **THEN** the reply says both players get the same town
+
+#### Scenario: Description and rules
+- **WHEN** a player asks about a template that states a description and additional rules
+- **THEN** the reply gives the description and the additional rules, each on its own line
+
+#### Scenario: Rules the tournament changed
+- **WHEN** the tournament gives the template other additional rules than the catalogue states
+- **THEN** the reply gives the tournament's rules and not the catalogue's
+
+#### Scenario: Rules that differ between phases
+- **WHEN** the groups have other additional rules for a template than the final
+- **THEN** the reply gives the additional rules most phases use and one more line for the phase that differs
+
+#### Scenario: Nothing stated
+- **WHEN** a player asks about a template that states none of these facts, in a mode that sets no timer
+- **THEN** the reply is the same as before this change
+
+### Requirement: A reply can be limited to one phase
+A player SHALL be able to limit a reply to one phase of the mode, by naming it, for a mode or for a template in it. The phase SHALL be found by name, ignoring case. The bot SHALL offer the phases of the chosen mode when the player starts typing, and nothing for a mode with only one phase.
+
+#### Scenario: One phase of a mode
+- **WHEN** a player asks about a mode with three phases and names the final
+- **THEN** the reply gives the mode's name and templates and only the final's part
+
+#### Scenario: One phase of a template
+- **WHEN** a player asks about a template and names a phase that uses it
+- **THEN** the reply gives the template's rules in that phase, with the phase named in the title
+
+#### Scenario: A phase that does not use the template
+- **WHEN** a player asks about a template in a phase that does not use it
+- **THEN** the reply says so and names the phases that do
+
+#### Scenario: Unknown phase
+- **WHEN** a player names a phase the mode does not have
+- **THEN** the reply says so and lists the phases of the mode
+
+### Requirement: Unknown names are explained
+When the mode is not known, the reply SHALL list the available modes. When the template is not in the mode, the reply SHALL list the templates of that mode.
+
+#### Scenario: Unknown mode
+- **WHEN** a player asks about a mode that does not exist
+- **THEN** the reply says so and lists the modes that can be looked up
+
+#### Scenario: Template not in the mode
+- **WHEN** a player asks about Diamond in Sample Cup
+- **THEN** the reply says Diamond is not in Sample Cup and lists Jebus Cross, 6lm10a and h3dm1
+
+### Requirement: Archived modes can be looked up
+A mode that is archived SHALL still be found by the info command, and the reply SHALL say that it is archived and cannot start new matches.
+
+#### Scenario: Archived mode
+- **WHEN** a player asks about an archived mode
+- **THEN** the reply shows its information and says it is archived
+
+### Requirement: Anyone can ask, anywhere, privately
+The info command SHALL work in any channel and does not need a match. The reply SHALL be visible only to the player who asked. When the player starts typing, the bot SHALL offer the known modes, and for the template the templates of the chosen mode.
+
+#### Scenario: Outside a match
+- **WHEN** a player asks about a mode in an ordinary channel
+- **THEN** only that player sees the reply and no thread or match is created
+
+#### Scenario: Autocomplete
+- **WHEN** a player has chosen Sample Cup and starts typing a template
+- **THEN** the bot offers Jebus Cross, 6lm10a and h3dm1 (choosing one fills in its id)
+
+Follow-up, not part of this change: more facts about a template, such as its timer and a link to download it when it is not available in the game.
+
+### Requirement: The template reply says how its trade is run
+The reply about a template in a mode SHALL say how its trade is run when it is not the standard trade: with computer-player packs, or a roulette with the number of hero bans each player may make and whether the heroes are drawn after the rolls. A mirror trade is said by the line that already says the template is a mirror. When the kind differs between phases, the reply SHALL give the kind most phases use and name the phases that differ, as it does for the other settings. A standard trade SHALL get no line.
+
+#### Scenario: Packs
+- **WHEN** a player asks about a template whose trade has computer-player packs
+- **THEN** the reply says "Trade: computer-player packs"
+
+#### Scenario: A roulette
+- **WHEN** a player asks about a template traded as a roulette with 1 hero ban
+- **THEN** the reply says "Trade: roulette, 1 hero ban each, heroes drawn after the rolls"
+
+#### Scenario: Different in one phase
+- **WHEN** the final trades the template as a roulette and the groups trade it as a standard trade
+- **THEN** the reply gives the roulette line for the final only, naming the phase
+
+#### Scenario: A standard trade
+- **WHEN** a player asks about a template with a standard trade in every phase
+- **THEN** the reply has no line about the trade
+
+### Requirement: Mode info says when every game is on one template
+For a fixed phase the reply SHALL say that every game of the match is played on the phase's template, and name it, in place of the Template Selection line.
+
+#### Scenario: A fixed phase
+- **WHEN** a player asks about a mode with a fixed best-of-3 phase on Nostalgia
+- **THEN** the reply says all 3 games are played on Nostalgia, and has no Template Selection line
+
+### Requirement: The template reply names its alternatives
+The reply for a template in a mode SHALL name the alternatives the tournament states for it in each phase (as the other settings are), each with its download link where it is not built into HotA, and say they can be played instead by agreement. A template without alternatives gets no such line.
+
+#### Scenario: An alternative
+- **WHEN** a player asks about h3dm1 in a mode that states the alternative h3dm1_nc
+- **THEN** the reply says that by agreement `h3dm1_nc` can be played instead, with its download link
+
+#### Scenario: Alternatives that differ by phase
+- **WHEN** the alternatives of a template differ between phases
+- **THEN** the reply names the usual ones once and the phase with different ones on its own line, as for the other settings
+
+#### Scenario: No alternatives
+- **WHEN** a template has none
+- **THEN** the reply has no line about alternatives
+
+### Requirement: A player can look up an alternative of a mode
+An alternative a mode states for one of its templates SHALL be accepted as the template of `/info`, and offered while the template is typed, marked as an alternative. The reply SHALL say which template or templates it can replace, by agreement, that the match keeps the settings of the template it was started with, and what the catalogue states about it (that it is a mirror, where to get it, the map size, roads, computer players and the recommended simultaneous turns).
+
+#### Scenario: Looking up an alternative
+- **WHEN** a player asks `/info` for the template h3dm1 in a mode where h3dm_nc has h3dm1 as its alternative
+- **THEN** the reply says h3dm1 is an alternative to h3dm_nc that can be played instead by agreement, and gives what is known about h3dm1
+
+#### Scenario: Offered while typing
+- **WHEN** a player types the template of `/info` for that mode
+- **THEN** h3dm1 is offered, marked as an alternative
+
+#### Scenario: A template that is neither played nor an alternative
+- **WHEN** a player asks about a template that the mode neither lists nor states as an alternative
+- **THEN** the reply says it is not in the mode and lists the mode's templates
+
+### Requirement: Mode info links to the tournament's rules
+When a tournament states a link to its rules, the reply for the mode SHALL give it on a line of its own right after the description, or after the name when there is no description, as a link with no preview.
+
+#### Scenario: A mode with a link
+- **WHEN** a player asks about a mode whose tournament states a link to its rules
+- **THEN** the reply has the line "Rules: [full tournament rules](<link>)" near the top
+
+#### Scenario: A mode without a link
+- **WHEN** the tournament states none
+- **THEN** the reply has no such line

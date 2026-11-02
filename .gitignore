@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Discord bot secrets (keep .env.example tracked)
+.env.*
+!.env.example

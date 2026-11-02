@@ -1,0 +1,63 @@
+{
+  "id": "ranked",
+  "name": "Ranked",
+  "description": "Free games between two players, without a tournament. Choose the phase for the starting gold (130% or 160%) and for a mirror or a non-mirror game, then name the kind of roll you want as the template. The bot rolls the towns, the AI packs and the heroes for you and gives the settings to type into the lobby.",
+  "phases": [
+    {
+      "name": "Non-mirror 130%",
+      "best_of": 1,
+      "pool": ["ranked-std-130", "ranked-packs-130", "ranked-rlt-130", "ranked-rltpacks-130"],
+      "template_selection": {"type": "agreed"}
+    },
+    {
+      "name": "Non-mirror 160%",
+      "best_of": 1,
+      "pool": ["ranked-std-160", "ranked-packs-160", "ranked-rlt-160", "ranked-rltpacks-160"],
+      "template_selection": {"type": "agreed"}
+    },
+    {
+      "name": "Mirror 130%",
+      "best_of": 1,
+      "pool": [
+        "ranked-m-std-130",
+        "ranked-m-rlt0-130",
+        "ranked-m-rlt1-130",
+        "ranked-m-rlt2-130",
+        "ranked-m-rlt3-130"
+      ],
+      "template_selection": {"type": "agreed"}
+    },
+    {
+      "name": "Mirror 160%",
+      "best_of": 1,
+      "pool": [
+        "ranked-m-std-160",
+        "ranked-m-rlt0-160",
+        "ranked-m-rlt1-160",
+        "ranked-m-rlt2-160",
+        "ranked-m-rlt3-160"
+      ],
+      "template_selection": {"type": "agreed"}
+    }
+  ],
+  "templates": [
+    "ranked-std-130",
+    "ranked-packs-130",
+    "ranked-rlt-130",
+    "ranked-rltpacks-130",
+    "ranked-std-160",
+    "ranked-packs-160",
+    "ranked-rlt-160",
+    "ranked-rltpacks-160",
+    "ranked-m-std-130",
+    "ranked-m-rlt0-130",
+    "ranked-m-rlt1-130",
+    "ranked-m-rlt2-130",
+    "ranked-m-rlt3-130",
+    "ranked-m-std-160",
+    "ranked-m-rlt0-160",
+    "ranked-m-rlt1-160",
+    "ranked-m-rlt2-160",
+    "ranked-m-rlt3-160"
+  ]
+}

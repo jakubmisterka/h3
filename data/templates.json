@@ -1,0 +1,385 @@
+[
+  {
+    "id": "JC",
+    "name": "Jebus Cross",
+    "difficulty": 160,
+    "built_in": true,
+    "banned_heroes": ["ranloo"],
+    "map_size": { "default": "XL", "allowed": ["XL", "L"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "6lm10a",
+    "name": "6lm10a",
+    "difficulty": 160,
+    "built_in": true,
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "122"
+  },
+  {
+    "id": "h3dm1",
+    "name": "h3dm1",
+    "difficulty": 160,
+    "built_in": true,
+    "mirror": true,
+    "banned_heroes": ["thant", "ciele", "leena", "vidomina", "miriam", "giselle"],
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "Sapphire",
+    "name": "Sapphire",
+    "difficulty": 160,
+    "built_in": true,
+    "trade": "standard_with_ai_packs",
+    "map_size": { "default": "XH", "allowed": ["XH", "XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "122"
+  },
+  {
+    "id": "h3dm_nc",
+    "name": "h3dm_nc",
+    "difficulty": 160,
+    "download": "https://h3szablony.heroes.net.pl/templates/5",
+    "mirror": true,
+    "banned_heroes": ["thant", "ciele", "leena", "vidomina", "miriam", "giselle"],
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "115"
+  },
+  {
+    "id": "mt_Nebula",
+    "name": "mt_Nebula",
+    "difficulty": 160,
+    "mirror": true,
+    "download": "https://h3szablony.heroes.net.pl/templates/14",
+    "banned_heroes": ["ciele", "giselle", "thant", "vidomina", "leena", "miriam", "korbac", "fiona"],
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0, 6] },
+    "sim_turns": "121"
+  },
+  {
+    "id": "Nostalgia",
+    "name": "Nostalgia",
+    "difficulty": 160,
+    "built_in": true,
+    "additional_rules": "AI towns picked alternately, blue first; they differ from each other and the players' towns",
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "122"
+  },
+  {
+    "id": "mt_Jebus",
+    "name": "mt_Jebus",
+    "difficulty": 160,
+    "built_in": true,
+    "mirror": true,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "Diamond",
+    "name": "Diamond",
+    "difficulty": 160,
+    "built_in": true,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "117"
+  },
+  {
+    "id": "Conquest",
+    "name": "Conquest",
+    "difficulty": 130,
+    "built_in": true,
+    "banned_heroes": ["thant", "alamar", "jeddite", "dessa", "kyrre", "gunnar", "corkes", "dhuin"],
+    "map_size": { "default": "XH", "allowed": ["XH"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "123"
+  },
+  {
+    "id": "2sm2c2",
+    "name": "2sm2c(2)",
+    "difficulty": 200,
+    "map_size": { "default": "M", "allowed": ["M"] },
+    "roads": { "default": "slow+mid+fast", "allowed": ["slow+mid+fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "NineDayWonder",
+    "name": "Nine-Day Wonder",
+    "difficulty": 200,
+    "map_size": { "default": "M", "allowed": ["M"] },
+    "roads": { "default": "slow+mid+fast", "allowed": ["slow+mid+fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "114"
+  },
+  {
+    "id": "PapichBishopCup10",
+    "name": "Papich Bishop Cup 10 Edition",
+    "difficulty": 200,
+    "map_size": { "default": "M", "allowed": ["M"] },
+    "roads": { "default": "slow+mid+fast", "allowed": ["slow+mid+fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "121"
+  },
+  {
+    "id": "Boomerang",
+    "name": "Boomerang",
+    "difficulty": 160,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "ClashOfDragons",
+    "name": "Clash of Dragons",
+    "difficulty": 200,
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "117"
+  },
+  {
+    "id": "mt_JOTurbo",
+    "name": "mt_JOTurbo",
+    "difficulty": 160,
+    "mirror": true,
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "133"
+  },
+  {
+    "id": "1deaL",
+    "name": "1deaL",
+    "difficulty": 160,
+    "banned_heroes": ["ufretin", "olema", "alamar", "yog"],
+    "map_size": { "default": "L+U", "allowed": ["L+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "115"
+  },
+  {
+    "id": "OMM3",
+    "name": "One Minute Madness 3.0",
+    "difficulty": 160,
+    "download": "https://h3szablony.heroes.net.pl/templates/12",
+    "banned_heroes": ["rion", "piquedram", "solmyr", "ayden", "straker", "aislinn", "deemer", "verdish", "leena", "giselle", "agar", "vey", "loynis", "ufretin", "dhuin", "eikthurn"],
+    "allowed_heroes": ["mutare", "xeron", "kilgor", "murdoch"],
+    "map_size": { "default": "L", "allowed": ["L"] },
+    "roads": { "default": "slow", "allowed": ["slow"] },
+    "ai": { "default": 0, "allowed": [0] }
+  },
+  {
+    "id": "Ruby",
+    "name": "Ruby",
+    "difficulty": 160,
+    "download": "https://h3ercho.my.canva.site/ruby",
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "122"
+  },
+  {
+    "id": "8xm12a",
+    "name": "8xm12a",
+    "difficulty": 160,
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "122"
+  },
+  {
+    "id": "mt_MP",
+    "name": "mt_MP",
+    "difficulty": 130,
+    "download": "https://h3szablony.heroes.net.pl/templates/17",
+    "map_size": { "default": "M+U", "allowed": ["M+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "mt_BrokenMirror",
+    "name": "mt_BrokenMirror",
+    "difficulty": 160,
+    "download": "https://h3szablony.heroes.net.pl/templates/46",
+    "banned_heroes": ["aislinn", "thant", "vidomina", "gunnar", "alamar", "jeddite", "deemer", "dessa", "korbac", "ciele", "labetha", "grindan", "luna", "miriam", "leena", "giselle", "solmyr", "kyrre", "fiona"],
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "121"
+  },
+  {
+    "id": "mt_Firewalk",
+    "name": "mt_Firewalk",
+    "difficulty": 160,
+    "download": "https://github.com/mkalinowski2/ignus-h3-templates/tree/main/templates/mt_Firewalk_1.6e",
+    "mirror": true,
+    "banned_heroes": ["thant", "miriam"],
+    "allowed_heroes": ["haart_lich", "mutare", "mutare_drake", "roland", "boragus"],
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "121"
+  },
+  {
+    "id": "mt_Firewalk22a",
+    "name": "mt_Firewalk 2.2a",
+    "difficulty": 160,
+    "download": "https://github.com/mkalinowski2/ignus-h3-templates/tree/main/templates/mt_Firewalk_2.2a",
+    "mirror": true
+  },
+  {
+    "id": "ranked-std-130",
+    "name": "Standard 130%",
+    "difficulty": 130,
+    "trade": "standard",
+    "description": "A pair of towns, a bid for the town and a bid for the color."
+  },
+  {
+    "id": "ranked-packs-130",
+    "name": "Standard with AI packs 130%",
+    "difficulty": 130,
+    "trade": "standard_with_ai_packs",
+    "description": "A pair of towns and two packs of AI towns: bids for the town, the pack and the color."
+  },
+  {
+    "id": "ranked-rlt-130",
+    "name": "Roulette 130%",
+    "difficulty": 130,
+    "trade": {"kind": "roulette"},
+    "description": "A pair of towns and a hero for each of them drawn by the bot: bids for the town and the color."
+  },
+  {
+    "id": "ranked-rltpacks-130",
+    "name": "Roulette with AI packs 130%",
+    "difficulty": 130,
+    "trade": {"kind": "roulette_with_ai_packs"},
+    "description": "A pair of towns, two packs of AI towns and the heroes of the pair drawn by the bot."
+  },
+  {
+    "id": "ranked-m-std-130",
+    "name": "Mirror 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": "standard",
+    "description": "One town for both players and a bid for the color."
+  },
+  {
+    "id": "ranked-m-rlt0-130",
+    "name": "Mirror roulette 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette"},
+    "description": "One town for both players and two heroes of it drawn by the bot, with no hero bans."
+  },
+  {
+    "id": "ranked-m-rlt1-130",
+    "name": "Mirror roulette (1 ban) 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 1},
+    "description": "One town for both players and two heroes of it drawn by the bot, one hero ban per player."
+  },
+  {
+    "id": "ranked-m-rlt2-130",
+    "name": "Mirror roulette (2 bans) 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 2},
+    "description": "One town for both players and two heroes of it drawn by the bot, two hero bans per player."
+  },
+  {
+    "id": "ranked-m-rlt3-130",
+    "name": "Mirror roulette (3 bans) 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 3},
+    "description": "One town for both players and two heroes of it drawn by the bot, three hero bans per player."
+  },
+  {
+    "id": "ranked-std-160",
+    "name": "Standard 160%",
+    "difficulty": 160,
+    "trade": "standard",
+    "description": "A pair of towns, a bid for the town and a bid for the color."
+  },
+  {
+    "id": "ranked-packs-160",
+    "name": "Standard with AI packs 160%",
+    "difficulty": 160,
+    "trade": "standard_with_ai_packs",
+    "description": "A pair of towns and two packs of AI towns: bids for the town, the pack and the color."
+  },
+  {
+    "id": "ranked-rlt-160",
+    "name": "Roulette 160%",
+    "difficulty": 160,
+    "trade": {"kind": "roulette"},
+    "description": "A pair of towns and a hero for each of them drawn by the bot: bids for the town and the color."
+  },
+  {
+    "id": "ranked-rltpacks-160",
+    "name": "Roulette with AI packs 160%",
+    "difficulty": 160,
+    "trade": {"kind": "roulette_with_ai_packs"},
+    "description": "A pair of towns, two packs of AI towns and the heroes of the pair drawn by the bot."
+  },
+  {
+    "id": "ranked-m-std-160",
+    "name": "Mirror 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": "standard",
+    "description": "One town for both players and a bid for the color."
+  },
+  {
+    "id": "ranked-m-rlt0-160",
+    "name": "Mirror roulette 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette"},
+    "description": "One town for both players and two heroes of it drawn by the bot, with no hero bans."
+  },
+  {
+    "id": "ranked-m-rlt1-160",
+    "name": "Mirror roulette (1 ban) 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 1},
+    "description": "One town for both players and two heroes of it drawn by the bot, one hero ban per player."
+  },
+  {
+    "id": "ranked-m-rlt2-160",
+    "name": "Mirror roulette (2 bans) 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 2},
+    "description": "One town for both players and two heroes of it drawn by the bot, two hero bans per player."
+  },
+  {
+    "id": "ranked-m-rlt3-160",
+    "name": "Mirror roulette (3 bans) 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 3},
+    "description": "One town for both players and two heroes of it drawn by the bot, three hero bans per player."
+  }
+]

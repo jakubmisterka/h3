@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Mission: a Discord bot that moves the pre-game ritual of Heroes of Might and
+  Magic III (Horn of the Abyss) tournaments out of the game lobby and into
+  Discord, so games start the moment players enter the lobby. Games last 6h+,
+  and every minute spent in the lobby on rules, templates, timers, coinflip,
+  bans, town rolls and town trading is avoidable.
+  Only h3.gg tournaments are supported; all servers choose from the same
+  catalogue of tournament formats.
+  Tournament formats are JSON rule-set files in the repo that outside
+  contributors add via pull request. Finished tournaments are archived, not
+  deleted, so old results and rules stay reproducible.
+  Domain terms (templates, towns, bans, trading) follow the community wiki at
+  https://heroes.thelazy.net and h3.gg tournament rules; when a rule is unclear,
+  record it as an open question in the spec instead of guessing.
+  The repo is public and shared with the community: favor readable code, plain
+  language specs, and no secrets (tokens live in gitignored .env files).
+
+rules:
+  proposal:
+    - State what is out of scope
+    - Describe the player-visible flow before any technical detail
+  specs:
+    - Write requirements from the players' point of view, with WHEN/THEN scenarios
+    - Mark unresolved tournament-rule questions as "Open question:"
+  design:
+    - Keep Discord-facing handlers thin; rule logic lives in plain, testable functions
+  tasks:
+    - Every task that adds rule logic includes a pytest task
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tournament format",
+  "description": "The shape of a format file. Rules that compare values (pool size, number of games, known templates and towns) are checked in the code, not here.",
+  "type": "object",
+  "required": ["id", "name", "templates", "phases"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Lowercase words joined by dashes, for example sample-cup. Must match the file name."
+    },
+    "name": { "type": "string", "minLength": 1, "description": "The name players see, for example Sample Cup." },
+    "description": { "type": "string", "description": "What the tournament is, shown by /info. At most 1000 characters." },
+    "rules_link": { "type": "string", "description": "A link starting with https:// to the tournament's full rules, shown at the start of a match and by /info." },
+    "additional_rules": { "type": "string", "description": "Additional rules of the tournament as a whole, shown by /info. At most 1000 characters. Rules for one template go in its settings." },
+    "status": {
+      "enum": ["active", "archived"],
+      "description": "Archived formats stay in the repository but cannot start new matches. Default: active."
+    },
+    "thread_visibility": {
+      "enum": ["public", "private"],
+      "description": "Who can read the match thread. Default: public."
+    },
+    "roll_rules": {
+      "$ref": "#/$defs/rollRules",
+      "description": "Roll rules for every template of the tournament. Leave out what you do not change: the defaults apply."
+    },
+    "settings": {
+      "$ref": "#/$defs/tournamentSettings",
+      "description": "The timer, and the recommended simultaneous turns, for every template of the tournament. Roads, map size and computer players can only be chosen for a template."
+    },
+    "allowed_towns": {
+      "$ref": "#/$defs/townList",
+      "description": "Towns players can get in every phase, unless a phase states its own list. Leave it out to allow every town."
+    },
+    "templates": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/templateEntry" },
+      "description": "Every template used in the tournament, each once. Write a plain id, or an object to give the template settings of its own in all phases."
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/phase" },
+      "description": "One or more phases, for example group stage and knockout."
+    }
+  },
+  "$defs": {
+    "townList": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "type": "string" },
+      "description": "Town ids from data/towns.json. At least two, because the bot draws a pair of different towns from them."
+    },
+    "rollRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "roll_cost": { "type": "integer", "minimum": 0, "multipleOf": 100, "description": "Gold paid to roll the town pair, in whole hundreds (gold moves in steps of 100). Default: 500." },
+        "rolls_per_player": { "type": "integer", "minimum": 0, "description": "Rolls each player may use. Default: 1." },
+        "max_roll_bans": { "type": "integer", "minimum": 0, "description": "Towns a player may ban when rolling. Default: 2." }
+      }
+    },
+    "tournamentSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timer": { "type": "string", "description": "The chess timer of every game, written like 12:00+06:00+02:00: the time each player has at the start, the time added at the beginning of each of their turns, and the time added when each fight starts. Always mm:ss, two digits everywhere, seconds below 60." },
+        "sim_turns": { "type": "string", "description": "How long simultaneous turns are recommended to last: the last day, as month, week and day in digits, for example 117 (month 1, week 1, day 7). Replaces what the template recommends." },
+        "roads": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "map_size": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "ai": { "not": {}, "description": "Roads, map size and computer players can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "trade": { "not": {}, "description": "How a game is traded can only be chosen for a template (in the tournament's list of templates or in a phase's pool), not for the whole tournament." },
+        "download": { "not": {}, "description": "A download link can only be given for a template (in the tournament's list of templates or in a phase's pool)." },
+        "additional_rules": { "not": {}, "description": "Rules for the whole tournament are written as \"additional_rules\" next to \"name\", not in \"settings\". In \"settings\" they are for one template." }
+      }
+    },
+    "templateSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timer": { "type": "string", "description": "The chess timer for this template, like 12:00+06:00+02:00. Replaces the tournament's timer." },
+        "sim_turns": { "type": "string", "description": "The recommended last day of simultaneous turns for this template, like 117. Replaces what the template recommends." },
+        "roads": { "type": "string", "description": "The roads for this template: none, or slow, mid and fast joined by + in that order (for example mid or slow+mid). Must be one of the values the template allows." },
+        "map_size": { "type": "string", "description": "The map size for this template: S, M, L, XL, H, XH or G, with +U for underground (for example L+U). Must be one of the sizes the template allows." },
+        "ai": { "type": "integer", "minimum": 0, "maximum": 6, "description": "The number of computer players for this template, 0 to 6. Must be one of the numbers the template allows." },
+        "additional_rules": { "type": "string", "description": "Additional rules for this template, at most 1000 characters. Replace the rules the template states." },
+        "trade": {
+          "description": "How a game on this template is traded: standard, standard_with_ai_packs, roulette or roulette_with_ai_packs (a name, or an object with kind, hero_bans and roll_before_heroes).",
+          "type": ["string", "object"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["standard", "standard_with_ai_packs", "roulette", "roulette_with_ai_packs"] },
+            "hero_bans": { "type": "integer", "minimum": 0, "maximum": 3, "description": "Heroes each player may ban before the heroes are drawn (roulette only). Default: 0." },
+            "roll_before_heroes": { "type": "boolean", "description": "true (default): the heroes are drawn after the rolls. false: together with the towns, and then no hero can be banned (roulette only)." }
+          }
+        },
+        "download": { "type": "string", "description": "A link starting with https:// where the version of the template this tournament plays can be downloaded. Use it when it is not the version built into HotA." },
+        "alternatives": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ids of other templates of data/templates.json that the players may play instead of this one, if they agree. Each must be built into HotA or have a download link in the catalogue."
+        }
+      }
+    },
+    "templateEntry": {
+      "description": "A template id from data/templates.json, or an object with the id and settings for this template. Settings written here win over the ones written for the whole tournament, field by field.",
+      "if": { "type": "object" },
+      "then": {
+        "required": ["template"],
+        "additionalProperties": false,
+        "properties": {
+          "template": { "type": "string", "minLength": 1, "description": "Template id from data/templates.json." },
+          "roll_rules": { "$ref": "#/$defs/rollRules" },
+          "settings": { "$ref": "#/$defs/templateSettings" }
+        }
+      },
+      "else": { "type": "string", "minLength": 1 }
+    },
+    "phase": {
+      "type": "object",
+      "required": ["name", "best_of", "template_selection"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "best_of": {
+          "enum": [1, 2, 3, 5, 7, 9],
+          "description": "Games in the match. 2 is for league formats where both games are always played."
+        },
+        "pool": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/templateEntry" },
+          "description": "The templates of the tournament that this phase uses. An object entry gives a template settings for this phase only. Leave the pool out to use all the templates of the tournament."
+        },
+        "template_selection": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "enum": ["sequence", "agreed", "fixed"],
+              "description": "sequence: bans and picks in a fixed order. agreed: the players agree on the template. fixed: the phase has one template and every game is played on it."
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "type": { "const": "sequence" } }, "required": ["type"] },
+              "then": {
+                "required": ["steps"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {},
+                  "steps": {
+                    "type": "array",
+                    "minItems": 1,
+                    "description": "What happens, in order. The games are played in the order of the picks, then the decider.",
+                    "items": {
+                      "type": "object",
+                      "required": ["do"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "who": { "enum": ["A", "B"], "description": "Who acts: A is the coinflip winner, B the other player. Not used by the decider." },
+                        "do": {
+                          "enum": ["ban", "pick", "decider"],
+                          "description": "ban or pick by the player in 'who'. decider: the template that is left becomes the last game. It has no 'who' and must be the last step."
+                        }
+                      },
+                      "if": { "properties": { "do": { "enum": ["ban", "pick"] } }, "required": ["do"] },
+                      "then": { "required": ["who"] }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "agreed" } }, "required": ["type"] },
+              "then": { "additionalProperties": false, "properties": { "type": {} } }
+            },
+            {
+              "if": { "properties": { "type": { "const": "fixed" } }, "required": ["type"] },
+              "then": { "additionalProperties": false, "properties": { "type": {} } }
+            }
+          ]
+        },
+        "allowed_towns": {
+          "$ref": "#/$defs/townList",
+          "description": "Towns players can get in this phase. This list replaces the tournament's list. Leave it out to use the tournament's."
+        }
+      }
+    }
+  }
+}
