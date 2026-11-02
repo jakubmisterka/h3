@@ -290,3 +290,14 @@ Where the thread says what is played on a game's template at the start of its tr
 #### Scenario: The match is unchanged
 - **WHEN** the players agree to play the alternative
 - **THEN** the bot is not told, and the starting gold and the lobby settings are those of the template of the game
+
+### Requirement: The rules at the start of a match link to the tournament's rules
+When a tournament states a link to its rules, the rules the bot posts at the start of a match SHALL include it, as one message of its own right after the number of games, as a link with no preview. A tournament that states none gets no such message.
+
+#### Scenario: A tournament with a link
+- **WHEN** a match starts in a tournament that states a link to its rules
+- **THEN** the message after "Format: BO3" is "Rules: [full tournament rules](<link>)"
+
+#### Scenario: A tournament without a link
+- **WHEN** a match starts in a tournament that states none
+- **THEN** the rules messages have no line about the rules document
