@@ -56,6 +56,7 @@
     "id": "mt_Nebula",
     "name": "mt_Nebula",
     "difficulty": 160,
+    "mirror": true,
     "download": "https://h3szablony.heroes.net.pl/templates/14",
     "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
     "roads": { "default": "fast", "allowed": ["fast"] },
@@ -176,5 +177,62 @@
     "map_size": { "default": "L", "allowed": ["L"] },
     "roads": { "default": "slow", "allowed": ["slow"] },
     "ai": { "default": 0, "allowed": [0] }
+  },
+  {
+    "id": "Ruby",
+    "name": "Ruby",
+    "difficulty": 160,
+    "download": "https://h3ercho.my.canva.site/ruby",
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "122"
+  },
+  {
+    "id": "8xm12a",
+    "name": "8xm12a",
+    "difficulty": 160,
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 6, "allowed": [6] },
+    "sim_turns": "122"
+  },
+  {
+    "id": "mt_MP",
+    "name": "mt_MP",
+    "difficulty": 130,
+    "download": "https://h3szablony.heroes.net.pl/templates/17",
+    "map_size": { "default": "M+U", "allowed": ["M+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "116"
+  },
+  {
+    "id": "mt_BrokenMirror",
+    "name": "mt_BrokenMirror",
+    "difficulty": 160,
+    "download": "https://h3szablony.heroes.net.pl/templates/46",
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "mid", "allowed": ["mid"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "121"
+  },
+  {
+    "id": "mt_Firewalk",
+    "name": "mt_Firewalk",
+    "difficulty": 160,
+    "download": "https://github.com/mkalinowski2/ignus-h3-templates/tree/main/templates/mt_Firewalk_1.6e",
+    "mirror": true,
+    "map_size": { "default": "XL+U", "allowed": ["XL+U"] },
+    "roads": { "default": "fast", "allowed": ["fast"] },
+    "ai": { "default": 0, "allowed": [0] },
+    "sim_turns": "121"
+  },
+  {
+    "id": "mt_Firewalk22a",
+    "name": "mt_Firewalk 2.2a",
+    "difficulty": 160,
+    "download": "https://github.com/mkalinowski2/ignus-h3-templates/tree/main/templates/mt_Firewalk_2.2a",
+    "mirror": true
   }
 ]

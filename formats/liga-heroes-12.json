@@ -1,0 +1,209 @@
+{
+  "id": "liga-heroes-12",
+  "name": "Liga Heroes season 12",
+  "description": "Classic divisions 1 to 6 and the Blitz divisions play round-robin matches of two games. Ties are broken by one game on h3dm1, and the best players meet in the Champions League (best-of-3 knockout), which plays the league-wide templates.",
+  "additional_rules": "The classic clock is 18:00+07:30+01:30, the Blitz divisions play 10:00+05:00+01:00. The starting hero and bonus cannot be changed by a restart. On a mirror template the winner of the color bid bans 0 to 3 heroes of the drawn town, then the other player picks a hero first, then the winner picks one of the others.",
+  "settings": {"timer": "18:00+07:30+01:30"},
+  "templates": [
+    {
+      "template": "h3dm1",
+      "roll_rules": {"roll_cost": 300},
+      "settings": {
+        "sim_turns": "117",
+        "additional_rules": "Subjective restart: one on turn 111. No early encounter restart.",
+        "alternatives": ["h3dm_nc"]
+      }
+    },
+    {
+      "template": "6lm10a",
+      "roll_rules": {"roll_cost": 400},
+      "settings": {
+        "sim_turns": "122",
+        "additional_rules": "Subjective restarts: two on turn 111 or one on turn 112. Early encounter: if the players interact (a fight, or taking an object of the opponent) by turn 116, either may have the map generated again; after such a restart the turn is 115."
+      }
+    },
+    {
+      "template": "mt_Nebula",
+      "roll_rules": {"roll_cost": 400},
+      "settings": {"sim_turns": "121", "additional_rules": "Subjective restart: one on turn 111. No early encounter restart."}
+    },
+    {
+      "template": "Sapphire",
+      "roll_rules": {"roll_cost": 400},
+      "settings": {
+        "sim_turns": "121",
+        "additional_rules": "Subjective restarts: two on turn 111 or one on turn 112. Early encounter: if the players interact (a fight, or taking an object of the opponent) by turn 116, either may have the map generated again; after such a restart the turn is 115."
+      }
+    },
+    {
+      "template": "Nostalgia",
+      "roll_rules": {"roll_cost": 400},
+      "settings": {
+        "sim_turns": "122",
+        "additional_rules": "AI towns picked alternately, blue first; they differ from each other and the players' towns. Subjective restarts: two on turn 111 or one on turn 112. Early encounter: if the players interact (a fight, or taking an object of the opponent) by turn 115, either may have the map generated again; after such a restart the turn is 114."
+      }
+    },
+    {
+      "template": "mt_BrokenMirror",
+      "roll_rules": {"roll_cost": 500},
+      "settings": {"sim_turns": "121", "additional_rules": "Subjective restart: one on turn 111. No early encounter restart."}
+    },
+    {
+      "template": "Conquest",
+      "roll_rules": {"roll_cost": 600},
+      "settings": {
+        "sim_turns": "123",
+        "additional_rules": "Subjective restarts: two on turn 111 or one on turn 112. Early encounter: if the players interact (a fight, or taking an object of the opponent) by turn 116, either may have the map generated again; after such a restart the turn is 115."
+      }
+    },
+    {
+      "template": "8xm12a",
+      "roll_rules": {"roll_cost": 400},
+      "settings": {
+        "sim_turns": "122",
+        "additional_rules": "Subjective restarts: two on turn 111 or one on turn 112. Early encounter: if the players interact (a fight, or taking an object of the opponent) by turn 116, either may have the map generated again; after such a restart the turn is 115."
+      }
+    },
+    {
+      "template": "mt_MP",
+      "roll_rules": {"roll_cost": 500},
+      "settings": {"sim_turns": "116", "additional_rules": "Subjective restart: one on turn 111. No early encounter restart."}
+    },
+    {
+      "template": "mt_Firewalk",
+      "roll_rules": { "roll_cost": 500 },
+      "settings": {
+        "alternatives": ["mt_Firewalk22a"],
+        "additional_rules": "Subjective restart: one on turn 111. No early encounter restart. Technical restart if at least 60% of the zone's content or the Dragon Utopias in their zone are missing."
+      }
+    },
+    {
+      "template": "Ruby",
+      "roll_rules": {"roll_cost": 400},
+      "settings": {"sim_turns": "122", "additional_rules": "Subjective restarts: two on turn 111 or one on turn 112."}
+    }
+  ],
+  "phases": [
+    {
+      "name": "Div 1",
+      "best_of": 2,
+      "pool": ["h3dm1", "6lm10a", "mt_Nebula", "Sapphire", "Nostalgia", "mt_BrokenMirror", "Conquest"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 2",
+      "best_of": 2,
+      "pool": ["h3dm1", "6lm10a", "mt_Nebula", "Sapphire", "Nostalgia", "8xm12a", "Conquest"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 3",
+      "best_of": 2,
+      "pool": ["h3dm1", "6lm10a", "mt_Nebula", "Sapphire", "Nostalgia", "8xm12a", "Conquest"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 4",
+      "best_of": 2,
+      "pool": ["h3dm1", "6lm10a", "mt_Nebula", "Sapphire", "Nostalgia", "8xm12a", "mt_MP"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 5",
+      "best_of": 2,
+      "pool": ["h3dm1", "6lm10a", "mt_Nebula", "Sapphire", "Nostalgia", "8xm12a", "Conquest"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 6",
+      "best_of": 2,
+      "pool": ["h3dm1", "6lm10a", "mt_Nebula", "Sapphire", "Nostalgia", "mt_Firewalk", "Conquest"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 1 Blitz (Gunnar)",
+      "best_of": 2,
+      "pool": [
+        {"template": "Ruby", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "h3dm1", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "6lm10a", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "8xm12a", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Conquest", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Sapphire", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Nostalgia", "settings": {"timer": "10:00+05:00+01:00"}}
+      ],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 2a Blitz (Dessa)",
+      "best_of": 2,
+      "pool": [
+        {"template": "h3dm1", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "6lm10a", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "8xm12a", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Conquest", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Sapphire", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Nostalgia", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "mt_Nebula", "settings": {"timer": "10:00+05:00+01:00"}}
+      ],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {
+      "name": "Div 2b Blitz (Kyrre)",
+      "best_of": 2,
+      "pool": [
+        {"template": "h3dm1", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "6lm10a", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "8xm12a", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Conquest", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Sapphire", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "Nostalgia", "settings": {"timer": "10:00+05:00+01:00"}},
+        {"template": "mt_Nebula", "settings": {"timer": "10:00+05:00+01:00"}}
+      ],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+      }
+    },
+    {"name": "Tiebreak", "best_of": 1, "pool": ["h3dm1"], "template_selection": {"type": "fixed"}},
+    {
+      "name": "Champions League",
+      "best_of": 3,
+      "pool": ["h3dm1", "6lm10a", "mt_Nebula", "Sapphire", "Nostalgia"],
+      "template_selection": {
+        "type": "sequence",
+        "steps": [
+          {"who": "A", "do": "ban"},
+          {"who": "B", "do": "ban"},
+          {"who": "A", "do": "pick"},
+          {"who": "B", "do": "pick"},
+          {"do": "decider"}
+        ]
+      }
+    }
+  ]
+}
