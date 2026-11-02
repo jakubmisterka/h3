@@ -245,5 +245,141 @@
     "difficulty": 160,
     "download": "https://github.com/mkalinowski2/ignus-h3-templates/tree/main/templates/mt_Firewalk_2.2a",
     "mirror": true
+  },
+  {
+    "id": "ranked-std-130",
+    "name": "Standard 130%",
+    "difficulty": 130,
+    "trade": "standard",
+    "description": "A pair of towns, a bid for the town and a bid for the color."
+  },
+  {
+    "id": "ranked-packs-130",
+    "name": "Standard with AI packs 130%",
+    "difficulty": 130,
+    "trade": "standard_with_ai_packs",
+    "description": "A pair of towns and two packs of AI towns: bids for the town, the pack and the color."
+  },
+  {
+    "id": "ranked-rlt-130",
+    "name": "Roulette 130%",
+    "difficulty": 130,
+    "trade": {"kind": "roulette"},
+    "description": "A pair of towns and a hero for each of them drawn by the bot: bids for the town and the color."
+  },
+  {
+    "id": "ranked-rltpacks-130",
+    "name": "Roulette with AI packs 130%",
+    "difficulty": 130,
+    "trade": {"kind": "roulette_with_ai_packs"},
+    "description": "A pair of towns, two packs of AI towns and the heroes of the pair drawn by the bot."
+  },
+  {
+    "id": "ranked-m-std-130",
+    "name": "Mirror 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": "standard",
+    "description": "One town for both players and a bid for the color."
+  },
+  {
+    "id": "ranked-m-rlt0-130",
+    "name": "Mirror roulette 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette"},
+    "description": "One town for both players and two heroes of it drawn by the bot, with no hero bans."
+  },
+  {
+    "id": "ranked-m-rlt1-130",
+    "name": "Mirror roulette (1 ban) 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 1},
+    "description": "One town for both players and two heroes of it drawn by the bot, one hero ban per player."
+  },
+  {
+    "id": "ranked-m-rlt2-130",
+    "name": "Mirror roulette (2 bans) 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 2},
+    "description": "One town for both players and two heroes of it drawn by the bot, two hero bans per player."
+  },
+  {
+    "id": "ranked-m-rlt3-130",
+    "name": "Mirror roulette (3 bans) 130%",
+    "difficulty": 130,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 3},
+    "description": "One town for both players and two heroes of it drawn by the bot, three hero bans per player."
+  },
+  {
+    "id": "ranked-std-160",
+    "name": "Standard 160%",
+    "difficulty": 160,
+    "trade": "standard",
+    "description": "A pair of towns, a bid for the town and a bid for the color."
+  },
+  {
+    "id": "ranked-packs-160",
+    "name": "Standard with AI packs 160%",
+    "difficulty": 160,
+    "trade": "standard_with_ai_packs",
+    "description": "A pair of towns and two packs of AI towns: bids for the town, the pack and the color."
+  },
+  {
+    "id": "ranked-rlt-160",
+    "name": "Roulette 160%",
+    "difficulty": 160,
+    "trade": {"kind": "roulette"},
+    "description": "A pair of towns and a hero for each of them drawn by the bot: bids for the town and the color."
+  },
+  {
+    "id": "ranked-rltpacks-160",
+    "name": "Roulette with AI packs 160%",
+    "difficulty": 160,
+    "trade": {"kind": "roulette_with_ai_packs"},
+    "description": "A pair of towns, two packs of AI towns and the heroes of the pair drawn by the bot."
+  },
+  {
+    "id": "ranked-m-std-160",
+    "name": "Mirror 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": "standard",
+    "description": "One town for both players and a bid for the color."
+  },
+  {
+    "id": "ranked-m-rlt0-160",
+    "name": "Mirror roulette 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette"},
+    "description": "One town for both players and two heroes of it drawn by the bot, with no hero bans."
+  },
+  {
+    "id": "ranked-m-rlt1-160",
+    "name": "Mirror roulette (1 ban) 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 1},
+    "description": "One town for both players and two heroes of it drawn by the bot, one hero ban per player."
+  },
+  {
+    "id": "ranked-m-rlt2-160",
+    "name": "Mirror roulette (2 bans) 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 2},
+    "description": "One town for both players and two heroes of it drawn by the bot, two hero bans per player."
+  },
+  {
+    "id": "ranked-m-rlt3-160",
+    "name": "Mirror roulette (3 bans) 160%",
+    "difficulty": 160,
+    "mirror": true,
+    "trade": {"kind": "roulette", "hero_bans": 3},
+    "description": "One town for both players and two heroes of it drawn by the bot, three hero bans per player."
   }
 ]

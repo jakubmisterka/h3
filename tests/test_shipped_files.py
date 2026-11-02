@@ -135,3 +135,22 @@ def test_the_heroes_banned_on_mirror_templates_are_flagged(heroes):
 def test_the_trade_example_in_the_formats_readme_is_valid_for_the_templates_of_the_data_readme(towns, heroes):
     catalogue = parse_templates(_readme_block("data/README.md", "templates example"), "the example in data/README.md")
     assert validate_format(_readme_block("formats/README.md", "trade example"), catalogue, towns, heroes) == []
+
+
+def test_the_ranked_mode_has_a_phase_for_each_difficulty_and_kind_of_game_with_the_rolls_players_can_name(templates, towns, heroes):
+    fmt = load_format(ROOT / "formats" / "ranked.json", templates, towns, heroes)
+    assert [(phase.name, phase.agreed, phase.best_of) for phase in fmt.phases] == [
+        ("Non-mirror 130%", True, 1), ("Non-mirror 160%", True, 1), ("Mirror 130%", True, 1), ("Mirror 160%", True, 1),
+    ]
+    for phase in fmt.phases:
+        kinds = []
+        for template in phase.pool_ids:
+            entry = templates.find(template)
+            assert bool(entry.details.get("mirror")) == phase.name.startswith("Mirror")
+            assert entry.details["difficulty"] == int(phase.name.rstrip("%").split()[-1])
+            trade = entry.details["trade"]
+            kinds.append((trade.name, trade.hero_bans))
+        if phase.name.startswith("Mirror"):
+            assert kinds == [("standard", 0), ("roulette", 0), ("roulette", 1), ("roulette", 2), ("roulette", 3)]
+        else:
+            assert kinds == [("standard", 0), ("standard_with_ai_packs", 0), ("roulette", 0), ("roulette_with_ai_packs", 0)]
