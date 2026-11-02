@@ -4,7 +4,6 @@ The tournament formats the bot can run. Each `.json` file here (except `schema.j
 
 | File | What it is |
 |---|---|
-| `el-classico.json` | A format made for development, to be replaced by real tournaments: a best-of-1 with three templates, where A bans one, B bans one, and the template that is left is played. The smallest working example. |
 | `mp2026.json` | Mistrzostwa Polski 2026: a group phase (best of 1, three templates), an elimination phase (best of 3, seven templates) and a final (best of 3, all nine). A larger example with phases that use different parts of one template list. |
 | `schema.json` | Describes the shape a format file must have: which fields exist, which are required, which values are allowed. Every field has a `description` in it. |
 

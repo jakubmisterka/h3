@@ -226,7 +226,7 @@ Whenever the thread announces the template a game is played on before its trade,
 The first messages of a match thread SHALL be short, and laid out on lines. The record that starts the match SHALL give the two players, then the mode, the phase and, when it was named, the template, each on its own line. The rules that follow SHALL say how many games the match has as "Format: " and "BO" and the number (Format: BO1, BO3, BO5). They SHALL NOT say the template again when the record has it, and SHALL NOT say who A and B are before the coinflip, since the coinflip says it. A match thread SHALL NOT say "This is your match thread".
 
 #### Scenario: The record of the start
-- **WHEN** a match starts in El Classico, phase Main, with the template h3dm1
+- **WHEN** a match starts in Mistrzostwa Polski 2026, phase Group phase, with the template h3dm1
 - **THEN** the record gives the players on the first line and the mode, the phase and the template each on a line of their own
 
 #### Scenario: The number of games
