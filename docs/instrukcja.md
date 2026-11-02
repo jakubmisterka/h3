@@ -460,7 +460,6 @@ Pliki turniejów są w katalogu [`formats/`](../formats/). Aktualna lista:
 | `exotic-tournament-3` | Exotic Tournament III | dziewięć nietypowych szablonów; BO3, dogrywka BO1, finał BO5 |
 | `liga-heroes-12` | Liga Heroes sezon 12 | dywizje 1–6 oraz Blitz (mecze BO2), dogrywki na h3dm, Liga Mistrzów BO3 |
 | `ranked` | Ranked | luźne gry bez turnieju: wybierasz fazę (130% lub 160%, lustrzana lub nie) i podajesz jako szablon rodzaj losowania, a bot losuje miasta, paczki AI i bohaterów |
-| `el-classico` | El Classico | tryb testowy: BO3, ruletka na kilku szablonach |
 
 Każdą fazę wybierasz przy `/match start` w opcji `phase`. Tryby z jedną fazą nie pytają o nią.
 
