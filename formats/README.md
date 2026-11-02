@@ -262,7 +262,7 @@ Players write the order as letters: `AB` for "A bans, B bans, then decider". The
 
 Three rules a file must follow, and each is checked:
 
-- **Every template in the pool is used by exactly one step:** banned, picked, or taken by the decider. So the pool has **as many templates as the sequence has steps**.
+- **Every template in the pool is used by exactly one step:** banned, picked, or taken by the decider. So the pool has **as many templates as the sequence has steps**. The exception is a sequence with **no decider** (a league match of two games, for example ban, ban, pick, pick): then the pool may have **more** templates than steps, and the ones that are neither banned nor picked are not played. It still needs at least one template for every step.
 - **The decider, if there is one, is the last step** and names no player.
 - **The picks plus the decider make as many games as `best_of`** (`1`, `2`, `3`, `5`, `7` or `9`). A best-of-3 has two picks and a decider. A league best-of-2 can be two picks and no decider.
 

@@ -181,14 +181,20 @@ def _sequence_problems(phase: dict, label: str, pool_size: int) -> list[str]:
     steps = phase["template_selection"]["steps"]
     best_of = phase["best_of"]
 
-    # Every template in the pool is used by exactly one step: banned, picked, or taken by the decider.
-    if pool_size != len(steps):
+    deciders = [i for i, step in enumerate(steps) if step["do"] == "decider"]
+
+    # Every template in the pool is used by exactly one step: banned, picked, or taken by the decider. Without a
+    # decider, templates that are neither banned nor picked are simply not played, as in a league match of two games.
+    if deciders and pool_size != len(steps):
         problems.append(
             f"{label}: the pool must have as many templates as the sequence has steps, because each template "
             f"is banned, picked or taken by the decider ({pool_size} templates, {len(steps)} steps)"
         )
-
-    deciders = [i for i, step in enumerate(steps) if step["do"] == "decider"]
+    elif not deciders and pool_size < len(steps):
+        problems.append(
+            f"{label}: the pool needs at least as many templates as the sequence has steps, because each step "
+            f"bans or picks a different template ({pool_size} templates, {len(steps)} steps)"
+        )
     if len(deciders) > 1:
         problems.append(f"{label}: the sequence has {len(deciders)} decider steps, it can have only one")
     elif deciders and deciders[0] != len(steps) - 1:

@@ -207,7 +207,7 @@ def test_every_shape_problem_is_reported_at_once(good_format, templates, towns):
 
 
 def test_the_pool_must_have_as_many_templates_as_there_are_steps(good_format, templates, towns):
-    make_phase(good_format, 3, NINE, NINE_STEPS[:7])  # 9 templates but only 7 steps
+    make_phase(good_format, 3, NINE, NINE_STEPS[:6] + [DECIDER])  # 9 templates but only 7 steps, and a decider
     messages = problems(good_format, templates, towns)
     assert any("the pool must have as many templates as the sequence has steps" in m and "9 templates, 7 steps" in m for m in messages)
 
@@ -446,3 +446,22 @@ def test_a_fixed_phase_with_steps_is_refused(good_format, templates, towns):
 
 def test_the_other_phases_are_not_fixed(good_format, templates, towns):
     assert not parse_format(good_format, templates, towns).phases[0].fixed
+
+
+# --- a league phase leaves templates unused --------------------------------------------------------------------
+
+
+LEAGUE_STEPS = [{"who": "A", "do": "ban"}, {"who": "B", "do": "ban"}, {"who": "A", "do": "pick"}, {"who": "B", "do": "pick"}]
+
+
+def test_a_two_game_phase_without_a_decider_may_leave_templates_unused(good_format, templates, towns):
+    make_phase(good_format, 2, NINE[:7], LEAGUE_STEPS)  # 7 templates, 4 steps: three are never played
+    assert problems(good_format, templates, towns) == []
+    phase = parse_format(good_format, templates, towns).phases[0]
+    assert len(phase.pool_ids) == 7 and len(phase.steps) == 4
+
+
+def test_a_phase_without_a_decider_still_needs_a_template_for_every_step(good_format, templates, towns):
+    make_phase(good_format, 2, NINE[:3], LEAGUE_STEPS)
+    messages = problems(good_format, templates, towns)
+    assert any("the pool needs at least as many templates as the sequence has steps" in m and "3 templates, 4 steps" in m for m in messages)
