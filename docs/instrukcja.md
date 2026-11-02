@@ -1,13 +1,146 @@
-# Bot do pre-game turniejów HotA – instrukcja
+# Bot pomocniczy do Heroes III (HotA): informacje o turniejach i trade na Discordzie
 
-Bot na Discordzie dla społeczności Heroes of Might and Magic III (Horn of the Abyss). Przeprowadza **całą fazę przed grą** meczu turniejowego, zanim gracze wejdą do lobby: rzut monetą, bany i picki szablonów, losowanie miast, licytację o miasto, paczkę AI i kolor, losowanie bohaterów (ruletka), a na końcu podaje gotowe ustawienia do wpisania w lobby.
+Bot na Discordzie dla społeczności Heroes of Might and Magic III (Horn of the Abyss). Robi dwie rzeczy:
 
-Obsługuje turnieje organizowane przez h3.gg. Wszystkie formaty turniejów to pliki JSON w repozytorium, więc każdy może dodać nowy przez pull request (zob. [Dla organizatorów](#dla-organizatorów-i-kontrybutorów)).
+1. **Informacje o turniejach.** `/info` podaje w jednym miejscu to, co zwykle trzeba szukać w regulaminie: fazy i formaty (BO), kolejność banów i picków, pulę szablonów, a dla każdego szablonu trudność, koszt rolla, timer, mapę, drogi, tury symultaniczne, dodatkowe zasady i **link do pobrania**. Turniej może też podawać link do pełnego regulaminu.
+2. **Trade z poziomu Discorda.** Cała faza przed grą odbywa się w wątku Discorda, a nie w lobby: rzut monetą, bany i picki szablonów, losowanie miast i paczek AI, roll z banowaniem miast, losowanie bohaterów (ruletka), licytacje o miasto, paczkę, kolor lub pierwszy wybór, przeliczanie złota i na końcu gotowe ustawienia do wpisania w lobby. Dzięki temu w lobby tylko wpisujecie ustawienia i zaczynacie grę.
 
-> **Zrzuty ekranu.** Przykłady poniżej są prawdziwymi wiadomościami bota, wygenerowanymi z aktualnych plików turniejów. Miejsca na zrzuty ekranu z Discorda są opisane w [obrazy/README.md](obrazy/README.md).
+Bot obsługuje turnieje organizowane przez h3.gg oraz tryb Ranked do luźnych gier z losowaniem. Formaty turniejów to pliki JSON w repozytorium, więc każdy może dodać nowy przez pull request (zob. [Dla organizatorów](#dla-organizatorów-i-kontrybutorów)). Wszystkie przykłady poniżej są prawdziwymi wiadomościami bota.
+
+## Cztery przykłady użycia
+
+Cztery typowe scenariusze, krok po kroku. Przy każdym kroku opisuję, co robi bot. Reguły gry i turniejów zakładam znane.
+
+### 1. Informacje o szablonie turnieju i link do pobrania
+
+Przykład: One Minute Madness 3.0 w Exotic Tournament III.
+
+**Krok 1. `/info mode:exotic-tournament-3 template:One Minute Madness 3.0`**
+Komenda działa w każdym kanale. Tryb i szablon podpowiadają się podczas pisania, szablon spośród tych, które ma dany turniej.
+
+![Komenda /info z trybem i szablonem](obrazy/00-info-komenda.png)
+
+**Krok 2. Odpowiedź bota**
+Odpowiedź widzisz tylko Ty. Bot składa ją z danych turnieju i szablonu: trudność, koszt rolla (500 złota, 1 na gracza, do 2 zbanowanych miast), **link do pobrania** (szablon nie jest wbudowany w HotA), timer turnieju, rozmiar mapy, drogi, liczba graczy AI oraz dodatkowe zasady z regulaminu (tu: wersja szablonu i zasada wczesnego spotkania). Brak linii oznacza, że turniej nie określa tego ustawienia. Bot niczego nie dopowiada.
+
+![Odpowiedź bota na /info](obrazy/00-info-szablon.png)
+
+---
+
+### 2. Ruletka bohaterów w King of h3dm2
+
+Przykład: faza „From 1/8 finals" (BO3, szablon lustrzany `h3dm_nc`, ruletka z jednym banem bohatera na gracza).
+
+**Krok 1. `/match start opponent mode:King of h3dm2 phase:From 1/8 finals`**
+Wybierasz przeciwnika, tryb i fazę. W fazie „fixed" (jeden szablon na cały mecz) nie podajesz szablonu.
+
+![Komenda /match start](obrazy/03-1-komenda-start.png)
+
+**Krok 2. Bot tworzy wątek**
+Wątek ma nazwę z obu graczy. Od tej chwili wszystko dzieje się w nim, a komendy meczu działają tylko dla tych dwóch graczy.
+
+![Wątek utworzony](obrazy/03-2-watek-utworzony.png)
+
+**Krok 3. Zasady, rzut monetą i pierwsze losowanie**
+Bot zapisuje start meczu (`[#1 ms]`), podaje format (BO3), link do pełnego regulaminu, szablon z linkiem do pobrania, timer, tury symultaniczne, opis handlu (ruletka: roll, 1 ban bohatera na gracza, bot losuje dwóch bohaterów, jedna licytacja o pierwszy wybór), wersję zastępczą za zgodą graczy (`h3dm1`) i podpowiedź do `/info`. Potem rzut monetą (zwycięzca to A) i handel gry 1: wylosowane miasto, 10 000 złota na start, koszt rolla i liczba rolli każdego z graczy.
+
+![Początek wątku](obrazy/03-3-start-meczu.png)
+
+**Krok 4. Roll (opcjonalnie)**
+`/trade roll` kosztuje 500 złota płatne przeciwnikowi i banuje wylosowane miasto, po czym bot losuje nowe. `/trade skip-roll` zostawia miasto. Po wykorzystaniu lub pominięciu przez obu graczy etap losowania się kończy, a bot przechodzi do banów bohaterów. Tu obaj gracze zostają przy mieście.
+
+![Pominięcie rolla i przejście do banów bohaterów](obrazy/03-4-pominiecie-losowania.png)
+
+**Krok 5. Bany bohaterów: `/trade ban-heroes hero_1`**
+Najpierw A, potem B, każdy do 1 bohatera wylosowanego miasta. Pole `hero_1` podpowiada bohaterów tego miasta, po odjęciu tych niedostępnych na szablonie (zbanowanych przez szablon). Wywołanie bez bohatera oznacza brak bana.
+
+![Lista bohaterów do zbanowania](obrazy/03-5-banowanie-lista.png)
+
+Podpowiedzi zawężają się podczas pisania:
+
+![Zawężanie podpowiedzi](obrazy/03-6-banowanie-podpowiedz.png)
+
+**Krok 6. Losowanie bohaterów**
+Po banie drugiego gracza bot **sam losuje dwóch bohaterów** z puli miasta (bez zbanowanych i niedostępnych) i podaje ich z linkami do wiki. Od razu zaczyna się jedyna licytacja lustrzanej ruletki: zwycięzca wybiera, czy pierwszy wybiera bohatera, czy kolor, a drugi gracz dostaje resztę. Licytacja idzie poza botem, wynik zgłasza się przez `/trade report` z `choice:hero` lub `choice:color`.
+
+![Zapis bana i wylosowani bohaterowie](obrazy/03-7-bohaterowie-wylosowani.png)
+
+**Krok 7. Licytacja, zgłoszenie wyniku i ustawienia lobby**
+Gracze licytują się poza botem (na czacie), a jeden z nich zgłasza wynik: `/trade report` z wygranym, kwotą i `choice:hero` albo `choice:color`. Bot zapisuje wynik (`[#9 fb g1]`) i przelicza złoto. Potem podaje ustawienia lobby: timer, mapę, drogi, miasto, obu bohaterów oraz dla każdego gracza, kto wybiera pierwszy bohatera lub kolor, i różnicę złota. Na końcu mówi, że następna jest gra 2 i jak otworzyć jej handel.
+
+![Licytacja, zgłoszenie wyniku i ustawienia lobby](obrazy/03-8-licytacja-i-lobby.png)
+
+---
+
+### 3. Luźna gra rankingowa z ruletką (tryb Ranked)
+
+Przykład: faza „Non-mirror 160%", szablon „Roulette with AI packs 160%" (para miast, dwie paczki AI, bohaterowie dla miast).
+
+**Krok 1. `/match start mode:Ranked phase:Non-mirror 160% template:...`**
+W Ranked faza ustala trudność (tu 160%, czyli 10 000 złota) i to, czy gra jest lustrzana, a szablon to **rodzaj losowania**. Cztery nielustrzane: Standard, Standard with AI packs, Roulette, Roulette with AI packs.
+
+![Wybór rodzaju losowania](obrazy/04-1-wybor-losowania.png)
+
+**Krok 2. Wątek**
+Szablon jest podany, więc nie ma banów ani picków: bot tworzy wątek i od razu otwiera handel jedynej gry.
+
+![Wątek meczu](obrazy/04-2-watek-utworzony.png)
+
+**Krok 3. Zasady i losowanie**
+Bot zapisuje start, podaje format (BO1) i opis handlu, losuje A i **losuje parę miast oraz dwie paczki po trzy miasta AI** (osiem różnych miast). Podaje 10 000 złota na start i stan rolli (koszt 500, po jednym na gracza, do 2 zbanowanych miast pary).
+
+![Początek wątku](obrazy/04-3-start-meczu.png)
+
+**Krok 4. Roll**
+`/trade roll ban_1 ban_2` lub `/trade skip-roll`. Roll banuje miasta tylko z pary (zbanowane miasto może wypaść w paczce AI) i losuje na nowo parę oraz obie paczki. Tu obaj gracze rezygnują.
+
+![Pominięcie rolla](obrazy/04-4-pominiecie-losowania.png)
+
+**Krok 5. Losowanie bohaterów**
+Bez banów (w tym szablonie `hero_bans` to 0) bot od razu losuje po jednym bohaterze dla każdego miasta pary. Bohater jest przypisany do miasta: kto wygra licytację o miasto, dostaje też jego bohatera. Zaczyna licytację A.
+
+![Wylosowani bohaterowie](obrazy/04-5-bohaterowie-wylosowani.png)
+
+**Krok 6. Trzy licytacje i `/trade report`**
+Licytacje idą poza botem, a wynik zgłasza jeden z graczy: najpierw miasto (z bohaterem), potem paczka AI, na końcu kolor. Po każdym zgłoszeniu bot przelicza różnicę złota.
+
+**Krok 7. Ustawienia lobby**
+Podsumowanie: dla każdego gracza miasto z bohaterem, paczka AI (z miastami), kolor i różnica złota względem startu. Gracz czerwony jest pierwszy.
+
+**Krok 8. `/match status`**
+Pokazuje fazę, A i B, stan gry (czy handel trwa, co dalej, różnica złota, paczki AI) oraz numerowaną listę zapisanych kroków, tak jak bot odczytał je z wątku.
+
+![Status meczu](obrazy/04-6-status.png)
+
+Pozostałe fazy Ranked: **Non-mirror 130%** (15 000 złota) oraz **Mirror 130%** i **Mirror 160%** (jedno miasto dla obu graczy, ruletka bez banów albo z 1, 2 lub 3 banami bohaterów na gracza). Zob. [Tryb Ranked](#tryb-ranked-losowanie-dla-siebie).
+
+---
+
+### 4. Bany i picki w finale Mistrzostw Polski
+
+Przykład: faza „Final" (BO3, dziewięć szablonów, kolejność `ABABABBA` plus decider).
+
+**Krok 1. `/match start mode:Mistrzostwa Polski 2026 phase:Final`**
+Bot zapisuje start, podaje format, link do regulaminu, **kolejność wyboru** (`ABABABBA: A bans, B bans, A picks, B picks, A bans, B bans, B bans, A bans, then decider`) i pulę dziewięciu szablonów, losuje A i wskazuje pierwszy krok.
+
+**Krok 2. `/ban template:...` i `/pick template:...` na zmianę**
+Bot przyjmuje tylko komendę gracza, który ma teraz krok, i tylko szablon, który został. Każdy krok zapisuje (`[#3 bn]`, `[#5 pk]`), pokazuje pozostałe szablony, listę zbanowanych i wybranych oraz kolejny krok.
+
+**Krok 3. Pick ustala grę**
+Pierwszy pick to gra 1, drugi to gra 2, a ostatni nieużyty szablon (decider) to gra 3. Handel gry można zacząć, gdy jej szablon jest znany, nawet zanim skończą się bany, i bot to zaznacza.
+
+**Krok 4. Ostatni ban i decider**
+Po ostatnim banie (krok 8, A) zostaje jeden szablon, który bot zapisuje jako grę 3. Bot podaje listę gier w kolejności rozgrywania.
+
+Pomyłkę w kroku cofa `/match undo` (druga strona musi się zgodzić). Handel każdej gry zaczyna się osobnym `/trade start`.
+
+Jak wygląda cały mecz, krok po kroku na zrzutach ekranu (start, bany, handel, ustawienia lobby): zob. [Przebieg meczu krok po kroku](#przebieg-meczu-krok-po-kroku).
+
+---
 
 ## Spis treści
 
+0. [Cztery przykłady użycia](#cztery-przykłady-użycia)
 1. [Najważniejsze zasady](#najważniejsze-zasady)
 2. [Komendy](#komendy)
 3. [Przebieg meczu krok po kroku](#przebieg-meczu-krok-po-kroku)
@@ -55,69 +188,71 @@ Komendy podpowiadają wartości (szablony, miasta, kolory, bohaterów), więc zw
 
 ## Przebieg meczu krok po kroku
 
-Przykład: faza grupowa Mistrzostw Polski, jedna gra, szablon wybierany przez dwa bany i „decider".
+Przykład: faza grupowa Mistrzostw Polski, jedna gra. Szablon wybierają dwa bany, a ostatni szablon zostaje grą („decider"). Poniżej jest cały mecz od komendy startowej do ustawień lobby, na prawdziwych zrzutach z Discorda.
 
 ### 1. Start
 
-Anna wpisuje `/match start` i wybiera przeciwnika oraz tryb. Bot tworzy wątek i pisze zasady fazy (razem z **linkiem do pełnego regulaminu turnieju**), a potem losuje, kto jest A:
+Gracz wpisuje `/match start`, wybiera przeciwnika i tryb. Tryb z kilkoma fazami pyta jeszcze o fazę, a bot podpowiada ich nazwy:
 
-```
-[#1 ms] Match started: <@1> vs <@2>
-Mode: Mistrzostwa Polski 2026 (`mp2026`)
-Phase: `Group phase`
-Format: BO1
-Rules: [full tournament rules](<https://docs.google.com/...>)
-Template Selection: AB
-A bans, B bans, then decider
-Templates: Jebus Cross, 6lm10a, h3dm1
-[#2 cf] Coinflip: <@1> wins and is A, so <@1> bans first. <@2> is B.
-Remaining (3): Jebus Cross, 6lm10a, h3dm1
-Step 1 of 2: <@1> bans a template with /ban
-```
+![Wybór fazy przy /match start](obrazy/05-01-wybor-fazy.png)
 
-<!-- ![Start meczu](obrazy/01-start-meczu.png) -->
+Bot tworzy wątek, pisze zasady fazy (razem z **linkiem do pełnego regulaminu turnieju**), losuje, kto jest A, i mówi, kto zaczyna:
+
+![Początek wątku meczu](obrazy/05-02-start-watku.png)
+
+W tekście to wygląda tak:
 
 ### 2. Bany szablonów
 
-Anna: `/ban template:6lm10a`. Potem Boris: `/ban template:Jebus Cross`. Ostatni szablon zostaje grą:
+A (zwycięzca rzutu monetą) wpisuje `/ban`. Lista podpowiada szablony, które jeszcze zostały:
 
-```
-[#4 bn] <@2> banned **Jebus Cross** (`JC`)
-Remaining (1): h3dm1
-Banned: 6lm10a, Jebus Cross. Picked: none.
-The bans and picks are done. The games:
-Game 1: h3dm1
-Game 1 is h3dm1. Start its trade with /trade start.
-More about this template: /info with mode `mp2026` and template `h3dm1`
-```
+![Lista szablonów do zbanowania](obrazy/05-03-ban-lista.png)
+
+Bot zapisuje ban i pokazuje, co zostało i czyja kolej:
+
+![Zapis bana](obrazy/05-04-ban-zapis.png)
+
+Teraz B. Zbanowany szablon znika z listy:
+
+![Ban drugiego gracza](obrazy/05-05-ban-drugi-gracz.png)
+
+Ostatni szablon zostaje grą, a bot od razu mówi, jak zacząć jej handel i gdzie dowiedzieć się o niej więcej:
+
+![Koniec banów: Game 1 to Jebus Cross](obrazy/05-06-koniec-banow.png)
 
 ### 3. Handel
 
-`/trade start` otwiera handel gry. Bot podaje, co trzeba wiedzieć o szablonie, i od razu pierwszy krok:
+`/trade start` otwiera handel gry. Bot podaje, co trzeba wiedzieć o szablonie (timer, tury symultaniczne, jak wygląda handel), losuje **parę miast** i podaje, ile złota macie na starcie, jakie dodatkowe zasady ma szablon i co robić dalej:
 
-```
-Timer: `18:00+07:00+01:30`
-Sim turns: `117`
-Trade: one town for both players; town roll, then a bid for the color.
-[#5 tr g1] Game 1 (h3dm1)
-Town: `Cove`
-Starting gold: 10 000
-Next step: town roll
-Cost: 500 gold
-<@1>: 1 roll left
-<@2>: 1 roll left
-Roll with /trade roll (it bans this town); skip with /trade skip-roll
-```
+![Otwarcie handlu](obrazy/05-07-otwarcie-handlu.png)
 
-<!-- ![Otwarcie handlu](obrazy/02-otwarcie-handlu.png) -->
+**Losowanie miast (roll).** Każdy może raz zapłacić 500 złota za nowe losowanie i zbanować do dwóch miast z pary (`ban_1`, `ban_2`). Lista podpowiada miasta z obecnej pary:
 
-Szczegóły handlu są w [osobnym rozdziale](#handel-trade).
+![Wybór miast do zbanowania](obrazy/05-08-roll-podpowiedz.png)
+
+Bot losuje nową parę bez zbanowanych miast i liczy złoto: kto zapłacił, ma minus, przeciwnik plus. Zostaje już tylko jedna możliwość losowania, dla drugiego gracza:
+
+![Wynik losowania](obrazy/05-09-roll-wynik.png)
+
+**Licytacja o miasto.** Gdy losowanie jest zamknięte (obaj zrezygnowali albo wykorzystali swoje), zaczyna się licytacja. **Licytacja odbywa się poza botem**: na czacie albo głosowo, jak zawsze. Zaczyna A, kolejne oferty rosną co najmniej o 100. Kiedy wynik jest ustalony, jeden z graczy zgłasza go komendą `/trade report` (zwycięzca, kwota, wybrane miasto):
+
+![Licytacja na czacie i zgłoszenie wyniku](obrazy/05-10-licytacja-miasta.png)
+
+Bot zapisuje wynik, przelicza złoto i przechodzi do następnej licytacji, o kolor. Tak samo zgłaszacie kolor (`red` albo `blue`):
+
+![Licytacja o kolor](obrazy/05-11-licytacja-koloru.png)
 
 ### 4. Ustawienia lobby
 
-Po ostatniej licytacji bot podaje podsumowanie (zob. [Ustawienia lobby](#ustawienia-lobby)), a potem informuje, co dalej: następna gra, następny ban/pick, albo że każda gra jest załatwiona.
+Po ostatniej licytacji bot podaje podsumowanie, które wpisujecie w lobby HotA: ustawienia szablonu oraz, dla każdego gracza, miasto, kolor i różnicę złota. **Gracz czerwony jest zawsze pierwszy.** Na końcu bot mówi, co dalej (tutaj: że to była jedyna gra meczu):
+
+![Ustawienia lobby](obrazy/05-12-ustawienia-lobby.png)
 
 Dalej: wchodzicie do lobby HotA i wpisujecie to, co podał bot. **Wynik meczu zgłaszacie tak, jak ustala regulamin turnieju (np. na h3.gg)**. Bot nie śledzi wyników gier.
+
+W każdej chwili `/match status` pokazuje, na jakim jesteście kroku i co bot zapisał, z numerowaną listą zapisów:
+
+![Status meczu](obrazy/05-13-status.png)
 
 ---
 
@@ -148,7 +283,7 @@ Szablony 200% nie mają jeszcze handlu w bocie (rzut o kolor, losowe miasta), wi
 
 Bot losuje parę miast (albo jedno miasto na szablonach lustrzanych). Każdy gracz może raz zapłacić za nowe losowanie:
 
-- `/trade roll` – płacisz koszt losowania (domyślnie 500 złota, zależnie od turnieju i szablonu) przeciwnikowi i **banujesz** do dwóch miast z obecnej pary (opcje `ban_1`, `ban_2`). Bot losuje nową parę bez zbanowanych miast. Na szablonach lustrzanych banujesz jedyne miasto.
+- `/trade roll` – płacisz koszt losowania (domyślnie 500 złota, zależnie od turnieju i szablonu) przeciwnikowi i **banujesz** do dwóch miast z obecnej pary (opcje `ban_1`, `ban_2`). Bot losuje nową parę bez zbanowanych miast.
 - `/trade skip-roll` – rezygnujesz z losowania na obecnych miastach. Jeśli przeciwnik zrobi roll i miasta się zmienią, możesz znów wybrać.
 - Etap losowania kończy się, gdy nikt już nie może lub nie chce losować.
 
@@ -170,7 +305,7 @@ Przy „skip" bot dopisuje przy graczu `(skipped)`. Losowanie możesz zrobić be
 Licytacja odbywa się **poza botem**. Zaczyna A, kolejne oferty rosną co najmniej o 100. Kiedy ustalicie wynik, **jeden z graczy** wpisuje:
 
 ```
-/trade report winner:@Boris amount:300 choice:red
+/trade report winner:@TesterWBetlejem amount:300 choice:red
 ```
 
 - `winner` – kto wygrał licytację,
@@ -222,7 +357,7 @@ Its winner chooses first either the hero or the color, and the other player choo
 Report the result with /trade report, choosing hero or color
 ```
 
-<!-- ![Ruletka bohaterów](obrazy/03-ruletka-bohaterow.png) -->
+![Wylosowani bohaterowie](obrazy/03-7-bohaterowie-wylosowani.png)
 
 ---
 
@@ -243,7 +378,7 @@ Town (both players): Necropolis
 
 Przy szablonie z paczkami AI w linii gracza pojawia się jego paczka (`pack2 (Stronghold, Fortress, Cove)`), a w ruletce bohater przy mieście (`Castle (Orrin)`). Liczba przy graczu to jego różnica w złocie względem startu (po licytacjach i płatnościach za losowanie): o tyle zyskał lub stracił złota.
 
-<!-- ![Ustawienia lobby](obrazy/04-ustawienia-lobby.png) -->
+![Ustawienia lobby](obrazy/05-12-ustawienia-lobby.png)
 
 ---
 
@@ -321,9 +456,10 @@ Pliki turniejów są w katalogu [`formats/`](../formats/). Aktualna lista:
 |---|---|---|
 | `mp2026` | Mistrzostwa Polski 2026 | faza grupowa BO1, eliminacje i finał BO3, bany/picki szablonów |
 | `sapphire-battlegrounds-3` | Sapphire Battlegrounds 3 | tylko szablon Sapphire; faza szwajcarska BO1, puchar BO3; handel z paczkami AI |
-| `king-of-h3dm2` | King of h3dm2 | `h3dm_nc` (alternatywa: `h3dm1`); od 1/16 finału ruletka bohaterów |
+| `king-of-h3dm-2` | King of h3dm2 | `h3dm_nc` (alternatywa: `h3dm1`); od 1/16 finału ruletka bohaterów |
 | `exotic-tournament-3` | Exotic Tournament III | dziewięć nietypowych szablonów; BO3, dogrywka BO1, finał BO5 |
 | `liga-heroes-12` | Liga Heroes sezon 12 | dywizje 1–6 oraz Blitz (mecze BO2), dogrywki na h3dm, Liga Mistrzów BO3 |
+| `ranked` | Ranked | luźne gry bez turnieju: wybierasz fazę (130% lub 160%, lustrzana lub nie) i podajesz jako szablon rodzaj losowania, a bot losuje miasta, paczki AI i bohaterów |
 | `el-classico` | El Classico | tryb testowy: BO3, ruletka na kilku szablonach |
 
 Każdą fazę wybierasz przy `/match start` w opcji `phase`. Tryby z jedną fazą nie pytają o nią.
@@ -336,6 +472,17 @@ Każdą fazę wybierasz przy `/match start` w opcji `phase`. Tryby z jedną faz�
 - Faza szwajcarska Ligi Heroes i pula szablonów Ligi Mistrzów nie są w pełni określone w regulaminie, więc nie ma ich w bocie lub mają założenia opisane w pliku turnieju.
 
 ---
+
+### Tryb Ranked: losowanie dla siebie
+
+Tryb `ranked` służy do tego, żeby dwie osoby mogły szybko wylosować sobie miasta i bohaterów, bez turnieju. Fazy to cztery połączenia trudności i rodzaju gry: **Non-mirror 130%**, **Non-mirror 160%**, **Mirror 130%**, **Mirror 160%**. W każdej fazie podajesz przy `/match start` jako `template` rodzaj losowania:
+
+| Faza | Dostępne „szablony" |
+|---|---|
+| Non-mirror | `Standard`, `Standard with AI packs`, `Roulette`, `Roulette with AI packs` |
+| Mirror | `Mirror`, `Mirror roulette` (bez banów), `Mirror roulette (1 ban)`, `(2 bans)`, `(3 bans)` |
+
+Do nazwy dopisane jest poziom trudności (np. `Roulette 160%`). Bot od razu otwiera handel, losuje miasta (i paczki AI, bohaterów), pilnuje złota i na końcu podaje ustawienia do lobby. Te szablony nie mają mapy ani timera: ustalacie je sami.
 
 ## Pytania i problemy
 
